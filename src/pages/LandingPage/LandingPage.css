@@ -1,0 +1,810 @@
+/* --- Base & Utilities (No Change in Color Themes) --- */
+:root {
+    /* Using the same variables as Insystemstyles.css for consistency */
+    --primary-color: #111827;
+    --primary-hover-color: #374151;
+    --secondary-color: #6b7280;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --accent-color: #4f46e5; /* A nice blue for primary actions */
+
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+
+    --border-color: var(--gray-200);
+    --body-bg: white;
+    --text-color: var(--gray-900);
+    --text-color-secondary: var(--gray-500);
+    --card-bg: white;
+
+    --font-family: 'Inter', sans-serif;
+    --transition-speed: 0.3s;
+}
+
+[data-theme="dark"] {
+    --primary-color: #1d1d23;
+    --primary-hover-color: #232440;
+    --secondary-color: #131628;
+    --accent-color: #6366f1;
+
+    --gray-50: #111827;
+    --gray-100: #1f2937;
+    --gray-200: #374151;
+    --gray-300: #4b5563;
+    --gray-400: #6b7280;
+    --gray-500: #9ca3af;
+    --gray-600: #d1d5db;
+    --gray-700: #e5e7eb;
+    --gray-800: #f3f4f6;
+    --gray-900: #f9fafb;
+
+    --border-color: var(--gray-700);
+    --body-bg: #111827;
+    --text-color: var(--gray-300);
+    --text-color-secondary: var(--gray-400);
+    --card-bg: #1f2937;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+
+a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color var(--transition-speed);
+}
+
+a:hover {
+    color: #4338ca; /* Darker accent for hover */
+}
+
+img, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+.section {
+    padding: 80px 5%; /* Increased vertical padding */
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1, h2, h3 {
+    margin-bottom: 20px;
+    line-height: 1.2;
+    color: var(--text-color);
+}
+
+h2 {
+    text-align: center;
+    font-size: 2.5em;
+    color: var(--text-color);
+    margin-bottom: 50px; /* Increased margin */
+}
+
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    text-align: center;
+    transition: background-color var(--transition-speed), transform var(--transition-speed), box-shadow var(--transition-speed);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #4338ca;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.2), 0 4px 6px -4px rgba(79, 70, 229, 0.1);
+}
+
+.btn-secondary {
+    background: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--gray-100);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
+
+.btn-large {
+    padding: 15px 30px;
+    font-size: 1.1em;
+}
+
+/* --- Header --- */
+.page-header {
+    background: var(--body-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px 5%;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    transition: background-color var(--transition-speed), border-color var(--transition-speed);
+}
+
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.logo {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+/* Mobile Navigation Overlay */
+.mobile-nav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+    z-index: 999; /* Below nav-links (1000) but above content */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.nav-links a {
+    font-weight: 500;
+    color: var(--text-color-secondary);
+    position: relative;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--text-color);
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--accent-color);
+    transition: width 0.3s ease-out;
+}
+
+.nav-links a:hover::after,
+.nav-links a.active::after {
+    width: 100%;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Hamburger Icon Styling */
+.mobile-nav-toggle {
+    display: none; /* Hidden on desktop */
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5em; /* Fallback for icon font */
+    color: var(--text-color);
+    position: relative; /* For positioning the lines */
+    width: 30px; /* Standard size for hamburger */
+    height: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 0;
+}
+
+.mobile-nav-toggle span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background-color: var(--text-color);
+    transition: all 0.3s ease-in-out;
+}
+
+/* Styles for when the mobile nav is active (e.g., toggle button transforms) */
+.mobile-nav-toggle.active span:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+}
+.mobile-nav-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+.mobile-nav-toggle.active span:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+}
+
+/* --- Footer --- */
+.page-footer {
+    background: var(--gray-50);
+    padding: 60px 5%;
+    border-top: 1px solid var(--border-color);
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 40px;
+    max-width: 1200px;
+    margin: 0 auto 40px;
+}
+.footer-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.footer-column.footer-about {
+    grid-column: 1 / -1; /* Span full width on larger screens */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.footer-column.footer-about p {
+    max-width: 600px;
+    margin: 0 auto;
+    color: var(--text-color-secondary);
+}
+
+.footer-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+.footer-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.footer-links a {
+    color: var(--text-color-secondary);
+    text-decoration: none;
+    transition: color var(--transition-speed);
+}
+
+.footer-links a:hover {
+    color: var(--text-color);
+}
+
+.social-links {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.social-links a {
+    font-size: 1.5em;
+    color: var(--text-color-secondary);
+    transition: color var(--transition-speed);
+}
+
+.social-links a:hover {
+    color: var(--accent-color);
+}
+
+.sub-footer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 30px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-color-secondary);
+    font-size: 0.9em;
+}
+
+.sub-footer-links {
+    display: flex;
+    gap: 20px;
+}
+
+.sub-footer-links a {
+    color: var(--text-color-secondary);
+    text-decoration: none;
+    transition: color var(--transition-speed);
+}
+
+.sub-footer-links a:hover {
+    color: var(--text-color);
+}
+
+
+/* --- Hero Section --- */
+.hero-section {
+    display: flex;
+    align-items: center;
+    padding: 100px 5%; 
+    gap: 60px; /* Increased gap */
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 80vh; /* Taller hero */
+}
+
+.hero-content {
+    flex: 1;
+}
+
+.hero-content h1 {
+    font-size: 3.2em; /* Slightly larger title */
+    margin-bottom: 20px;
+    color: var(--text-color);
+}
+
+.hero-content p {
+    font-size: 1.3em;
+    margin-bottom: 40px;
+    color: var(--text-color-secondary);
+}
+
+.hero-video {
+    flex: 1;
+    border-radius: 12px; /* Slightly rounder corners */
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2); /* Deeper shadow */
+}
+
+.hero-video video {
+    display: block;
+    width: 100%;
+    /* Ensure poster image loads first for performance */
+    object-fit: cover;
+}
+
+.hero-ctas a:first-child {
+    margin-right: 20px;
+}
+
+/* --- Features Overview (Cards) --- */
+.features-overview {
+    background: var(--gray-50);
+}
+
+.feature-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); /* Wider minimum card size */
+    gap: 30px;
+}
+
+.feature-card {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.feature-card:hover {
+    transform: translateY(-8px); /* More pronounced lift */
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+}
+
+.feature-card i {
+    color: var(--accent-color);
+    margin-bottom: 15px;
+    transition: color var(--transition-speed);
+}
+
+.feature-card:hover i {
+    color: #4338ca; /* Darker accent on hover */
+}
+
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    object-fit: cover;
+    transition: transform var(--transition-speed);
+}
+
+.feature-card:hover .feature-icon {
+    transform: scale(1.1);
+}
+
+.feature-card h3 {
+    font-size: 1.4em;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+
+
+/* --- Demo Section --- */
+.demo-section {
+    text-align: center;
+    background: var(--gray-50);
+}
+
+.demo-player {
+    max-width: 900px; /* Slightly wider demo player */
+    margin: 40px auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+    border: 5px solid var(--gray-800); /* Adds a frame-like look */
+}
+
+.demo-preview {
+    width: 100%;
+}
+
+/* --- Pricing Section --- */
+.pricing-section {
+    text-align: center;
+}
+
+.pricing-tiers {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 40px;
+    margin-bottom: 40px;
+}
+
+.price-card {
+    background: var(--card-bg);
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    width: 330px;
+    text-align: left;
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+    border: 3px solid var(--border-color); /* Thicker border */
+    position: relative;
+}
+
+.price-card.popular {
+    border-color: var(--accent-color);
+    transform: scale(1.07); /* More pronounced popular effect */
+    box-shadow: 0 15px 40px rgba(79, 70, 229, 0.25);
+}
+
+.price-card .badge {
+    position: absolute;
+    top: -15px;
+    right: 20px;
+    background: var(--accent-color);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.9em;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.price-card h3 {
+    font-size: 2em;
+    margin-top: 10px;
+}
+
+.price-card .price {
+    font-size: 3em; /* Larger price tag */
+    font-weight: 800; /* Bolder font */
+    color: var(--accent-color); /* Color accent price */
+    margin-bottom: 25px;
+}
+
+.price-card ul {
+    list-style: none;
+    margin-bottom: 40px;
+    padding: 0;
+}
+
+.price-card li {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--gray-100); /* Lighter divider */
+    font-size: 1.1em;
+}
+
+.price-card li:last-child {
+    border-bottom: none;
+}
+
+.price-card li i {
+    color: var(--success-color);
+    margin-right: 10px;
+    width: 18px; /* Fixed width for alignment */
+    text-align: center;
+}
+
+.price-card li .fa-times {
+    color: var(--danger-color);
+}
+
+.price-card li.incompatible {
+    color: var(--text-color-secondary); /* Dim text for excluded features */
+    text-decoration: line-through;
+}
+
+.price-card .btn {
+    width: 100%;
+    padding: 15px 20px;
+}
+
+.compare-link {
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-top: 20px;
+    display: inline-block;
+}
+
+
+
+/* --- FAQ Section --- */
+.faq-section {
+    padding-bottom: 100px;
+}
+
+.faq-container {
+    max-width: 900px;
+    margin: 40px auto 0;
+}
+
+.faq-item {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: box-shadow var(--transition-speed);
+}
+
+.faq-item:hover {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.faq-item summary {
+    display: block;
+    padding: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--card-bg);
+    position: relative;
+    user-select: none;
+    font-size: 1.1em;
+    border-bottom: 1px solid transparent;
+    transition: background var(--transition-speed), color var(--transition-speed);
+}
+
+.faq-item[open] summary {
+    border-bottom-color: var(--border-color);
+    color: var(--accent-color);
+    background: var(--gray-50);
+}
+
+.faq-item p {
+    padding: 20px;
+    background: var(--body-bg);
+    border-top: 1px solid var(--border-color);
+    transition: background var(--transition-speed);
+}
+
+/* --- Basic CSS Animations (to replace .reveal) --- */
+/* Base state for all animated elements */
+[data-animate] {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+/* Fallback for when no JS IntersectionObserver is used: */
+/* The elements will appear on load, but you should use an Intersection Observer in production for true scroll-based animation */
+@media (prefers-reduced-motion: no-preference) {
+    .hero-content[data-animate="fade-in-left"],
+    .hero-video[data-animate="fade-in-right"],
+    .feature-card[data-animate="fade-in-up"],
+    .demo-player[data-animate="fade-in-up"],
+    .price-card[data-animate="fade-in-up"],
+    .faq-item[data-animate="fade-in-up"],
+    .detailed-feature-item[data-animate="slide-in-left"],
+    .detailed-feature-item[data-animate="slide-in-right"],
+    .testimonial-card[data-animate="fade-in-up"],
+    .carousel-nav[data-animate="fade-in"] {
+        opacity: 1;
+        transform: none;
+    }
+
+    .hero-content[data-animate="fade-in-left"] {
+        transform: none; /* Override base for hero for better initial load */
+    }
+}
+
+/* --- Media Queries for Responsiveness --- */
+@media (max-width: 992px) {
+    /* Hero Section Adjustments */
+    .hero-section {
+        flex-direction: column;
+        text-align: center;
+        padding-top: 60px;
+        padding-bottom: 40px;
+        min-height: auto;
+    }
+
+    .hero-content h1 {
+        font-size: 2.5em;
+    }
+
+    .hero-ctas {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .hero-video {
+        margin-top: 40px;
+    }
+
+
+
+    /* Pricing Section Adjustments */
+    .pricing-tiers {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .price-card {
+        width: 100%;
+        max-width: 450px;
+        transform: none !important; /* Disable scale on mobile */
+    }
+
+    .price-card.popular {
+        transform: none !important;
+    }
+    
+    /* Header Adjustments for Mobile */
+    .nav-links {
+        position: fixed;
+        top: 0;
+        right: -100%; /* Start off-screen */
+        width: 280px;
+        height: 100%;
+        background: var(--body-bg);
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 80px 30px 30px;
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+        transition: right 0.4s ease-in-out;
+        gap: 25px;
+        z-index: 1002; /* Ensure nav is above overlay and header */
+    }
+
+    .mobile-nav-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .nav-links.active {
+        right: 0;
+    }
+
+    .mobile-nav-toggle {
+        display: block; /* Show on mobile */
+        z-index: 1003; /* Ensure it's above the slide-out nav */
+    }
+
+    .header-actions .btn {
+        display: none; /* Hide all buttons in header-actions on mobile */
+    }
+
+    /* Footer Adjustments */
+    .footer-grid {
+        grid-template-columns: 1fr 1fr; /* Two columns on tablets */
+        text-align: center;
+    }
+
+    .footer-about {
+        grid-column: 1 / -1; /* Span full width */
+        text-align: center;
+    }
+
+    .footer-about p {
+        max-width: 450px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .sub-footer {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .sub-footer-links {
+        order: -1; /* Move links above copyright on mobile */
+        gap: 20px;
+    }
+
+    .price-card .badge {
+        right: 50%;
+        transform: translateX(50%);
+        top: -10px;
+    }
+
+
+}
+
+@media (max-width: 480px) {
+    h1 { font-size: 2em; }
+    h2 { font-size: 2em; }
+    .hero-content h1 { font-size: 2.2em; }
+
+    .section {
+        padding: 40px 5%;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.9em;
+    }
+
+    .btn-large {
+        padding: 12px 24px;
+    }
+
+    .price-card {
+        padding: 25px;
+    }
+
+    .feature-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr; /* Single column on phones */
+        text-align: center;
+    }
+
+    .social-links {
+        justify-content: center;
+    }
+
+    .price-card .price {
+        font-size: 2.5em;
+    }
+}

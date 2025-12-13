@@ -1,0 +1,269 @@
+/* =========================================
+   Styles for Unit Details Page
+   ========================================= */
+
+#unit-details-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Back Button */
+.back-btn {
+    margin-bottom: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Details Summary Card */
+.details-summary-card {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    padding: 1.5rem;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.summary-value {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+/* Tabs Navigation */
+.unit-details-tabs {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid var(--color-border);
+    padding: 0 0.5rem;
+}
+
+.tab-btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    background-color: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    margin-bottom: -2px; /* Align with the container's border */
+}
+
+.tab-btn:hover {
+    color: var(--color-primary);
+    background-color: var(--color-background-light);
+}
+
+.tab-btn.active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Document View Modal Specifics */
+.document-view {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.document-preview iframe,
+.document-preview img {
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content-wrapper {
+    background-color: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 500px;
+    padding: 1.5rem;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.close-modal-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--gray-400);
+}
+
+.close-modal-btn:hover {
+    color: var(--gray-600);
+}
+
+#modal-body {
+    margin-bottom: 1rem;
+}
+
+/* === Responsive Media Queries === */
+
+@media (max-width: 768px) {
+  #unit-details-view {
+    gap: 1.25rem;
+  }
+
+  .back-btn {
+    margin-bottom: 0.875rem;
+  }
+
+  .details-summary-card {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.875rem;
+    padding: 1.25rem;
+  }
+
+  .summary-item {
+    gap: 0.125rem;
+  }
+
+  .summary-label {
+    font-size: 0.8rem;
+  }
+
+  .summary-value {
+    font-size: 1rem;
+  }
+
+  .unit-details-tabs {
+    gap: 0;
+    padding: 0 0.25rem;
+  }
+
+  .tab-btn {
+    padding: 0.625rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .document-view {
+    gap: 0.875rem;
+  }
+
+  .modal-content-wrapper {
+    max-width: 90vw;
+    padding: 1.25rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.125rem;
+  }
+
+  .close-modal-btn {
+    font-size: 1.375rem;
+  }
+}
+
+@media (max-width: 480px) {
+  #unit-details-view {
+    gap: 1rem;
+  }
+
+  .back-btn {
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .details-summary-card {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .summary-label {
+    font-size: 0.75rem;
+  }
+
+  .summary-value {
+    font-size: 0.95rem;
+  }
+
+  .unit-details-tabs {
+    padding: 0;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .document-view {
+    gap: 0.75rem;
+  }
+
+  .modal-content-wrapper {
+    max-width: 95vw;
+    padding: 1rem;
+  }
+
+  .modal-header {
+    margin-bottom: 0.875rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1rem;
+  }
+
+  .close-modal-btn {
+    font-size: 1.25rem;
+  }
+
+  #modal-body {
+    margin-bottom: 0.875rem;
+  }
+}

@@ -1,0 +1,58 @@
+/* === Payments Page Specific Styles === */
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    padding: 1.5rem;
+}
+
+.stat-card h3 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-500);
+    margin: 0 0 0.5rem 0;
+}
+
+.stat-card h2 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--gray-800);
+    margin: 0;
+}
+
+.receipt-link {
+    color: var(--primary-600);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.receipt-link:hover {
+    text-decoration: underline;
+}
+
+.status-badge.status-scheduled {
+    background-color: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.status-badge.status-overdue {
+    background-color: var(--danger-100);
+    color: var(--danger-700);
+}
+
+.status-badge.status-paid {
+    background-color: var(--success-100);
+    color: var(--success-700);
+}
+
+/* Making sure the table header is sticky */
+.table-header {
+    padding: 1rem 1.5rem;
+    background-color: #fff;
+    border-bottom: 1px solid var(--gray-200);
+}

@@ -1,0 +1,141 @@
+/* === Sidebar Styles === */
+.sidebar {
+    width: var(--sidebar-width);
+    position: fixed;
+    height: 100vh; /* Full viewport height */
+    top: var(--header-height); /* Positioned below the header */
+    left: 0;
+    background-color: var(--primary-color);
+    color: var(--gray-300);
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease-in-out;
+    z-index: 999;
+    padding-top: 1.5rem; /* Adjust padding since it's full height */
+    grid-area: sidebar;
+}
+
+.sidebar.open {
+    transform: translateX(0);
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0 0.5rem 1.5rem;
+    border-bottom: 1px solid var(--gray-700);
+    margin-bottom: 1rem;
+}
+
+.sidebar-header .logo-icon {
+    color: var(--accent-color);
+}
+
+.sidebar-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.sidebar-nav {
+    flex-grow: 1;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    text-decoration: none;
+    color: var(--gray-300);
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-link:hover {
+    background-color: var(--gray-700);
+    color: #fff;
+}
+
+.nav-link.active {
+    background-color: var(--accent-color);
+    color: #fff;
+}
+
+/* --- Sidebar Collapsed State --- */
+
+/* When sidebar is collapsed, move it off-screen */
+.sidebar-collapsed .sidebar {
+    transform: translateX(-100%); /* Hide it completely */
+}
+
+/* When sidebar is collapsed, remove the left margin from main content */
+.sidebar-collapsed .main-content {
+    margin-left: 0;
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        top: 0; /* Align to the very top of the viewport on mobile */
+        height: 100vh;
+        padding-top: calc(var(--header-height) + 1rem); /* Add padding to clear the header */
+        width: 250px; /* Slightly narrower on tablet */
+    }
+
+    .sidebar-nav {
+        padding: 1rem 0.5rem;
+    }
+
+    .nav-link {
+        padding: 0.625rem 0.75rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%; /* Full width overlay on mobile */
+        padding: calc(var(--header-height) + 1rem) 1rem 1rem;
+    }
+
+    .sidebar-header {
+        padding: 0 0 1rem;
+    }
+
+    .sidebar-header h2 {
+        font-size: 1.125rem;
+    }
+
+    .nav-link {
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+        gap: 0.625rem;
+    }
+
+    .nav-link i {
+        font-size: 1.125rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        padding: calc(var(--header-height) + 0.75rem) 0.75rem 0.75rem;
+    }
+
+    .sidebar-header {
+        padding: 0 0 0.75rem;
+    }
+
+    .sidebar-header h2 {
+        font-size: 1rem;
+    }
+
+    .nav-link {
+        padding: 0.625rem 0.75rem;
+        font-size: 0.8rem;
+    }
+}

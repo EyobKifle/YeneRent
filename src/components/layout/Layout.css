@@ -1,0 +1,136 @@
+.layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--body-bg);
+}
+
+.public-layout {
+  flex-direction: column;
+}
+
+.auth-layout {
+  flex-direction: column;
+}
+
+.auth-layout .main-content {
+  justify-content: center;
+  align-items: center;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-areas:
+    "header header"
+    "sidebar content";
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+  background-color: var(--body-bg);
+}
+
+.app-layout.sidebar-collapsed {
+  grid-template-columns: 0 1fr;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease-in-out;
+}
+
+.main-content.sidebar-closed {
+  margin-left: 60px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 1024px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "content";
+  }
+
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+.layout-sidebar {
+  width: var(--sidebar-width);
+  background-color: var(--card-bg);
+  border-right: 1px solid var(--border-color);
+  transition: width 0.3s ease-in-out;
+  overflow-y: auto;
+}
+
+.layout-sidebar.collapsed {
+  width: 0;
+  border-right: none;
+}
+
+.layout-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--sidebar-width);
+  transition: margin-left 0.3s ease-in-out;
+}
+
+.layout-sidebar.collapsed + .layout-main {
+  margin-left: 0;
+}
+
+.layout-content {
+  flex: 1;
+  padding: 1.5rem;
+  padding-top: calc(var(--header-height) + 1.5rem);
+  overflow-y: auto;
+}
+
+.layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 1024px) {
+  .layout-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .layout-sidebar.open {
+    transform: translateX(0);
+  }
+
+  .layout-main {
+    margin-left: 0;
+  }
+
+  .layout-content {
+    padding: 1rem;
+    padding-top: calc(65px + 1rem); /* Adjusted for tablet */
+  }
+}
+
+@media (max-width: 768px) {
+  .layout-content {
+    padding: 0.75rem;
+    padding-top: calc(60px + 0.75rem); /* Adjusted for mobile header height */
+  }
+}
+
+@media (max-width: 480px) {
+  .layout-content {
+    padding: 0.5rem;
+    padding-top: calc(56px + 0.5rem); /* Adjusted for small mobile header height */
+  }
+}

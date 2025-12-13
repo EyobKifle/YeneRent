@@ -1,0 +1,72 @@
+/* === Maintenance Page Specific Styles === */
+
+.status-badge.status-pending {
+    background-color: var(--warning-100);
+    color: var(--warning-700);
+}
+
+.status-badge.status-in-progress {
+    background-color: var(--primary-100);
+    color: var(--primary-700);
+}
+
+.status-badge.status-completed {
+    background-color: var(--success-100);
+    color: var(--success-700);
+}
+
+.image-upload-group {
+    display: flex;
+    gap: 1rem;
+}
+
+.image-upload-container {
+    flex: 1;
+}
+
+.image-preview {
+    width: 100%;
+    height: 120px;
+    background-color: var(--gray-100);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* === Responsive Media Queries === */
+
+@media (max-width: 768px) {
+  .image-upload-group {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .image-upload-container {
+    width: 100%;
+  }
+
+  .image-preview {
+    height: 100px;
+    margin-top: 0.375rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .image-upload-group {
+    gap: 0.5rem;
+  }
+
+  .image-preview {
+    height: 80px;
+    margin-top: 0.25rem;
+  }
+}

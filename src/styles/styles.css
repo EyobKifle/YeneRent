@@ -1,0 +1,14 @@
+/* Main CSS file for consolidated styles */
+
+/* Variables */
+@import './partials/_variables.css';
+
+/* Base styles */
+@import './partials/_base.css';
+
+/* Component styles */
+@import './partials/_components.css';
+@import './partials/_components_new.css';
+
+/* Utility classes */
+@import './partials/_utilities.css';
