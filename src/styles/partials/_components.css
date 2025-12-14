@@ -1,11 +1,10 @@
 /* Component styles */
 
-/* Buttons */
+/* Button styles */
 .btn-primary {
-  background-color: var(--primary-color);
   color: white;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: 0.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -14,17 +13,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  background-color: var(--primary-color);
 }
 
 .btn-primary:hover {
-  background-color: #374151;
+  background-color: var(--primary-hover-color);
 }
 
 .btn-secondary {
   background-color: white;
   color: var(--gray-700);
   border: 1px solid var(--gray-300);
-  border-radius: var(--radius-md);
+  border-radius: 0.5rem;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -34,131 +34,6 @@
 
 .btn-secondary:hover {
   background-color: var(--gray-50);
-}
-
-/* Cards */
-.data-card {
-  background: var(--card-bg);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  padding: 1.5rem;
-}
-
-/* Page header */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.page-header h1 {
-  font-size: 1.875rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin: 0;
-}
-
-.page-header p {
-  color: var(--gray-500);
-  margin-top: 0.25rem;
-  margin-bottom: 0;
-}
-
-/* Empty state */
-.empty-state {
-  text-align: center;
-  padding: 4rem 1rem;
-  color: var(--gray-400);
-  border: 2px dashed var(--gray-200);
-  border-radius: var(--radius-lg);
-}
-
-/* Notifications */
-.notification-base {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  padding: 1rem 1.5rem;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  z-index: 1000;
-  color: white;
-}
-
-.notification-success {
-  background-color: var(--success-color);
-}
-
-.notification-error {
-  background-color: var(--danger-color);
-}
-
-/* Action dropdown */
-.action-dropdown {
-  position: relative;
-  display: inline-block;
-}
-
-.action-dropdown-btn {
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gray-500);
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-}
-
-.action-dropdown-btn:hover {
-  background-color: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  z-index: 10;
-  background-color: white;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--gray-200);
-  min-width: 160px;
-  padding: 0.5rem 0;
-  overflow: hidden;
-}
-
-.dropdown-menu.align-right {
-  left: auto;
-  right: 0;
-}
-
-.dropdown-item {
-  display: block;
-  width: 100%;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  color: var(--gray-700);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.dropdown-item:hover {
-  background-color: var(--gray-100);
-  color: var(--gray-900);
-  text-decoration: none;
-}
-
-.dropdown-divider {
-  height: 1px;
-  margin: 0.5rem 0;
-  overflow: hidden;
-  background-color: var(--gray-200);
 }
 
 /* Image preview */
@@ -196,67 +71,4 @@
 .preview-placeholder span {
   font-size: 0.875rem;
   font-weight: 500;
-}
-
-/* Form elements */
-.form-row {
-  width: 100%;
-}
-
-.form-row-columns {
-  display: flex;
-  gap: 1rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--gray-200);
-}
-
-.form-hint {
-  display: block;
-  font-size: 0.75rem;
-  color: var(--gray-500);
-  margin-top: 0.25rem;
-}
-
-.form-label-group {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.form-label-group .form-label {
-  margin-bottom: 0;
-}
-
-.form-label-action {
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--primary-color);
-  text-decoration: none;
-}
-
-/* Close modal button */
-.close-modal-btn {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--gray-400);
-}
-
-.close-modal-btn:hover {
-  color: var(--gray-600);
-}
-
-/* Modal body */
-.modal-content-wrapper #modal-body {
-  flex-grow: 1;
-  overflow-y: auto;
 }

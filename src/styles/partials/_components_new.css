@@ -7,41 +7,6 @@
   padding: 1.5rem;
 }
 
-.btn-primary {
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease-in-out;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--primary-color);
-}
-
-.btn-primary:hover {
-  background-color: var(--primary-hover-color);
-}
-
-.btn-secondary {
-  background-color: white;
-  color: var(--gray-700);
-  border: 1px solid var(--gray-300);
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease-in-out;
-}
-
-.btn-secondary:hover {
-  background-color: var(--gray-50);
-}
-
 .form-input {
   width: 100%;
   padding: 0.5rem 0.75rem;
@@ -402,9 +367,7 @@ tbody tr:hover {
   margin-bottom: 0;
 }
 
-.hidden {
-  display: none !important;
-}
+
 
 .empty-state {
   text-align: center;
