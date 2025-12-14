@@ -20,7 +20,7 @@ const Sidebar = ({ isOpen }) => {
   ];
 
   return (
-    <aside id="sidebar" className={`sidebar ${isOpen ? 'open' : 'collapsed'}`}>
+    <aside id="sidebar" className={`sidebar ${isOpen ? 'open' : ''}`}>
       <nav className="sidebar-nav">
         {navigationItems.map((item) => (
           <Link

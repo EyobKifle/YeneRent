@@ -18,17 +18,9 @@
 }
 
 .app-layout {
-  display: grid;
-  grid-template-areas:
-    "header header"
-    "sidebar content";
-  grid-template-columns: var(--sidebar-width) 1fr;
+  display: flex;
   min-height: 100vh;
   background-color: var(--body-bg);
-}
-
-.app-layout.sidebar-collapsed {
-  grid-template-columns: 0 1fr;
 }
 
 .main-content {
@@ -36,11 +28,15 @@
   display: flex;
   flex-direction: column;
   margin-left: var(--sidebar-width);
+  padding-top: var(--header-height);
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-bottom: 1.5rem;
   transition: margin-left 0.3s ease-in-out;
 }
 
-.main-content.sidebar-closed {
-  margin-left: 60px;
+.app-layout.sidebar-collapsed .main-content {
+  margin-left: 0;
 }
 
 /* Mobile responsiveness */

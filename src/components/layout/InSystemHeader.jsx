@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import useClickOutside from '../../hooks/useClickOutside';
+import './InSystemHeader.css';
 
 const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
   const languageMenuRef = useRef(null);
