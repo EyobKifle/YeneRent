@@ -33,7 +33,7 @@ const PublicHeader = () => {
         <Link to="/contact" data-i18n="nav_contact">{t('Contact')}</Link>
         <div className="nav-actions">
           <button id="theme-toggle" className="btn btn-icon" aria-label="Toggle theme" onClick={toggleTheme}>
-            {theme === 'dark' ? '🌙' : '☀️'}
+            {theme === 'dark' ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}
           </button>
           <Link to="/login" className="btn btn-login">Login</Link>
           <Link to="/signup" className="btn btn-primary">Sign Up</Link>
