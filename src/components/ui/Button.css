@@ -23,13 +23,13 @@
   cursor: not-allowed;
 }
 
-.btn.btn-secondary {
+.btn.variant-secondary {
   background-color: white;
   color: var(--gray-700);
   border: 1px solid var(--gray-300);
 }
 
-.btn.btn-secondary:hover {
+.btn.variant-secondary:hover {
   background-color: var(--gray-50);
 }
 

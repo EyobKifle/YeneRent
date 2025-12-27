@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Button from '../../components/ui/Button';
 import '../../styles/pages/Maintenance.css';
 
 const Maintenance = () => {
@@ -70,10 +71,10 @@ const Maintenance = () => {
           <h1>Maintenance Requests</h1>
           <p>Track and manage all maintenance tasks.</p>
         </div>
-        <button id="add-request-btn" className="btn-primary" onClick={handleAddRequest}>
+        <Button variant="secondary" onClick={handleAddRequest}>
           <i className="fa-solid fa-plus"></i>
           <span>Add Request</span>
-        </button>
+        </Button>
       </div>
 
       <div className="data-card">

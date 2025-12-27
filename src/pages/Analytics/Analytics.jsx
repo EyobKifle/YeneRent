@@ -464,7 +464,7 @@ const Analytics = () => {
                         ))}
                     </select>
                 </div>
-                <button id="btn-generate-report" className="btn-primary" onClick={generateReport} disabled={loading}>
+                <button id="btn-generate-report" className="btn-secondary" onClick={generateReport} disabled={loading}>
                     {loading ? 'Generating...' : 'Generate Report'}
                 </button>
             </div>

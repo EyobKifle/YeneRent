@@ -112,7 +112,7 @@ const Payments = () => {
                     <h1>Payment Schedule</h1>
                     <p>Track all scheduled, paid, and overdue rent payments.</p>
                 </div>
-                <Button className="btn-primary">
+                <Button variant="secondary">
                     <i className="fa-solid fa-plus"></i>
                     Record Payment
                 </Button>

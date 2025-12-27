@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import '../../styles/pages/Properties.css';
+import Button from '../../components/ui/Button';
 
 const Properties = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,10 +55,10 @@ const Properties = () => {
           <h1>Properties</h1>
           <p>View and manage all your properties</p>
         </div>
-        <button id="add-property-btn" className="btn-primary" onClick={handleAddProperty}>
+        <Button variant="secondary" onClick={handleAddProperty}>
           <i className="fa-solid fa-plus"></i>
           <span>Add Property</span>
-        </button>
+        </Button>
       </div>
 
       <div className="view-controls">

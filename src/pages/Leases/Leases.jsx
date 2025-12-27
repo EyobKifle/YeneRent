@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { get, create, update, remove } from '../../utils/api';
 import { formatDate, formatCurrency, debounce, generateId, readFileAsDataURL } from '../../utils/utils';
+import Button from '../../components/ui/Button';
 import './Leases.css';
 
 // Placeholder for a generic Modal component (to be replaced by a proper UI component later)
@@ -267,10 +268,10 @@ const Leases = () => {
                         <h1>Lease Agreements</h1>
                         <p>Manage all active, expired, and upcoming leases.</p>
                     </div>
-                    <button onClick={handleAddLease} className="btn-primary">
+                    <Button variant="secondary" onClick={handleAddLease}>
                         <i className="fa-solid fa-plus"></i>
                         <span>Add Lease</span>
-                    </button>
+                    </Button>
                 </div>
 
                 <div className="data-card">

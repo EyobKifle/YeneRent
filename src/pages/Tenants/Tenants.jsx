@@ -51,7 +51,7 @@ export default function TenantsPage() {
           <h1>Tenants</h1>
           <p>Manage all tenants across your properties.</p>
         </div>
-        <Button variant="primary" onClick={() => alert('Implement modal in app shared components')}> <i className="fa-solid fa-plus"></i> <span>Add Tenant</span></Button>
+        <Button variant="secondary" onClick={() => alert('Implement modal in app shared components')}> <i className="fa-solid fa-plus"></i> <span>Add Tenant</span></Button>
       </div>
 
       <Card>
