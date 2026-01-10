@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Button from '../../components/ui/Button';
 import '../../styles/pages/Utilities.css';
 
 const Utilities = () => {
@@ -34,10 +35,10 @@ const Utilities = () => {
           <h1>Utilities</h1>
           <p>Track and manage utility bills for all your properties.</p>
         </div>
-        <button id="add-utility-btn" className="btn-primary" onClick={handleAddUtility}>
+        <Button className="btn-secondary" onClick={handleAddUtility}>
           <i className="fa-solid fa-plus"></i>
           <span>Add Utility Bill</span>
-        </button>
+        </Button>
       </div>
 
       <div className="data-card table-container">
@@ -75,9 +76,22 @@ const Utilities = () => {
                   </span>
                 </td>
                 <td>
-                  {/* Placeholder actions */}
-                  <button>Edit</button>
-                  <button>Delete</button>
+                  <div className="action-dropdown">
+                    <button className="action-dropdown-btn" onClick={() => {
+                      const dropdown = document.getElementById(`dropdown-${util.id}`);
+                      if (dropdown) dropdown.classList.toggle('hidden');
+                    }}>
+                      <i className="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div id={`dropdown-${util.id}`} className="dropdown-menu hidden">
+                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Edit utility bill'); }}>
+                        <i className="fa-solid fa-pencil"></i>Edit
+                      </a>
+                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Delete utility bill'); }}>
+                        <i className="fa-solid fa-trash-can"></i>Delete
+                      </a>
+                    </div>
+                  </div>
                 </td>
               </tr>
             ))}

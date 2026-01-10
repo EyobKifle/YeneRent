@@ -89,7 +89,23 @@ export default function TenantsPage() {
                     <td><span className={`status-badge ${status.class}`}>{status.text}</span></td>
                     <td>
                       <div className="action-dropdown">
-                        <button className="action-dropdown-btn"><i className="fa-solid fa-ellipsis-vertical"></i></button>
+                        <button className="action-dropdown-btn" onClick={() => {
+                          const dropdown = document.getElementById(`dropdown-${t.id}`);
+                          if (dropdown) dropdown.classList.toggle('hidden');
+                        }}>
+                          <i className="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <div id={`dropdown-${t.id}`} className="dropdown-menu hidden">
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View tenant details'); }}>
+                            <i className="fa-solid fa-eye"></i>View Details
+                          </a>
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Edit tenant'); }}>
+                            <i className="fa-solid fa-pencil"></i>Edit
+                          </a>
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Delete tenant'); }}>
+                            <i className="fa-solid fa-trash-can"></i>Delete
+                          </a>
+                        </div>
                       </div>
                     </td>
                   </tr>

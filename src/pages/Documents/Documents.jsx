@@ -119,7 +119,23 @@ export default function DocumentsPage() {
                     <td>{doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString() : '-'}</td>
                     <td>
                       <div className="action-dropdown">
-                        <button className="action-dropdown-btn"><i className="fa-solid fa-ellipsis-vertical"></i></button>
+                        <button className="action-dropdown-btn" onClick={() => {
+                          const dropdown = document.getElementById(`dropdown-${doc.id}`);
+                          if (dropdown) dropdown.classList.toggle('hidden');
+                        }}>
+                          <i className="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        <div id={`dropdown-${doc.id}`} className="dropdown-menu hidden">
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View document'); }}>
+                            <i className="fa-solid fa-eye"></i>View
+                          </a>
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download document'); }}>
+                            <i className="fa-solid fa-download"></i>Download
+                          </a>
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Delete document'); }}>
+                            <i className="fa-solid fa-trash-can"></i>Delete
+                          </a>
+                        </div>
                       </div>
                     </td>
                   </tr>

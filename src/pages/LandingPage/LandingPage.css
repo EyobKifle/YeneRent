@@ -78,12 +78,6 @@ img, video {
     display: block;
 }
 
-.section {
-    padding: 80px 5%; /* Increased vertical padding */
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
 h1, h2, h3 {
     margin-bottom: 20px;
     line-height: 1.2;
@@ -773,10 +767,6 @@ h2 {
     h1 { font-size: 2em; }
     h2 { font-size: 2em; }
     .hero-content h1 { font-size: 2.2em; }
-
-    .section {
-        padding: 40px 5%;
-    }
 
     .btn {
         padding: 8px 16px;

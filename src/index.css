@@ -301,10 +301,6 @@ tbody tr:hover {
     transform: translateX(0);
   }
 
-  .main-content {
-    margin: 0;
-  }
-
   /* Enhance table responsiveness */
   .data-table {
     font-size: 0.875rem;
@@ -431,8 +427,8 @@ tbody tr:hover {
 }
 
 .main-content {
-  margin-left: var(--sidebar-width);
-  padding: 1.5rem; /* This sets default padding */
+  margin-left: 0;
+  padding: 0; /* This sets default padding */
   padding-top: calc(var(--header-height) + 1.5rem);
   min-height: 100vh;
   transition: margin-left 0.3s ease-in-out;

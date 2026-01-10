@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { get, create, update, remove } from '../../utils/api';
 import { formatDate, formatCurrency, debounce, generateId, readFileAsDataURL } from '../../utils/utils';
 import Button from '../../components/ui/Button';
@@ -25,7 +24,6 @@ const Modal = ({ title, children, onClose, isOpen, maxWidth = '500px' }) => {
 };
 
 const Leases = () => {
-    const navigate = useNavigate();
     const [leases, setLeases] = useState([]);
     const [tenants, setTenants] = useState([]);
     const [properties, setProperties] = useState([]);
@@ -261,7 +259,7 @@ const Leases = () => {
     }
 
     return (
-        <main id="main-content" className="main-content">
+        <main id="main-content">
             <div id="leases-view">
                 <div className="page-header">
                     <div>

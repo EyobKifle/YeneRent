@@ -405,6 +405,11 @@ tbody tr:hover {
     display: inline-block;
 }
 
+/* Ensure table containers don't clip dropdowns */
+.table-container {
+    overflow: visible;
+}
+
 .action-dropdown-btn {
     background-color: transparent;
     border: none;
@@ -428,7 +433,7 @@ tbody tr:hover {
 .dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
-    z-index: 10;
+    z-index: 10000;
     background-color: white;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);

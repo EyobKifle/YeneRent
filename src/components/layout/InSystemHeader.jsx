@@ -56,7 +56,7 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
             <i className="fa-solid fa-globe"></i>
           </button>
           {showLanguageMenu && (
-            <div id="language-menu-dropdown" className="dropdown-menu">
+            <div id="language-menu-dropdown" className="dropdown-menu show">
               <button
                 className="dropdown-item"
                 onClick={() => handleLanguageChange('en')}
@@ -98,7 +98,7 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
             </div>
           </button>
           {showUserMenu && (
-            <div id="user-menu-dropdown" className="dropdown-menu">
+            <div id="user-menu-dropdown" className="dropdown-menu show">
               <Link to="/profile" className="dropdown-item" onClick={() => setShowUserMenu(false)}>
                 {t('My Profile')}
               </Link>
