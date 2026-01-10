@@ -35,6 +35,18 @@ const Leases = () => {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [currentLease, setCurrentLease] = useState(null);
     const [isRenewal, setIsRenewal] = useState(false);
+    const [openActionId, setOpenActionId] = useState(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (openActionId && !event.target.closest('.action-dropdown')) {
+                setOpenActionId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openActionId]);
 
     const LEASE_KEY = 'leases';
     const TENANT_KEY = 'tenants';
@@ -315,14 +327,14 @@ const Leases = () => {
                                                 <td><span className={`status-badge ${status.class}`}>{status.text}</span></td>
                                                 <td>
                                                     <div className="action-dropdown">
-                                                        <button type="button" className="action-dropdown-btn" onClick={() => {
-                                                            // Simple dropdown toggle for now, can be improved with a dedicated component
-                                                            const dropdown = document.getElementById(`dropdown-${lease.id}`);
-                                                            if (dropdown) dropdown.classList.toggle('hidden');
+                                                        <button type="button" className="action-dropdown-btn" onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenActionId(openActionId === lease.id ? null : lease.id);
                                                         }}>
                                                             <i className="fa-solid fa-ellipsis-vertical"></i>
                                                         </button>
-                                                        <div id={`dropdown-${lease.id}`} className="dropdown-menu hidden">
+                                                        {openActionId === lease.id && (
+                                                        <div className="dropdown-menu align-right show">
                                                             <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); openLeaseDetailsModal(lease); }}>
                                                                 <i className="fa-solid fa-eye"></i>View Details
                                                             </a>
@@ -336,6 +348,7 @@ const Leases = () => {
                                                                 <i className="fa-solid fa-trash-can"></i>Delete
                                                             </a>
                                                         </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

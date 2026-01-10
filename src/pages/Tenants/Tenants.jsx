@@ -10,6 +10,18 @@ export default function TenantsPage() {
   const [properties, setProperties] = useState([])
   const [units, setUnits] = useState([])
   const [leases, setLeases] = useState([])
+  const [openActionId, setOpenActionId] = useState(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openActionId && !event.target.closest('.action-dropdown')) {
+        setOpenActionId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openActionId]);
 
   useEffect(() => {
     (async () => {
@@ -89,13 +101,14 @@ export default function TenantsPage() {
                     <td><span className={`status-badge ${status.class}`}>{status.text}</span></td>
                     <td>
                       <div className="action-dropdown">
-                        <button className="action-dropdown-btn" onClick={() => {
-                          const dropdown = document.getElementById(`dropdown-${t.id}`);
-                          if (dropdown) dropdown.classList.toggle('hidden');
+                        <button className="action-dropdown-btn" onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenActionId(openActionId === t.id ? null : t.id);
                         }}>
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
-                        <div id={`dropdown-${t.id}`} className="dropdown-menu hidden">
+                        {openActionId === t.id && (
+                        <div className="dropdown-menu align-right show">
                           <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View tenant details'); }}>
                             <i className="fa-solid fa-eye"></i>View Details
                           </a>
@@ -106,6 +119,7 @@ export default function TenantsPage() {
                             <i className="fa-solid fa-trash-can"></i>Delete
                           </a>
                         </div>
+                        )}
                       </div>
                     </td>
                   </tr>

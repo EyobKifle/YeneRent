@@ -5,6 +5,7 @@
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px 0 rgb(169, 169, 169);
   padding: 1.5rem;
+  overflow: visible;
 }
 
 .form-input {
@@ -163,12 +164,14 @@
 table {
   width: 100%;
   border-collapse: collapse;
+  overflow: visible;
 }
 
 th, td {
   padding: 0.75rem 1.5rem;
   text-align: left;
   border-bottom: 1px solid var(--gray-200);
+  overflow: visible;
 }
 
 th {
@@ -177,6 +180,10 @@ th {
   color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+tbody {
+  overflow: visible;
 }
 
 tbody tr:hover {
@@ -407,7 +414,8 @@ tbody tr:hover {
 
 /* Ensure table containers don't clip dropdowns */
 .table-container {
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: visible;
 }
 
 .action-dropdown-btn {
@@ -433,7 +441,7 @@ tbody tr:hover {
 .dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
-    z-index: 10000;
+    z-index: 99999;
     background-color: white;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
@@ -443,6 +451,14 @@ tbody tr:hover {
     overflow: hidden;
     /* Position based on parent */
     left: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+}
+
+.dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
 }
 
 /* For dropdowns that should be aligned to the right, like in the header */

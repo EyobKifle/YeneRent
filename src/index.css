@@ -87,6 +87,7 @@ body {
   color: var(--text-color);
   background-color: var(--body-bg);
   transition: background-color var(--transition-speed), color var(--transition-speed); /* From publicstyles.css */
+  overflow: visible;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -503,6 +504,25 @@ tbody tr:hover {
     background-color: var(--danger-color);
 }
 
+.data-card {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    height: auto;
+    min-height: 200px;
+    overflow: visible;
+}
+
+.table-container {
+    width: 100%;
+    overflow-x: auto;
+    min-height: 300px;
+    padding-bottom: 80px;
+}
+
 /* =========================================
    Action Dropdown (for tables)
    ========================================= */
@@ -534,7 +554,7 @@ tbody tr:hover {
 .dropdown-menu {
     position: absolute;
     top: calc(100% + 4px);
-    z-index: 10;
+    z-index: 1050;
     background-color: white;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
@@ -542,8 +562,18 @@ tbody tr:hover {
     min-width: 160px;
     padding: 0.5rem 0;
     overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
     /* Position based on parent */
     left: 0;
+}
+
+.dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
 }
 
 /* For dropdowns that should be aligned to the right, like in the header */
@@ -634,6 +664,7 @@ h2 {
         background: var(--card-bg);
         border-top: 1px solid var(--border-color);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        z-index: 1000;
     }
 
     .nav-links.active {

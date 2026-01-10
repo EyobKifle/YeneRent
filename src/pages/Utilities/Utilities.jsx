@@ -1,9 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import '../../styles/pages/Utilities.css';
 
 const Utilities = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [openActionId, setOpenActionId] = useState(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openActionId && !event.target.closest('.action-dropdown')) {
+        setOpenActionId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openActionId]);
 
   // Mock data - in a real app, this would come from an API
   const utilities = [
@@ -41,7 +53,7 @@ const Utilities = () => {
         </Button>
       </div>
 
-      <div className="data-card table-container">
+      <div className="data-card">
         <div className="table-header">
           <input
             type="text"
@@ -52,6 +64,7 @@ const Utilities = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <div className="table-container">
         <table className="data-table">
           <thead>
             <tr>
@@ -77,13 +90,17 @@ const Utilities = () => {
                 </td>
                 <td>
                   <div className="action-dropdown">
-                    <button className="action-dropdown-btn" onClick={() => {
-                      const dropdown = document.getElementById(`dropdown-${util.id}`);
-                      if (dropdown) dropdown.classList.toggle('hidden');
-                    }}>
+                    <button 
+                      className="action-dropdown-btn" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenActionId(openActionId === util.id ? null : util.id);
+                      }}
+                    >
                       <i className="fa-solid fa-ellipsis-vertical"></i>
                     </button>
-                    <div id={`dropdown-${util.id}`} className="dropdown-menu hidden">
+                    {openActionId === util.id && (
+                    <div className="dropdown-menu align-right show">
                       <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Edit utility bill'); }}>
                         <i className="fa-solid fa-pencil"></i>Edit
                       </a>
@@ -91,12 +108,14 @@ const Utilities = () => {
                         <i className="fa-solid fa-trash-can"></i>Delete
                       </a>
                     </div>
+                    )}
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {filteredUtilities.length === 0 && (

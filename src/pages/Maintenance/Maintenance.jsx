@@ -1,9 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import '../../styles/pages/Maintenance.css';
 
 const Maintenance = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [openActionId, setOpenActionId] = useState(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openActionId && !event.target.closest('.action-dropdown')) {
+        setOpenActionId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openActionId]);
 
   // Mock data - in a real app, this would come from an API
   const maintenanceRequests = [
@@ -88,6 +100,7 @@ const Maintenance = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <div className="table-container">
         <table className="data-table">
           <thead>
             <tr>
@@ -113,13 +126,17 @@ const Maintenance = () => {
                 <td>${request.cost.toFixed(2)}</td>
                 <td>
                   <div className="action-dropdown">
-                    <button className="action-dropdown-btn" onClick={() => {
-                      const dropdown = document.getElementById(`dropdown-${request.id}`);
-                      if (dropdown) dropdown.classList.toggle('hidden');
-                    }}>
+                    <button 
+                      className="action-dropdown-btn" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setOpenActionId(openActionId === request.id ? null : request.id);
+                      }}
+                    >
                       <i className="fa-solid fa-ellipsis-vertical"></i>
                     </button>
-                    <div id={`dropdown-${request.id}`} className="dropdown-menu hidden">
+                    {openActionId === request.id && (
+                    <div className="dropdown-menu align-right show">
                       <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View maintenance request'); }}>
                         <i className="fa-solid fa-eye"></i>View Details
                       </a>
@@ -130,12 +147,14 @@ const Maintenance = () => {
                         <i className="fa-solid fa-trash-can"></i>Delete
                       </a>
                     </div>
+                    )}
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {filteredRequests.length === 0 && (

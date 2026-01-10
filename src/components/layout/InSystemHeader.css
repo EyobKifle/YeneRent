@@ -19,9 +19,8 @@
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1000;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px); /* Safari */
+  z-index: 1100;
+  overflow: visible;
 }
 
 /* Left: Logo + icons */
@@ -53,6 +52,7 @@
   align-items: center;
   gap: calc(var(--header-gap) * 0.75);
   flex-shrink: 0;
+  overflow: visible;
 }
 
 /* Icon buttons – consistent size & hover */
@@ -127,8 +127,6 @@
     display: none;
   }
 
-  /* Or keep title but reduce even more */
-  /* #page-title { font-size: 1.1rem; } */
 }
 
 /* Extra small phones – tighter spacing */
@@ -140,20 +138,27 @@
   }
 }
 
+/* Menu container to allow dropdown overflow */
+.menu-container {
+  position: relative;
+  overflow: visible;
+}
+
 /* === Dropdown Menu (clean & modern) === */
 .dropdown-menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
   min-width: 200px;
-  background: white;
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
   overflow: hidden;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-10px);
   transition: all 0.2s ease;
+  z-index: 10000;
 }
 
 .dropdown-menu.show {

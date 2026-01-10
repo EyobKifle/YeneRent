@@ -29,6 +29,18 @@ const Payments = () => {
     const [units, setUnits] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
+    const [openActionId, setOpenActionId] = useState(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (openActionId && !event.target.closest('.action-dropdown')) {
+                setOpenActionId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openActionId]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -147,8 +159,21 @@ const Payments = () => {
                                 <td><span className={`status-badge ${payment.status.class}`}>{payment.status.text}</span></td>
                                 <td>
                                     <div className="action-dropdown">
-                                        <button className="action-dropdown-btn"><i className="fa-solid fa-ellipsis-vertical"></i></button>
-                                        {/* Dropdown menu would be implemented here */}
+                                        <button 
+                                            className="action-dropdown-btn"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setOpenActionId(openActionId === payment.id ? null : payment.id);
+                                            }}
+                                        >
+                                            <i className="fa-solid fa-ellipsis-vertical"></i>
+                                        </button>
+                                        {openActionId === payment.id && (
+                                        <div className="dropdown-menu align-right show">
+                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View payment details'); }}><i className="fa-solid fa-eye"></i>View Details</a>
+                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download receipt'); }}><i className="fa-solid fa-download"></i>Receipt</a>
+                                        </div>
+                                        )}
                                     </div>
                                 </td>
                             </tr>
