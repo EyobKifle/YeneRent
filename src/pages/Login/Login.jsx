@@ -6,6 +6,7 @@ import './Login.css';
 const Login = () => {
     const [email, setEmail] = useState('demo@user.com'); // Pre-filled for demo
     const [password, setPassword] = useState('password'); // Pre-filled for demo
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -44,16 +45,26 @@ const Login = () => {
 
                         <div className="form-group">
                             <label htmlFor="password" className="form-label" data-i18n="Password">Password</label>
-                            <input
-                                type="password"
-                                id="password"
-                                className="form-input"
-                                placeholder="Enter your password"
-                                required
-                                autoComplete="current-password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
+                            <div className="password-input-container">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    id="password"
+                                    className="form-input"
+                                    placeholder="Enter your password"
+                                    required
+                                    autoComplete="current-password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                                <button
+                                    type="button"
+                                    className="password-toggle"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    aria-label="Toggle password visibility"
+                                >
+                                    <i className={showPassword ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+                                </button>
+                            </div>
                         </div>
                         <p className="forgot-password">
                             <a href="#" data-i18n="Forgot your password?">Forgot your password?</a>

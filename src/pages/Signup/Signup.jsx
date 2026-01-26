@@ -8,6 +8,8 @@ const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
   const { signup } = useAuth();
 
@@ -66,30 +68,50 @@ const Signup = () => {
 
             <div className="form-group">
               <label htmlFor="password" className="form-label" data-i18n="Password">Password</label>
-              <input
-                type="password"
-                id="password"
-                className="form-input"
-                placeholder="Enter your password"
-                required
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div className="password-input-container">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  className="form-input"
+                  placeholder="Enter your password"
+                  required
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label="Toggle password visibility"
+                >
+                    <i className={showConfirmPassword ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
               <label htmlFor="confirm-password" className="form-label" data-i18n="Confirm Password">Confirm Password</label>
-              <input
-                type="password"
-                id="confirm-password"
-                className="form-input"
-                placeholder="Confirm your password"
-                required
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div className="password-input-container">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  id="confirm-password"
+                  className="form-input"
+                  placeholder="Confirm your password"
+                  required
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label="Toggle confirm password visibility"
+                >
+                  <i className={showConfirmPassword ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+                </button>
+              </div>
             </div>
 
             <p className="forgot-password">

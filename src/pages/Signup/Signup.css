@@ -19,7 +19,7 @@
 
 /* Page layout */
 .signup-page {
-  background-color: var(--gray-100);
+  background-color: white;
   font-family: var(--font-family);
   margin: 0;
   display: flex;
@@ -28,7 +28,7 @@
 }
 
 .login-page {
-  background-color: var(--gray-100);
+  background-color: white;
   font-family: var(--font-family);
   margin: 0;
   display: flex;
@@ -127,6 +127,29 @@
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Password input container */
+.password-input-container {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--gray-500);
+  padding: 0.25rem;
+  transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+  color: var(--primary-color);
 }
 
 /* Button */

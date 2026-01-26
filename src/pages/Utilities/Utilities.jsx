@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Button from '../../components/ui/Button';
-import '../../styles/pages/Utilities.css';
+import '/src/pages/Utilities/Utilities.css';
 
 const Utilities = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,7 +47,7 @@ const Utilities = () => {
           <h1>Utilities</h1>
           <p>Track and manage utility bills for all your properties.</p>
         </div>
-        <Button className="btn-secondary" onClick={handleAddUtility}>
+        <Button className="btn" variant="secondary" onClick={handleAddUtility}>
           <i className="fa-solid fa-plus"></i>
           <span>Add Utility Bill</span>
         </Button>
