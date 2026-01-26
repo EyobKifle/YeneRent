@@ -99,7 +99,7 @@ const LandingPage = () => {
                         // Note: controls are only useful if the video isn't just background fluff
                         // Consider removing `controls` if it's meant to be purely illustrative background.
                     >
-                        <source src="/Images/Screen Recording 2025-12-06 005514.mp4" type="video/mp4" />
+                        <source src="/Images/Demo.mp4" type="video/mp4" />
                         Your browser does not support the video tag.
                     </video>
                 </div>
@@ -174,7 +174,7 @@ const LandingPage = () => {
                         poster="preview.jpg"
                         className="demo-preview"
                     >
-                        <source src="/Images/Screen Recording 2025-12-06 005514.mp4" type="video/mp4" />
+                        <source src="/Images/Demo.mp4" type="video/mp4" />
                         Your browser does not support the video tag.
                     </video>
                 </div>
