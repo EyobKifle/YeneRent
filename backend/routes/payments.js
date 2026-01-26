@@ -149,5 +149,3 @@ router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, re
 });
 
 export default router;
-
-export default router;
