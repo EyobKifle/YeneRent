@@ -8,6 +8,10 @@
   flex-direction: column;
 }
 
+.public-layout .main-content {
+  margin-left: 0;
+}
+
 .auth-layout {
   flex-direction: column;
 }

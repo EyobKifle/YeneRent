@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import './LandingPage.css';
 
@@ -47,11 +47,35 @@ const testimonialsData = [
 ];
 
 const LandingPage = () => {
+    const demoVideoRef = useRef(null);
 
     // Simple video handler to ensure it loads
     const handleVideoPlay = (e) => {
         if (e.target.paused) e.target.play();
     };
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting && demoVideoRef.current) {
+                        demoVideoRef.current.play();
+                    }
+                });
+            },
+            { threshold: 0.5 } // Play when 50% of the video is visible
+        );
+
+        if (demoVideoRef.current) {
+            observer.observe(demoVideoRef.current);
+        }
+
+        return () => {
+            if (demoVideoRef.current) {
+                observer.unobserve(demoVideoRef.current);
+            }
+        };
+    }, []);
 
     return (
         <>
@@ -75,7 +99,7 @@ const LandingPage = () => {
                         // Note: controls are only useful if the video isn't just background fluff
                         // Consider removing `controls` if it's meant to be purely illustrative background.
                     >
-                        <source src="/Images/Demo.mp4" type="video/mp4" />
+                        <source src="/Images/Screen Recording 2025-12-06 005514.mp4" type="video/mp4" />
                         Your browser does not support the video tag.
                     </video>
                 </div>
@@ -140,16 +164,17 @@ const LandingPage = () => {
             </section>
 
             {/* --- 4. Demo Section --- */}
-            <section id="demo" className="section demo-section">
+            <section id="demo" className="demo-section">
                 <h2>See Our System in Action 🎬</h2>
                 <div className="demo-player" data-animate="fade-in-up">
                     <video
+                        ref={demoVideoRef}
                         controls
                         muted
                         poster="preview.jpg"
                         className="demo-preview"
                     >
-                        <source src="/Images/Demo.mp4" type="video/mp4" />
+                        <source src="/Images/Screen Recording 2025-12-06 005514.mp4" type="video/mp4" />
                         Your browser does not support the video tag.
                     </video>
                 </div>
@@ -199,7 +224,7 @@ const LandingPage = () => {
             </section>
 
             {/* --- 6. Testimonials Section --- */}
-            <section className="section testimonials-section">
+            <section className="testimonials-section">
                 <h2>Trusted by Property Owners Across Ethiopia ⭐</h2>
                 <div className="testimonial-grid">
                     {testimonialsData.slice(0, 2).map((testimonial, index) => (

@@ -30,7 +30,7 @@ const PublicHeader = () => {
         <a href="#features-overview" onClick={(e) => handleSmoothScroll(e, 'features-overview')} data-i18n="nav_features">{t('Features')}</a>
         <a href="#pricing" onClick={(e) => handleSmoothScroll(e, 'pricing')} data-i18n="nav_pricing">{t('Pricing')}</a>
         <a href="#demo" onClick={(e) => handleSmoothScroll(e, 'demo')} data-i18n="nav_demo">{t('Demo')}</a>
-        <Link to="/contact" data-i18n="nav_contact">{t('Contact')}</Link>
+        <a href="#contact" onClick={(e) => handleSmoothScroll(e, 'contact')} data-i18n="nav_contact">{t('Contact')}</a>
         <div className="nav-actions">
           <button id="theme-toggle" className="btn btn-icon" aria-label="Toggle theme" onClick={toggleTheme}>
             {theme === 'dark' ? <i className="fas fa-moon"></i> : <i className="fas fa-sun"></i>}

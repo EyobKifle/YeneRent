@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import mongoose from 'mongoose';
+//import mongoose from 'mongoose';
 
 // Import routes
 import authRouter from './routes/auth.js';
@@ -66,7 +66,8 @@ app.use(sanitizeData);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Public routes
-app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
+app.get('/', (req, res) => res.json({ message: 'Welcome to YeneRent API' }));
+//app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime() }));
 
 // Minimal OpenAPI JSON (scaffold)
 app.get('/api/docs.json', (req, res) => {
@@ -138,7 +139,7 @@ app.use((req, res, next) => {
     next(error);
 });
 
-
+/*
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB then start server
@@ -152,6 +153,13 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).catch((err) => {
   console.error('MongoDB connection error:', err.message);
   process.exit(1);
+});
+*/
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
 
 export default app;
