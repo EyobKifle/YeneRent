@@ -16,10 +16,7 @@
   flex-direction: column;
 }
 
-.auth-layout .main-content {
-  justify-content: center;
-  align-items: center;
-}
+
 
 .app-layout {
   display: flex;

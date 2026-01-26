@@ -245,7 +245,7 @@ h2 {
     align-items: center;
     padding: 80px 5%;
     gap: 40px;
-    max-width: 1200px;
+    max-width: fit-content;
     margin: 0 auto;
     min-height: 70vh;
 }

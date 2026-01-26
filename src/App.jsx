@@ -26,7 +26,7 @@ import UtilityDetails from './pages/Utilities/UtilityDetails.jsx'
 // Import reusable components
 import Layout from './components/layout/Layout.jsx'
 import PublicLayout from './components/layout/PublicLayout.jsx'
-import AuthLayout from './components/layout/AuthLayout.jsx'
+import AuthLayout from './pages/Auth/AuthLayout.jsx'
 
 function App() {
   return (
