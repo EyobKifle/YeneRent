@@ -135,10 +135,10 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
           )}
         </div>
 
-        <button className="header-icon-btn notification-btn" aria-label="View notifications">
+        <Link to="/notifications" className="header-icon-btn notification-btn" aria-label="View notifications">
           <i className="fa-solid fa-bell"></i>
           <span className="notification-badge hidden"></span>
-        </button>
+        </Link>
 
         <div className="user-menu menu-container" ref={userMenuRef}>
           <button

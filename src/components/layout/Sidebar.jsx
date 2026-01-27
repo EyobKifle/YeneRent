@@ -17,6 +17,7 @@ const Sidebar = ({ isOpen }) => {
     { path: '/maintenance', icon: 'fa-gear', label: t('Maintenance') },
     { path: '/documents', icon: 'fa-folder', label: t('Documents') },
     { path: '/analytics', icon: 'fa-chart-simple', label: t('Analytics') },
+    { path: '/profile', icon: 'fa-user', label: t('My Profile') },
   ];
 
   return (

@@ -17,6 +17,7 @@ import MaintenancePage from './pages/Maintenance/Maintenance.jsx'
 import MaintenanceDetails from './pages/Maintenance/MaintenanceDetails.jsx'
 import NotificationsPage from './pages/Notifications/Notifications.jsx'
 import PaymentDetails from './pages/Payments/PaymentDetails.jsx'
+import ProfilePage from './pages/Profile/Profile.jsx'
 import SettingsPage from './pages/Settings/Settings.jsx'
 import SignupPage from './pages/Signup/Signup.jsx'
 import UnitDetails from './pages/Units/UnitDetails.jsx'
@@ -59,6 +60,7 @@ function App() {
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/maintenance/:id" element={<MaintenanceDetails />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/utilities" element={<UtilitiesPage />} />
           <Route path="/utilities/:id" element={<UtilityDetails />} />

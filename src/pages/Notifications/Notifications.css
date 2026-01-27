@@ -1,0 +1,144 @@
+.notifications-page {
+  padding: 20px;
+}
+
+.page-header {
+  margin-bottom: 30px;
+}
+
+.page-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 2rem;
+  color: var(--text-primary);
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.notifications-controls {
+  margin-bottom: 20px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.notification-card {
+  padding: 20px;
+  border-left: 4px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.notification-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.notification-card.high {
+  border-left-color: #dc3545;
+}
+
+.notification-card.medium {
+  border-left-color: #ffc107;
+}
+
+.notification-card.low {
+  border-left-color: #28a745;
+}
+
+.notification-card.unread {
+  background-color: rgba(0, 123, 255, 0.05);
+  border-left-color: #007bff;
+}
+
+.notification-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.notification-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-content h4 {
+  margin: 0 0 5px 0;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.notification-content p {
+  margin: 0 0 5px 0;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notification-date {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.notification-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-state-content i {
+  font-size: 3rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.empty-state-content h3 {
+  margin: 0 0 10px 0;
+  color: var(--text-primary);
+}
+
+.empty-state-content p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .filter-buttons {
+    justify-content: center;
+  }
+
+  .notification-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .notification-actions {
+    margin-top: 10px;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

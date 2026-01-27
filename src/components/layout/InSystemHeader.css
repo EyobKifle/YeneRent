@@ -176,6 +176,12 @@
   z-index: 10000;
 }
 
+.header-right .dropdown-menu {
+  left: auto;
+  right: 0;
+  transform-origin: top right;
+}
+
 /* Dynamic positioning classes for viewport boundary handling */
 .dropdown-menu.align-right {
   left: auto;
