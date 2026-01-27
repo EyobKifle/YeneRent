@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -26,6 +26,68 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
 
   useClickOutside(languageMenuRef, () => setShowLanguageMenu(false));
   useClickOutside(userMenuRef, () => setShowUserMenu(false));
+
+  // Viewport boundary detection for dropdown positioning
+  useEffect(() => {
+    const adjustDropdownPosition = () => {
+      const languageMenu = languageMenuRef.current?.querySelector('.dropdown-menu');
+      const userMenu = userMenuRef.current?.querySelector('.dropdown-menu');
+      const languageButton = languageMenuRef.current?.querySelector('.header-icon-btn');
+      const userButton = userMenuRef.current?.querySelector('.header-icon-btn');
+
+      if (languageMenu && showLanguageMenu && languageButton) {
+        const buttonRect = languageButton.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const assumedWidth = 280; // max-width of dropdown
+        const assumedHeight = 200; // estimated height of dropdown
+
+        // Remove existing alignment classes
+        languageMenu.classList.remove('align-right', 'align-top');
+
+        // Horizontal alignment
+        if (buttonRect.right + assumedWidth <= viewportWidth) {
+          languageMenu.classList.add('align-right');
+        }
+
+        // Vertical alignment
+        if (buttonRect.bottom + assumedHeight > viewportHeight) {
+          languageMenu.classList.add('align-top');
+        }
+      }
+
+      if (userMenu && showUserMenu && userButton) {
+        const buttonRect = userButton.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const assumedWidth = 280;
+        const assumedHeight = 200;
+
+        // Remove existing alignment classes
+        userMenu.classList.remove('align-right', 'align-top');
+
+        // Horizontal alignment
+        if (buttonRect.right + assumedWidth <= viewportWidth) {
+          userMenu.classList.add('align-right');
+        }
+
+        // Vertical alignment
+        if (buttonRect.bottom + assumedHeight > viewportHeight) {
+          userMenu.classList.add('align-top');
+        }
+      }
+    };
+
+    // Adjust position when menus are shown
+    if (showLanguageMenu || showUserMenu) {
+      // Use setTimeout to ensure DOM is updated
+      setTimeout(adjustDropdownPosition, 0);
+    }
+
+    // Also adjust on window resize
+    window.addEventListener('resize', adjustDropdownPosition);
+    return () => window.removeEventListener('resize', adjustDropdownPosition);
+  }, [showLanguageMenu, showUserMenu]);
 
   return (
     <header className="header">
