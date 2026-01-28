@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './Tenants.css'
 import { Card } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
+import AddTenantModal from '../../components/ui/AddTenantModal'
 import api from '../../utils/api'
 
 export default function TenantsPage() {
@@ -11,6 +12,7 @@ export default function TenantsPage() {
   const [units, setUnits] = useState([])
   const [leases, setLeases] = useState([])
   const [openActionId, setOpenActionId] = useState(null)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,6 +58,10 @@ export default function TenantsPage() {
     })
   }, [search, tenants, units, properties])
 
+  const handleTenantAdded = (newTenant) => {
+    setTenants(prev => [...prev, newTenant])
+  }
+
   return (
     <div className="tenants-page">
       <div className="page-header">
@@ -63,7 +69,7 @@ export default function TenantsPage() {
           <h1>Tenants</h1>
           <p>Manage all tenants across your properties.</p>
         </div>
-        <Button variant="secondary" onClick={() => alert('Implement modal in app shared components')}> <i className="fa-solid fa-plus"></i> <span>Add Tenant</span></Button>
+        <Button variant="secondary" onClick={() => setIsAddModalOpen(true)}> <i className="fa-solid fa-plus"></i> <span>Add Tenant</span></Button>
       </div>
 
       <Card>
@@ -129,6 +135,12 @@ export default function TenantsPage() {
           </table>
         </div>
       </Card>
+
+      <AddTenantModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onTenantAdded={handleTenantAdded}
+      />
     </div>
   )
 }

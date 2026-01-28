@@ -1,10 +1,19 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Button from '../../components/ui/Button';
+import Modal from '../../components/ui/Modal';
 import '../../styles/pages/Maintenance.css';
 
 const Maintenance = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    property: '',
+    status: 'pending',
+    reportedDate: '',
+    cost: ''
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -55,8 +64,30 @@ const Maintenance = () => {
   }, [searchTerm, maintenanceRequests]);
 
   const handleAddRequest = () => {
-    // Placeholder: Open modal to add maintenance request
-    console.log('Add maintenance request');
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    // In a real app, this would make an API call
+    console.log('Adding maintenance request:', formData);
+    // Reset form and close modal
+    setFormData({
+      title: '',
+      property: '',
+      status: 'pending',
+      reportedDate: '',
+      cost: ''
+    });
+    setIsModalOpen(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const getStatusBadgeClass = (status) => {
@@ -165,7 +196,92 @@ const Maintenance = () => {
         </div>
       )}
 
-      <div id="maintenance-modal"></div>
+      <Modal
+        title="Add Maintenance Request"
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      >
+        <form onSubmit={handleFormSubmit} className="modal-form">
+          <div className="form-group">
+            <label htmlFor="title">Request Title</label>
+            <input
+              type="text"
+              id="title"
+              name="title"
+              value={formData.title}
+              onChange={handleInputChange}
+              placeholder="e.g., Leaky Faucet, Broken Light Fixture"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="property">Property</label>
+            <select
+              id="property"
+              name="property"
+              value={formData.property}
+              onChange={handleInputChange}
+              required
+            >
+              <option value="">Select Property</option>
+              <option value="Sunset Apartments">Sunset Apartments</option>
+              <option value="Green Valley Villas">Green Valley Villas</option>
+              <option value="123 Main St">123 Main St</option>
+              <option value="456 Elm St">456 Elm St</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="status">Status</label>
+            <select
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+            >
+              <option value="pending">Pending</option>
+              <option value="in-progress">In Progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reportedDate">Reported Date</label>
+            <input
+              type="date"
+              id="reportedDate"
+              name="reportedDate"
+              value={formData.reportedDate}
+              onChange={handleInputChange}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="cost">Estimated Cost ($)</label>
+            <input
+              type="number"
+              id="cost"
+              name="cost"
+              value={formData.cost}
+              onChange={handleInputChange}
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div className="form-actions">
+            <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary">
+              Add Maintenance Request
+            </button>
+          </div>
+        </form>
+      </Modal>
       <div id="maintenance-details-modal"></div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import useClickOutside from '../../hooks/useClickOutside';
 import './InSystemHeader.css';
 
@@ -10,8 +11,9 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
   const userMenuRef = useRef(null);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { user, logout } = useAuth();  
+  const { user, logout } = useAuth();
   const { setLanguage, t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const handleLanguageChange = (lang) => {
@@ -106,6 +108,15 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
       </div>
 
       <div className="header-right">
+        <button
+          id="theme-toggle"
+          className="header-icon-btn"
+          aria-label="Toggle theme"
+          onClick={toggleTheme}
+        >
+          {theme === 'dark' ? <i className="fa-solid fa-sun"></i> : <i className="fa-solid fa-moon"></i>}
+        </button>
+
         <div className="language-menu menu-container" ref={languageMenuRef}>
           <button
             id="language-menu-button"

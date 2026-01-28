@@ -74,7 +74,7 @@ router.post('/', authorizeRoles('admin','property_manager'), [
   body('leaseId').isMongoId().withMessage('Invalid lease ID'),
   body('tenantId').isMongoId().withMessage('Invalid tenant ID'),
   body('propertyId').isMongoId().withMessage('Invalid property ID'),
-  body('type').isIn(['Rent', 'Deposit', 'Late Fee', 'Maintenance', 'Utility', 'Other']).withMessage('Invalid payment type')
+  body('method').isIn(['Bank Transfer', 'Cash', 'CBE Birr', 'Dashen Bank', 'Awash International Bank', 'Other']).withMessage('Invalid payment method')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

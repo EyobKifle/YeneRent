@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import './Documents.css'
 import { Card } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
+import UploadDocumentModal from '../../components/ui/UploadDocumentModal'
 import api from '../../utils/api'
 
 const formatBytes = (bytes) => {
@@ -25,6 +26,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState([])
   const [properties, setProperties] = useState([])
   const [tenants, setTenants] = useState([])
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -58,6 +60,10 @@ export default function DocumentsPage() {
     return 'General'
   }
 
+  const handleDocumentUploaded = (newDocument) => {
+    setDocuments(prev => [newDocument, ...prev])
+  }
+
   return (
     <div className="documents-page">
       <div className="page-header">
@@ -65,7 +71,7 @@ export default function DocumentsPage() {
           <h1>Documents</h1>
           <p>Manage all your important documents in one place.</p>
         </div>
-        <Button variant="primary" onClick={() => alert('Implement upload modal in app shared components')}>
+        <Button variant="primary" onClick={() => setIsUploadModalOpen(true)}>
           <i className="fa-solid fa-upload"></i>
           <span>Upload Document</span>
         </Button>
@@ -153,6 +159,12 @@ export default function DocumentsPage() {
           <p>Get started by uploading a new document.</p>
         </div>
       )}
+
+      <UploadDocumentModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onDocumentUploaded={handleDocumentUploaded}
+      />
     </div>
   )
 }

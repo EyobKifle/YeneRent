@@ -4,6 +4,7 @@ import { formatCurrency, formatDate, getPaymentStatus, debounce } from '../../ut
 import { Card } from '../../components/ui/Card';
 import StatsCard from '../../components/ui/StatsCard';
 import Button from '../../components/ui/Button';
+import RecordPaymentModal from '../../components/ui/RecordPaymentModal';
 import './Payments.css';
 
 const SimpleTable = ({ headers, data, renderRow }) => (
@@ -30,6 +31,7 @@ const Payments = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [openActionId, setOpenActionId] = useState(null);
+    const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -113,6 +115,16 @@ const Payments = () => {
         setSearchTerm(event.target.value);
     }, 300);
 
+    const handlePaymentRecorded = async () => {
+        // Refresh payments data
+        try {
+            const paymentsData = await api.get('payments');
+            setPayments(paymentsData);
+        } catch (error) {
+            console.error("Failed to refresh payments data", error);
+        }
+    };
+
     if (loading) {
         return <div>Loading...</div>;
     }
@@ -124,7 +136,7 @@ const Payments = () => {
                     <h1>Payment Schedule</h1>
                     <p>Track all scheduled, paid, and overdue rent payments.</p>
                 </div>
-                <Button variant="secondary">
+                <Button variant="secondary" onClick={() => setIsRecordModalOpen(true)}>
                     <i className="fa-solid fa-plus"></i>
                     Record Payment
                 </Button>
@@ -187,6 +199,11 @@ const Payments = () => {
                     </div>
                 )}
             </Card>
+            <RecordPaymentModal
+                isOpen={isRecordModalOpen}
+                onClose={() => setIsRecordModalOpen(false)}
+                onPaymentRecorded={handlePaymentRecorded}
+            />
         </div>
     );
 };
