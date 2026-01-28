@@ -5,11 +5,74 @@ import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
 
-// GET /api/properties - Get all properties
+// GET /api/properties - Get all properties with filtering and search
 router.get('/', async (req, res) => {
   try {
-    const properties = await Property.find().sort({ createdAt: -1 });
-    res.json(properties);
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      type,
+      taxType,
+      minRent,
+      maxRent,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query object
+    let query = {};
+
+    // Search functionality
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { address: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Filter by type
+    if (type) {
+      query.type = type;
+    }
+
+    // Filter by tax type
+    if (taxType) {
+      query.taxType = taxType;
+    }
+
+    // Filter by rent range
+    if (minRent || maxRent) {
+      query.rent = {};
+      if (minRent) query.rent.$gte = parseFloat(minRent);
+      if (maxRent) query.rent.$lte = parseFloat(maxRent);
+    }
+
+    // Build sort object
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const properties = await Property.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const total = await Property.countDocuments(query);
+
+    res.json({
+      properties,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalProperties: total,
+        hasNext: parseInt(page) * parseInt(limit) < total,
+        hasPrev: parseInt(page) > 1
+      }
+    });
   } catch (error) {
     console.error('Error fetching properties:', error);
     res.status(500).json({ error: 'Failed to fetch properties' });
@@ -112,6 +175,111 @@ router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, re
       return res.status(400).json({ error: 'Invalid property ID' });
     }
     res.status(500).json({ error: 'Failed to delete property' });
+  }
+});
+
+// GET /api/properties/stats - Get property statistics
+router.get('/stats', async (req, res) => {
+  try {
+    const stats = await Property.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalProperties: { $sum: 1 },
+          totalUnits: { $sum: '$units' },
+          averageRent: { $avg: '$rent' },
+          minRent: { $min: '$rent' },
+          maxRent: { $max: '$rent' },
+          totalValue: { $sum: { $multiply: ['$rent', '$units'] } }
+        }
+      },
+      {
+        $lookup: {
+          from: 'units',
+          localField: '_id',
+          foreignField: 'propertyId',
+          as: 'unitDetails'
+        }
+      },
+      {
+        $addFields: {
+          occupiedUnits: {
+            $size: {
+              $filter: {
+                input: '$unitDetails',
+                cond: { $eq: ['$$this.status', 'Occupied'] }
+              }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          occupancyRate: {
+            $cond: {
+              if: { $gt: ['$totalUnits', 0] },
+              then: { $multiply: [{ $divide: ['$occupiedUnits', '$totalUnits'] }, 100] },
+              else: 0
+            }
+          }
+        }
+      }
+    ]);
+
+    // Get property type distribution
+    const typeDistribution = await Property.aggregate([
+      {
+        $group: {
+          _id: '$type',
+          count: { $sum: 1 },
+          totalRent: { $sum: '$rent' }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      }
+    ]);
+
+    // Get tax type distribution
+    const taxDistribution = await Property.aggregate([
+      {
+        $group: {
+          _id: '$taxType',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const result = stats[0] || {
+      totalProperties: 0,
+      totalUnits: 0,
+      averageRent: 0,
+      minRent: 0,
+      maxRent: 0,
+      totalValue: 0,
+      occupancyRate: 0
+    };
+
+    res.json({
+      overview: {
+        totalProperties: result.totalProperties,
+        totalUnits: result.totalUnits,
+        averageRent: Math.round(result.averageRent),
+        rentRange: {
+          min: result.minRent,
+          max: result.maxRent
+        },
+        totalMonthlyValue: Math.round(result.totalValue),
+        overallOccupancyRate: Math.round(result.occupancyRate * 100) / 100
+      },
+      distributions: {
+        byType: typeDistribution,
+        byTaxType: taxDistribution
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching property stats:', error);
+    res.status(500).json({ error: 'Failed to fetch property statistics' });
   }
 });
 

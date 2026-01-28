@@ -462,4 +462,320 @@ router.get('/exports/expenses.csv', async (req, res) => {
   }
 });
 
+// GET /api/analytics/search - Global search across multiple collections
+router.get('/search/global', async (req, res) => {
+  try {
+    const { q: searchTerm, limit = 10 } = req.query;
+
+    if (!searchTerm || searchTerm.trim().length < 2) {
+      return res.status(400).json({ error: 'Search term must be at least 2 characters' });
+    }
+
+    const searchRegex = new RegExp(searchTerm.trim(), 'i');
+    const maxLimit = Math.min(parseInt(limit), 50); // Cap at 50 results per collection
+
+    // Search across multiple collections in parallel
+    const [properties, tenants, units, leases] = await Promise.all([
+      // Search properties
+      Property.find({
+        $or: [
+          { name: searchRegex },
+          { address: searchRegex },
+          { description: searchRegex }
+        ]
+      })
+      .select('name address type rent')
+      .limit(maxLimit)
+      .lean(),
+
+      // Search tenants
+      Tenant.find({
+        $or: [
+          { name: searchRegex },
+          { email: searchRegex },
+          { phone: searchRegex }
+        ]
+      })
+      .populate('unitId', 'unitNumber')
+      .select('name email phone status')
+      .limit(maxLimit)
+      .lean(),
+
+      // Search units
+      Unit.find({
+        $or: [
+          { unitNumber: searchRegex },
+          { floor: searchRegex },
+          { notes: searchRegex }
+        ]
+      })
+      .populate('propertyId', 'name address')
+      .select('unitNumber floor status rent propertyId')
+      .limit(maxLimit)
+      .lean(),
+
+      // Search leases by tenant name (requires lookup)
+      Lease.find()
+      .populate({
+        path: 'tenantId',
+        match: {
+          $or: [
+            { name: searchRegex },
+            { email: searchRegex }
+          ]
+        },
+        select: 'name email'
+      })
+      .populate('propertyId', 'name')
+      .populate('unitId', 'unitNumber')
+      .select('startDate endDate rentAmount status')
+      .limit(maxLimit)
+      .lean()
+      .then(leases => leases.filter(lease => lease.tenantId)) // Filter out leases without matching tenants
+    ]);
+
+    // Format results with metadata
+    const results = {
+      properties: properties.map(item => ({
+        ...item,
+        _type: 'property',
+        _id: item._id.toString(),
+        displayText: `${item.name} - ${item.address}`,
+        url: `/properties/${item._id}`
+      })),
+      tenants: tenants.map(item => ({
+        ...item,
+        _type: 'tenant',
+        _id: item._id.toString(),
+        displayText: `${item.name} (${item.email})`,
+        unitNumber: item.unitId?.unitNumber,
+        url: `/tenants/${item._id}`
+      })),
+      units: units.map(item => ({
+        ...item,
+        _type: 'unit',
+        _id: item._id.toString(),
+        displayText: `Unit ${item.unitNumber} - ${item.propertyId?.name}`,
+        propertyName: item.propertyId?.name,
+        url: `/units/${item._id}`
+      })),
+      leases: leases.map(item => ({
+        ...item,
+        _type: 'lease',
+        _id: item._id.toString(),
+        displayText: `${item.tenantId?.name} - Unit ${item.unitId?.unitNumber}`,
+        tenantName: item.tenantId?.name,
+        unitNumber: item.unitId?.unitNumber,
+        propertyName: item.propertyId?.name,
+        url: `/leases/${item._id}`
+      }))
+    };
+
+    // Calculate totals
+    const totalResults = Object.values(results).reduce((sum, arr) => sum + arr.length, 0);
+
+    res.json({
+      query: searchTerm,
+      totalResults,
+      results,
+      metadata: {
+        limit: maxLimit,
+        collections: ['properties', 'tenants', 'units', 'leases'],
+        searchTime: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Global search error:', error);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+// GET /api/analytics/reports/comprehensive - Comprehensive business report
+router.get('/reports/comprehensive', async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+
+    const startDate = new Date(targetYear, targetMonth - 1, 1);
+    const endDate = new Date(targetYear, targetMonth, 0);
+
+    // Get all required data in parallel
+    const [
+      paymentStats,
+      expenseStats,
+      occupancyData,
+      tenantStats,
+      maintenanceStats
+    ] = await Promise.all([
+      // Payment statistics
+      Payment.aggregate([
+        {
+          $match: {
+            date: { $gte: startDate, $lte: endDate },
+            status: 'Paid'
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: '$amount' },
+            paymentCount: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // Expense statistics
+      Expense.aggregate([
+        {
+          $match: {
+            date: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalExpenses: { $sum: '$amount' },
+            expenseCount: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // Occupancy data
+      Unit.aggregate([
+        {
+          $lookup: {
+            from: 'leases',
+            let: { unitId: '$_id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$unitId', '$$unitId'] },
+                      { $lte: ['$startDate', endDate] },
+                      { $gte: ['$endDate', startDate] }
+                    ]
+                  }
+                }
+              }
+            ],
+            as: 'activeLeases'
+          }
+        },
+        {
+          $addFields: {
+            isOccupied: { $gt: [{ $size: '$activeLeases' }, 0] }
+          }
+        },
+        {
+          $group: {
+            _id: '$propertyId',
+            totalUnits: { $sum: 1 },
+            occupiedUnits: {
+              $sum: { $cond: ['$isOccupied', 1, 0] }
+            }
+          }
+        },
+        {
+          $lookup: {
+            from: 'properties',
+            localField: '_id',
+            foreignField: '_id',
+            as: 'property'
+          }
+        },
+        {
+          $unwind: '$property'
+        }
+      ]),
+
+      // Tenant statistics
+      Tenant.aggregate([
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // Maintenance statistics
+      Maintenance.aggregate([
+        {
+          $match: {
+            reportedDate: { $gte: startDate, $lte: endDate }
+          }
+        },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            totalCost: { $sum: '$cost' }
+          }
+        }
+      ])
+    ]);
+
+    // Calculate derived metrics
+    const revenue = paymentStats[0]?.totalRevenue || 0;
+    const expenses = expenseStats[0]?.totalExpenses || 0;
+    const netIncome = revenue - expenses;
+
+    const totalUnits = occupancyData.reduce((sum, prop) => sum + prop.totalUnits, 0);
+    const totalOccupied = occupancyData.reduce((sum, prop) => sum + prop.occupiedUnits, 0);
+    const overallOccupancy = totalUnits > 0 ? (totalOccupied / totalUnits) * 100 : 0;
+
+    // Format maintenance stats
+    const maintenanceSummary = maintenanceStats.reduce((acc, stat) => {
+      acc[stat._id] = {
+        count: stat.count,
+        totalCost: stat.totalCost
+      };
+      return acc;
+    }, {});
+
+    res.json({
+      reportPeriod: {
+        month: targetMonth,
+        year: targetYear,
+        startDate: startDate.toISOString().split('T')[0],
+        endDate: endDate.toISOString().split('T')[0]
+      },
+      financials: {
+        revenue: Math.round(revenue),
+        expenses: Math.round(expenses),
+        netIncome: Math.round(netIncome),
+        profitMargin: revenue > 0 ? Math.round((netIncome / revenue) * 100 * 100) / 100 : 0
+      },
+      occupancy: {
+        totalUnits,
+        occupiedUnits: totalOccupied,
+        vacantUnits: totalUnits - totalOccupied,
+        occupancyRate: Math.round(overallOccupancy * 100) / 100,
+        byProperty: occupancyData.map(prop => ({
+          propertyId: prop._id,
+          propertyName: prop.property.name,
+          totalUnits: prop.totalUnits,
+          occupiedUnits: prop.occupiedUnits,
+          occupancyRate: prop.totalUnits > 0 ?
+            Math.round((prop.occupiedUnits / prop.totalUnits) * 100 * 100) / 100 : 0
+        }))
+      },
+      tenants: {
+        byStatus: tenantStats
+      },
+      maintenance: {
+        summary: maintenanceSummary,
+        totalRequests: maintenanceStats.reduce((sum, stat) => sum + stat.count, 0),
+        totalCost: Math.round(maintenanceStats.reduce((sum, stat) => sum + stat.totalCost, 0))
+      },
+      generatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Comprehensive report error:', error);
+    res.status(500).json({ error: 'Failed to generate comprehensive report' });
+  }
+});
+
 export default router;

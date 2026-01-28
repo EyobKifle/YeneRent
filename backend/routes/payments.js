@@ -148,4 +148,224 @@ router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, re
   }
 });
 
+// GET /api/payments/overdue - Get overdue payments
+router.get('/overdue/list', async (req, res) => {
+  try {
+    const currentDate = new Date();
+    const { days = 30 } = req.query;
+
+    // Calculate date threshold
+    const thresholdDate = new Date();
+    thresholdDate.setDate(currentDate.getDate() - parseInt(days));
+
+    const overduePayments = await Payment.find({
+      dueDate: { $lt: currentDate },
+      status: { $in: ['Pending', 'Overdue'] }
+    })
+    .populate('leaseId', 'startDate endDate rentAmount')
+    .populate('tenantId', 'name email phone')
+    .populate('propertyId', 'name address')
+    .sort({ dueDate: 1 });
+
+    // Calculate additional metrics
+    const totalOverdue = overduePayments.reduce((sum, payment) => sum + payment.amount, 0);
+    const criticalOverdue = overduePayments.filter(payment => {
+      const daysOverdue = Math.floor((currentDate - payment.dueDate) / (1000 * 60 * 60 * 24));
+      return daysOverdue > 60; // More than 60 days overdue
+    });
+
+    res.json({
+      payments: overduePayments,
+      summary: {
+        totalCount: overduePayments.length,
+        totalAmount: totalOverdue,
+        criticalCount: criticalOverdue.length,
+        averageDaysOverdue: overduePayments.length > 0 ?
+          overduePayments.reduce((sum, payment) => {
+            const days = Math.floor((currentDate - payment.dueDate) / (1000 * 60 * 60 * 24));
+            return sum + days;
+          }, 0) / overduePayments.length : 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching overdue payments:', error);
+    res.status(500).json({ error: 'Failed to fetch overdue payments' });
+  }
+});
+
+// GET /api/payments/analytics - Get payment analytics
+router.get('/analytics/summary', async (req, res) => {
+  try {
+    const { startDate, endDate, propertyId } = req.query;
+
+    // Set default date range (current month)
+    const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const end = endDate ? new Date(endDate) : new Date();
+
+    let matchQuery = {
+      date: { $gte: start, $lte: end }
+    };
+
+    if (propertyId) {
+      matchQuery.propertyId = propertyId;
+    }
+
+    const analytics = await Payment.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: null,
+          totalPayments: { $sum: 1 },
+          totalAmount: { $sum: '$amount' },
+          paidAmount: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Paid'] }, '$amount', 0]
+            }
+          },
+          pendingAmount: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Pending'] }, '$amount', 0]
+            }
+          },
+          overdueAmount: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Overdue'] }, '$amount', 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    // Get payment method distribution
+    const methodDistribution = await Payment.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$method',
+          count: { $sum: 1 },
+          amount: { $sum: '$amount' }
+        }
+      },
+      { $sort: { amount: -1 } }
+    ]);
+
+    // Get monthly trends
+    const monthlyTrends = await Payment.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' }
+          },
+          totalAmount: { $sum: '$amount' },
+          paidAmount: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Paid'] }, '$amount', 0]
+            }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    const result = analytics[0] || {
+      totalPayments: 0,
+      totalAmount: 0,
+      paidAmount: 0,
+      pendingAmount: 0,
+      overdueAmount: 0
+    };
+
+    res.json({
+      period: {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+      },
+      summary: {
+        totalPayments: result.totalPayments,
+        totalAmount: Math.round(result.totalAmount),
+        paidAmount: Math.round(result.paidAmount),
+        pendingAmount: Math.round(result.pendingAmount),
+        overdueAmount: Math.round(result.overdueAmount),
+        collectionRate: result.totalAmount > 0 ?
+          Math.round((result.paidAmount / result.totalAmount) * 100 * 100) / 100 : 0
+      },
+      distributions: {
+        byMethod: methodDistribution
+      },
+      trends: monthlyTrends.map(trend => ({
+        month: `${trend._id.year}-${String(trend._id.month).padStart(2, '0')}`,
+        totalAmount: Math.round(trend.totalAmount),
+        paidAmount: Math.round(trend.paidAmount),
+        count: trend.count
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching payment analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch payment analytics' });
+  }
+});
+
+// POST /api/payments/generate - Generate payments for active leases
+router.post('/generate/monthly', authorizeRoles('admin','property_manager'), async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    const targetMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+    const targetYear = year ? parseInt(year) : new Date().getFullYear();
+
+    // Find all active leases
+    const activeLeases = await Lease.find({
+      startDate: { $lte: new Date(targetYear, targetMonth, 0) },
+      endDate: { $gte: new Date(targetYear, targetMonth - 1, 1) }
+    }).populate('tenantId unitId propertyId');
+
+    const generatedPayments = [];
+    const existingPayments = [];
+
+    for (const lease of activeLeases) {
+      // Check if payment already exists for this month
+      const existingPayment = await Payment.findOne({
+        leaseId: lease._id,
+        dueDate: {
+          $gte: new Date(targetYear, targetMonth - 1, 1),
+          $lt: new Date(targetYear, targetMonth, 1)
+        }
+      });
+
+      if (existingPayment) {
+        existingPayments.push(existingPayment);
+        continue;
+      }
+
+      // Calculate due date (1st of the month)
+      const dueDate = new Date(targetYear, targetMonth - 1, 1);
+
+      // Create new payment
+      const payment = new Payment({
+        leaseId: lease._id,
+        tenantId: lease.tenantId._id,
+        propertyId: lease.propertyId._id,
+        amount: lease.rentAmount,
+        dueDate: dueDate,
+        type: 'Rent'
+      });
+
+      await payment.save();
+      generatedPayments.push(payment);
+    }
+
+    res.json({
+      message: `Generated ${generatedPayments.length} payments, ${existingPayments.length} already existed`,
+      generated: generatedPayments.length,
+      existing: existingPayments.length,
+      payments: generatedPayments
+    });
+  } catch (error) {
+    console.error('Error generating monthly payments:', error);
+    res.status(500).json({ error: 'Failed to generate monthly payments' });
+  }
+});
+
 export default router;

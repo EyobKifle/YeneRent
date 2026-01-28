@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-//import mongoose from 'mongoose';
+import mongoose from 'mongoose';
 
 // Import routes
 import authRouter from './routes/auth.js';
@@ -139,7 +139,6 @@ app.use((req, res, next) => {
     next(error);
 });
 
-/*
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB then start server
@@ -153,13 +152,6 @@ mongoose.connect(process.env.MONGODB_URI, {
 }).catch((err) => {
   console.error('MongoDB connection error:', err.message);
   process.exit(1);
-});
-*/
-
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
 });
 
 export default app;

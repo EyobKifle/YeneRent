@@ -136,4 +136,166 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// GET /api/tenants/stats - Get tenant statistics
+router.get('/stats/overview', async (req, res) => {
+  try {
+    const { propertyId } = req.query;
+
+    let matchQuery = {};
+    if (propertyId) {
+      // For property-specific stats, we need to filter tenants by their units
+      matchQuery = {
+        unitId: { $exists: true, $ne: null }
+      };
+    }
+
+    const stats = await Tenant.aggregate([
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: 'units',
+          localField: 'unitId',
+          foreignField: '_id',
+          as: 'unit'
+        }
+      },
+      {
+        $unwind: {
+          path: '$unit',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      ...(propertyId ? [
+        {
+          $match: {
+            'unit.propertyId': propertyId
+          }
+        }
+      ] : []),
+      {
+        $group: {
+          _id: null,
+          totalTenants: { $sum: 1 },
+          activeTenants: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'active'] }, 1, 0]
+            }
+          },
+          formerTenants: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'former'] }, 1, 0]
+            }
+          },
+          inactiveTenants: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'inactive'] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    // Get tenant status distribution
+    const statusDistribution = await Tenant.aggregate([
+      { $match: matchQuery },
+      ...(propertyId ? [
+        {
+          $lookup: {
+            from: 'units',
+            localField: 'unitId',
+            foreignField: '_id',
+            as: 'unit'
+          }
+        },
+        {
+          $unwind: {
+            path: '$unit',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $match: {
+            'unit.propertyId': propertyId
+          }
+        }
+      ] : []),
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ]);
+
+    // Get tenants by move-in year
+    const moveInTrends = await Tenant.aggregate([
+      { $match: matchQuery },
+      ...(propertyId ? [
+        {
+          $lookup: {
+            from: 'units',
+            localField: 'unitId',
+            foreignField: '_id',
+            as: 'unit'
+          }
+        },
+        {
+          $unwind: {
+            path: '$unit',
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $match: {
+            'unit.propertyId': propertyId
+          }
+        }
+      ] : []),
+      {
+        $match: {
+          moveInDate: { $exists: true, $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: { $year: '$moveInDate' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { '_id': 1 } }
+    ]);
+
+    const result = stats[0] || {
+      totalTenants: 0,
+      activeTenants: 0,
+      formerTenants: 0,
+      inactiveTenants: 0
+    };
+
+    res.json({
+      overview: {
+        totalTenants: result.totalTenants,
+        activeTenants: result.activeTenants,
+        formerTenants: result.formerTenants,
+        inactiveTenants: result.inactiveTenants,
+        occupancyRate: result.totalTenants > 0 ?
+          Math.round((result.activeTenants / result.totalTenants) * 100 * 100) / 100 : 0
+      },
+      distributions: {
+        byStatus: statusDistribution
+      },
+      trends: {
+        moveInByYear: moveInTrends.map(trend => ({
+          year: trend._id,
+          count: trend.count
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching tenant stats:', error);
+    res.status(500).json({ error: 'Failed to fetch tenant statistics' });
+  }
+});
+
 export default router;
