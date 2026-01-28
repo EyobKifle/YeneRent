@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './Signup.css';
 
 const Signup = () => {
@@ -34,8 +35,8 @@ const Signup = () => {
       <div className="login-container">
         <div className="login-card">
           <div className="login-header">
-            <h1 data-i18n="Rental System">Rental System</h1>
-            <p data-i18n="Create your account">Create your account</p>
+            <h1 data-i18n="Rental System">{t('Rental System')}</h1>
+            <p data-i18n="Create your account">{t('Create your account')}</p>
           </div>
           <form id="signup-form" className="login-form" onSubmit={handleSubmit}>
             <div className="form-group">

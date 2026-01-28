@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import StatsCard from '../../components/ui/StatsCard';
 import Button from '../../components/ui/Button';
 import RecordPaymentModal from '../../components/ui/RecordPaymentModal';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './Payments.css';
 
 const SimpleTable = ({ headers, data, renderRow }) => (
@@ -23,6 +24,7 @@ const SimpleTable = ({ headers, data, renderRow }) => (
 );
 
 const Payments = () => {
+    const { t } = useLanguage();
     const [payments, setPayments] = useState([]);
     const [leases, setLeases] = useState([]);
     const [tenants, setTenants] = useState([]);
@@ -133,20 +135,20 @@ const Payments = () => {
         <div id="payments-view">
             <div className="page-header">
                 <div>
-                    <h1>Payment Schedule</h1>
-                    <p>Track all scheduled, paid, and overdue rent payments.</p>
+                    <h1>{t('Payment Schedule')}</h1>
+                    <p>{t('Track all scheduled, paid, and overdue rent payments.')}</p>
                 </div>
                 <Button variant="secondary" onClick={() => setIsRecordModalOpen(true)}>
                     <i className="fa-solid fa-plus"></i>
-                    Record Payment
+                    {t('Record Payment')}
                 </Button>
             </div>
 
             <div className="stats-grid">
-                <StatsCard title="Total Collected" value={formatCurrency(stats.totalCollected)} />
-                <StatsCard title="This Month" value={formatCurrency(stats.thisMonthCollected)} />
-                <StatsCard title="Total Overdue Amount" value={formatCurrency(stats.overdueAmount)} />
-                <StatsCard title="Overdue Payments" value={stats.overdueCount} />
+                <StatsCard title={t('Total Collected')} value={formatCurrency(stats.totalCollected)} />
+                <StatsCard title={t('This Month')} value={formatCurrency(stats.thisMonthCollected)} />
+                <StatsCard title={t('Total Overdue Amount')} value={formatCurrency(stats.overdueAmount)} />
+                <StatsCard title={t('Overdue Payments')} value={stats.overdueCount} />
             </div>
 
             <Card>
@@ -154,13 +156,13 @@ const Payments = () => {
                     <input
                         type="text"
                         className="form-input"
-                        placeholder="Search by tenant or property..."
+                        placeholder={t('Search by tenant or property...')}
                         onChange={handleSearch}
                     />
                 </div>
                 {filteredPayments.length > 0 ? (
                     <SimpleTable
-                        headers={['Tenant', 'Property / Unit', 'Due Date', 'Amount', 'Status', 'Actions']}
+                        headers={[t('Tenant'), t('Property / Unit'), t('Due Date'), t('Amount'), t('Status'), t('Actions')]}
                         data={filteredPayments}
                         renderRow={(payment) => (
                             <tr key={payment.id}>
@@ -171,7 +173,7 @@ const Payments = () => {
                                 <td><span className={`status-badge ${payment.status.class}`}>{payment.status.text}</span></td>
                                 <td>
                                     <div className="action-dropdown">
-                                        <button 
+                                        <button
                                             className="action-dropdown-btn"
                                             onClick={(e) => {
                                                 e.stopPropagation();
@@ -182,8 +184,8 @@ const Payments = () => {
                                         </button>
                                         {openActionId === payment.id && (
                                         <div className="dropdown-menu align-right show">
-                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View payment details'); }}><i className="fa-solid fa-eye"></i>View Details</a>
-                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download receipt'); }}><i className="fa-solid fa-download"></i>Receipt</a>
+                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View payment details'); }}><i className="fa-solid fa-eye"></i>{t('View Details')}</a>
+                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download receipt'); }}><i className="fa-solid fa-download"></i>{t('Receipt')}</a>
                                         </div>
                                         )}
                                     </div>
@@ -194,8 +196,8 @@ const Payments = () => {
                 ) : (
                     <div className="empty-state">
                         <i className="fa-solid fa-receipt"></i>
-                        <h3>No Payments Found</h3>
-                        <p>Get started by recording a new payment.</p>
+                        <h3>{t('No Payments Found')}</h3>
+                        <p>{t('Get started by recording a new payment.')}</p>
                     </div>
                 )}
             </Card>

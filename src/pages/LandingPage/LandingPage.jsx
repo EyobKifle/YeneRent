@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './LandingPage.css';
 
 // Reusable FAQ Item Component
@@ -47,6 +48,7 @@ const testimonialsData = [
 ];
 
 const LandingPage = () => {
+    const { t } = useLanguage();
     const demoVideoRef = useRef(null);
 
     // Simple video handler to ensure it loads
@@ -83,11 +85,11 @@ const LandingPage = () => {
             {/* --- 1. Hero Section (Home) --- */}
             <section id="home" className="hero-section">
                 <div className="hero-content" data-animate="fade-in-left">
-                    <h1 className="hero-title">Simplify Rental Management — Track, Analyze, and Automate with Ease</h1>
-                    <p>Manage your entire rental property portfolio effortlessly. Our system provides powerful tools for tenant management, financial tracking, and automated tax reporting compliant with Ethiopian rules.</p>
+                    <h1 className="hero-title">{t('Simplify Rental Management — Track, Analyze, and Automate with Ease')}</h1>
+                    <p>{t('Manage your entire rental property portfolio effortlessly. Our system provides powerful tools for tenant management, financial tracking, and automated tax reporting compliant with Ethiopian rules.')}</p>
                     <div className="hero-ctas">
-                        <Link to="#demo" className="btn btn-primary btn-large">Try Demo</Link>
-                        <Link to="/trial-request" className="btn btn-secondary btn-large">Request a Free Trial</Link>
+                        <Link to="#demo" className="btn btn-primary btn-large">{t('Try Demo')}</Link>
+                        <Link to="/trial-request" className="btn btn-secondary btn-large">{t('Request a Free Trial')}</Link>
                     </div>
                 </div>
                 <div className="hero-video" data-animate="fade-in-right">
@@ -107,15 +109,15 @@ const LandingPage = () => {
 
             {/* --- 2. Features Overview (Cards) --- */}
             <section id="features-overview" className="section features-overview">
-                <h2>Core System Capabilities 🛠️</h2>
+                <h2>{t('Core System Capabilities 🛠️')}</h2>
                 <div className="feature-cards">
                     {[
-                        { image: "/Images/Properties.png", title: "Property & Tenant Management", desc: "Manage your entire portfolio from one comprehensive dashboard, including leases and tenant records." },
-                        { image: "/Images/Analytics.png", title: "Financial Analytics", desc: "Track income, expenses, and profitability in real-time with insightful visual reports." },
-                        { image: "/Images/Payments.png", title: "Tax Automation", desc: "Handle Ethiopian tax rules automatically, ensuring compliance and accurate reporting." },
-                        { image: "/Images/Documents.png", title: "Smart Reporting", desc: "Export financial summaries and operational reports with a single, quick click." },
-                        { image: "/Images/Leases.png", title: "Document Management", desc: "Upload, organize, and securely access all your important property and tenant files in one place." },
-                        { image: "/Images/Tenants.png", title: "Security & Compliance", desc: "Enterprise-grade security and full data compliance to protect sensitive information." }
+                        { image: "/Images/Properties.png", title: t("Property & Tenant Management"), desc: t("Manage your entire portfolio from one comprehensive dashboard, including leases and tenant records.") },
+                        { image: "/Images/Analytics.png", title: t("Financial Analytics"), desc: t("Track income, expenses, and profitability in real-time with insightful visual reports.") },
+                        { image: "/Images/Payments.png", title: t("Tax Automation"), desc: t("Handle Ethiopian tax rules automatically, ensuring compliance and accurate reporting.") },
+                        { image: "/Images/Documents.png", title: t("Smart Reporting"), desc: t("Export financial summaries and operational reports with a single, quick click.") },
+                        { image: "/Images/Leases.png", title: t("Document Management"), desc: t("Upload, organize, and securely access all your important property and tenant files in one place.") },
+                        { image: "/Images/Tenants.png", title: t("Security & Compliance"), desc: t("Enterprise-grade security and full data compliance to protect sensitive information.") }
                     ].map((feature) => (
                         <div key={feature.title} className="feature-card" data-animate="fade-in-up">
                             <h3>{feature.title}</h3>
@@ -127,16 +129,16 @@ const LandingPage = () => {
 
             {/* --- 3. Detailed Features (Alternating Layout) --- */}
             <section className="section detailed-features">
-                <h2>Deep Dive into Our Modules 🔍</h2>
+                <h2>{t('Deep Dive into Our Modules 🔍')}</h2>
 
                 <div className="detailed-feature-item feature-left" data-animate="slide-in-left">
                     <div className="feature-illustration">
                         <img src="/Images/Properties.png" alt="Property & Tenant Management Screenshot" loading="lazy" />
                     </div>
                     <div className="feature-text">
-                        <h3>Comprehensive Dashboard & Core Management</h3>
-                        <p>Get a bird's-eye view of your portfolio with actionable insights and quick links to core management functions. Effortlessly manage property details, unit assignments, and tenant lifecycle.</p>
-                        <Link to="#" className="learn-more">Learn More &rarr;</Link>
+                        <h3>{t('Comprehensive Dashboard & Core Management')}</h3>
+                        <p>{t('Get a bird\'s-eye view of your portfolio with actionable insights and quick links to core management functions. Effortlessly manage property details, unit assignments, and tenant lifecycle.')}</p>
+                        <Link to="#" className="learn-more">{t('Learn More &rarr;')}</Link>
                     </div>
                 </div>
 
@@ -145,9 +147,9 @@ const LandingPage = () => {
                         <img src="/Images/Analytics.png" alt="Financial Analytics Screenshot" loading="lazy" />
                     </div>
                     <div className="feature-text">
-                        <h3>Financial Analytics & Reporting</h3>
-                        <p>Visualize your cash flow, identify profit drivers, and minimize losses with our advanced, integrated financial tools and customizable reporting suite.</p>
-                        <Link to="#" className="learn-more">Learn More &rarr;</Link>
+                        <h3>{t('Financial Analytics & Reporting')}</h3>
+                        <p>{t('Visualize your cash flow, identify profit drivers, and minimize losses with our advanced, integrated financial tools and customizable reporting suite.')}</p>
+                        <Link to="#" className="learn-more">{t('Learn More &rarr;')}</Link>
                     </div>
                 </div>
 
@@ -156,16 +158,16 @@ const LandingPage = () => {
                         <img src="/Images/Payments.png" alt="Tax Automation Screenshot" loading="lazy" />
                     </div>
                     <div className="feature-text">
-                        <h3>Property & Tenant Management</h3>
-                        <p>Manage your entire portfolio from one comprehensive dashboard, including leases and tenant records with automated workflows.</p>
-                        <Link to="#" className="learn-more">Learn More &rarr;</Link>
+                        <h3>{t('Property & Tenant Management')}</h3>
+                        <p>{t('Manage your entire portfolio from one comprehensive dashboard, including leases and tenant records with automated workflows.')}</p>
+                        <Link to="#" className="learn-more">{t('Learn More &rarr;')}</Link>
                     </div>
                 </div>
             </section>
 
             {/* --- 4. Demo Section --- */}
             <section id="demo" className="demo-section">
-                <h2>See Our System in Action 🎬</h2>
+                <h2>{t('See Our System in Action 🎬')}</h2>
                 <div className="demo-player" data-animate="fade-in-up">
                     <video
                         ref={demoVideoRef}
@@ -178,58 +180,58 @@ const LandingPage = () => {
                         Your browser does not support the video tag.
                     </video>
                 </div>
-                <Link to="demo-page.html" className="btn btn-primary btn-large">See how it works — Explore the Demo</Link>
+                <Link to="demo-page.html" className="btn btn-primary btn-large">{t('See how it works — Explore the Demo')}</Link>
             </section>
 
             {/* --- 5. Pricing Section --- */}
             <section id="pricing" className="section pricing-section">
-                <h2>Clear & Flexible Pricing 💰</h2>
+                <h2>{t('Clear & Flexible Pricing 💰')}</h2>
                 <div className="pricing-tiers">
                     <div className="price-card" data-animate="fade-in-up">
-                        <h3>Basic</h3>
-                        <p className="price">ETB 1499 / month</p>
+                        <h3>{t('Basic')}</h3>
+                        <p className="price">{t('ETB 1499 / month')}</p>
                         <ul>
-                            <li><i className="fas fa-check"></i> Single Property Management</li>
-                            <li><i className="fas fa-check"></i> Basic Financial Tracking</li>
-                            <li className="incompatible"><i className="fas fa-times"></i> Tax Automation (Add-on)</li>
-                            <li className="incompatible"><i className="fas fa-times"></i> Dedicated Support</li>
+                            <li><i className="fas fa-check"></i> {t('Single Property Management')}</li>
+                            <li><i className="fas fa-check"></i> {t('Basic Financial Tracking')}</li>
+                            <li className="incompatible"><i className="fas fa-times"></i> {t('Tax Automation (Add-on)')}</li>
+                            <li className="incompatible"><i className="fas fa-times"></i> {t('Dedicated Support')}</li>
                         </ul>
-                        <Link to="signup.html" className="btn btn-secondary">Get Started</Link>
+                        <Link to="signup.html" className="btn btn-secondary">{t('Get Started')}</Link>
                     </div>
                     <div className="price-card popular" data-animate="fade-in-up" style={{ transitionDelay: '0.1s' }}>
-                        <h3>Professional</h3>
-                        <span className="badge">Most Popular</span>
-                        <p className="price">ETB 3999 / month</p>
+                        <h3>{t('Professional')}</h3>
+                        <span className="badge">{t('Most Popular')}</span>
+                        <p className="price">{t('ETB 3999 / month')}</p>
                         <ul>
-                            <li><i className="fas fa-check"></i> Up to 20 Properties</li>
-                            <li><i className="fas fa-check"></i> Advanced Analytics & Reporting</li>
-                            <li><i className="fas fa-check"></i> **Tax Automation**</li>
-                            <li><i className="fas fa-check"></i> Priority Email Support</li>
+                            <li><i className="fas fa-check"></i> {t('Up to 20 Properties')}</li>
+                            <li><i className="fas fa-check"></i> {t('Advanced Analytics & Reporting')}</li>
+                            <li><i className="fas fa-check"></i> {t('Tax Automation')}</li>
+                            <li><i className="fas fa-check"></i> {t('Priority Email Support')}</li>
                         </ul>
-                        <Link to="signup.html?plan=pro" className="btn btn-primary">Start Trial</Link>
+                        <Link to="signup.html?plan=pro" className="btn btn-primary">{t('Start Trial')}</Link>
                     </div>
                     <div className="price-card" data-animate="fade-in-up" style={{ transitionDelay: '0.2s' }}>
-                        <h3>Enterprise</h3>
-                        <p className="price">Contact Us</p>
+                        <h3>{t('Enterprise')}</h3>
+                        <p className="price">{t('Contact Us')}</p>
                         <ul>
-                            <li><i className="fas fa-check"></i> Unlimited Properties</li>
-                            <li><i className="fas fa-check"></i> Custom Integrations</li>
-                            <li><i className="fas fa-check"></i> **Dedicated Account Manager**</li>
-                            <li><i className="fas fa-check"></i> SLA & 24/7 Support</li>
+                            <li><i className="fas fa-check"></i> {t('Unlimited Properties')}</li>
+                            <li><i className="fas fa-check"></i> {t('Custom Integrations')}</li>
+                            <li><i className="fas fa-check"></i> {t('Dedicated Account Manager')}</li>
+                            <li><i className="fas fa-check"></i> {t('SLA & 24/7 Support')}</li>
                         </ul>
-                        <Link to="contact.html?plan=enterprise" className="btn btn-secondary">Contact Sales</Link>
+                        <Link to="contact.html?plan=enterprise" className="btn btn-secondary">{t('Contact Sales')}</Link>
                     </div>
                 </div>
-                <Link to="pricing.html" className="compare-link">Compare All Plans in Detail &rarr;</Link>
+                <Link to="pricing.html" className="compare-link">{t('Compare All Plans in Detail &rarr;')}</Link>
             </section>
 
             {/* --- 6. Testimonials Section --- */}
             <section className="testimonials-section">
-                <h2>Trusted by Property Owners Across Ethiopia ⭐</h2>
+                <h2>{t('Trusted by Property Owners Across Ethiopia ⭐')}</h2>
                 <div className="testimonial-grid">
                     {testimonialsData.slice(0, 2).map((testimonial, index) => (
                         <blockquote key={testimonial.author} className="testimonial-card" data-animate="fade-in-up" style={{ transitionDelay: `${index * 0.1}s` }}>
-                            <p>"{testimonial.quote}"</p>
+                            <p>"{t(testimonial.quote)}"</p>
                             <footer>
                                 <img src={testimonial.avatar} alt={`${testimonial.author}'s photo`} className="avatar" loading="lazy" />
                                 <cite>— {testimonial.author}, {testimonial.location}</cite>
@@ -246,10 +248,10 @@ const LandingPage = () => {
 
             {/* --- 7. FAQ Section --- */}
             <section className="section faq-section">
-                <h2>Frequently Asked Questions ❓</h2>
+                <h2>{t('Frequently Asked Questions ❓')}</h2>
                 <div className="faq-container">
                     {faqData.map((item, index) => (
-                        <FAQItem key={item.question} question={item.question} answer={item.answer} index={index} />
+                        <FAQItem key={item.question} question={t(item.question)} answer={t(item.answer)} index={index} />
                     ))}
                 </div>
             </section>

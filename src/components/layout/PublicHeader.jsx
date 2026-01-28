@@ -34,7 +34,7 @@ const PublicHeader = () => {
 
   return (
     <header className="navbar">
-      <Link to="/" className="logo" onClick={() => window.scrollTo(0, 0)} data-i18n="nav_yene_rent">Yene Rent</Link>
+      <Link to="/" className="logo" onClick={() => window.scrollTo(0, 0)} data-i18n="nav_yene_rent">{t('Yene Rent')}</Link>
       <nav className={`nav-links ${isMenuOpen ? 'active' : ''}`}>
         <Link to="/" onClick={() => window.scrollTo(0, 0)} data-i18n="nav_home">{t('Home')}</Link>
         <a href="#features-overview" onClick={(e) => handleSmoothScroll(e, 'features-overview')} data-i18n="nav_features">{t('Features')}</a>

@@ -18,8 +18,8 @@ Tenants: GET, POST, PUT, DELETE for tenant records
 Leases: GET, POST, PUT, DELETE for lease agreements
 Payments: GET, POST, PUT, DELETE for rent payments and tracking
 Expenses: GET, POST, PUT, DELETE for property expenses
-Documents: GET, POST, PUT, DELETE for file uploads and management 
-          // PUT for Document management ❌
+Documents: GET, POST, PUT, DELETE for file uploads and management
+          // PUT for Document management ✅
 Maintenance: GET, POST, PUT, DELETE for maintenance requests
 Utilities: GET, POST, PUT, DELETE for utility bill tracking
 
@@ -29,8 +29,8 @@ JWT token generation and validation
 Password hashing and security
 Role-based access control (admin, property manager, tenant)
 Session management
-Password reset functionality ❌
-Email verification for registration ❌
+Password reset functionality ✅
+Email verification for registration ✅
 
 3. File Upload & Storage ✅
 Document upload endpoints (leases, receipts, IDs)
@@ -114,6 +114,6 @@ API response compression
 Environment configuration✅
 Database connection management✅
 Process management (PM2)
-Health check endpoints✅
+
 
 This list covers all the functionality currently handled by mock data and localStorage in your React frontend, transitioning it to a proper backend API with database persistence

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './Login.css';
 
 const Login = () => {
@@ -9,6 +10,7 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuth();
+    const { t } = useLanguage();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -25,8 +27,8 @@ const Login = () => {
             <div className="login-container">
                 <div className="login-card">
                     <div className="login-header">
-                        <h1 data-i18n="Rental System">Rental System</h1>
-                        <p data-i18n="Sign in to manage your properties">Sign in to manage your properties</p>
+                        <h1 data-i18n="Rental System">{t('Rental System')}</h1>
+                        <p data-i18n="Sign in to manage your properties">{t('Sign in to manage your properties')}</p>
                     </div>
                     <form id="login-form" className="login-form" onSubmit={handleSubmit}>
                         <div className="form-group">

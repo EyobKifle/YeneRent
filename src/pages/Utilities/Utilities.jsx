@@ -2,9 +2,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import api from '../../utils/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 import '/src/pages/Utilities/Utilities.css';
 
 const Utilities = () => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);

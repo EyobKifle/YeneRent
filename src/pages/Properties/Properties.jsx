@@ -3,8 +3,10 @@ import '../../styles/pages/Properties.css';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import api from '../../utils/api';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const Properties = () => {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -169,12 +171,12 @@ const Properties = () => {
     <div id="properties-view">
       <div className="page-header">
         <div>
-          <h1>Properties</h1>
-          <p>View and manage all your properties</p>
+          <h1>{t('Properties')}</h1>
+          <p>{t('View and manage all your properties')}</p>
         </div>
         <Button variant="secondary" onClick={handleAddProperty}>
           <i className="fa-solid fa-plus"></i>
-          <span>Add Property</span>
+          <span>{t('Add Property')}</span>
         </Button>
       </div>
 

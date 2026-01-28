@@ -5,12 +5,14 @@ import StatsCard from '../../components/ui/StatsCard'
 import Button from '../../components/ui/Button'
 import api from '../../utils/api'
 import { formatDate } from '../../utils/utils'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 const fmtCurrency = (v) => {
   try { return new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB', maximumFractionDigits: 0 }).format(v || 0) } catch { return `ETB ${Number(v||0).toLocaleString()}` }
 }
 
 export default function DashboardPage() {
+  const { t } = useLanguage()
   const [properties, setProperties] = useState([])
   const [tenants, setTenants] = useState([])
   const [payments, setPayments] = useState([])
@@ -68,14 +70,14 @@ export default function DashboardPage() {
     return (
       <div className="dashboard-page">
         <div className="page-header">
-          <h1>Dashboard</h1>
-          <p>Loading your rental overview...</p>
+          <h1>{t('Dashboard')}</h1>
+          <p>{t('Loading your rental overview...')}</p>
         </div>
         <div className="stats-grid">
-          <Card className="data-card"><p>Loading...</p></Card>
-          <Card className="data-card"><p>Loading...</p></Card>
-          <Card className="data-card"><p>Loading...</p></Card>
-          <Card className="data-card"><p>Loading...</p></Card>
+          <Card className="data-card"><p>{t('Loading...')}</p></Card>
+          <Card className="data-card"><p>{t('Loading...')}</p></Card>
+          <Card className="data-card"><p>{t('Loading...')}</p></Card>
+          <Card className="data-card"><p>{t('Loading...')}</p></Card>
         </div>
       </div>
     )
@@ -85,13 +87,13 @@ export default function DashboardPage() {
     return (
       <div className="dashboard-page">
         <div className="page-header">
-          <h1>Dashboard</h1>
-          <p>Welcome back, here's your rental overview.</p>
+          <h1>{t('Dashboard')}</h1>
+          <p>{t('Welcome back, here\'s your rental overview.')}</p>
         </div>
         <div className="stats-grid">
           <Card className="data-card">
             <p className="text-red">{error}</p>
-            <Button onClick={() => window.location.reload()}>Retry</Button>
+            <Button onClick={() => window.location.reload()}>{t('Retry')}</Button>
           </Card>
         </div>
       </div>
@@ -101,33 +103,33 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-page">
       <div className="page-header">
-        <h1>Dashboard</h1>
-        <p>Welcome back, here's your rental overview.</p>
+        <h1>{t('Dashboard')}</h1>
+        <p>{t('Welcome back, here\'s your rental overview.')}</p>
       </div>
 
       <div className="stats-grid">
-        <Card className="data-card"><p>Total Properties</p><h2>{stats.totalProperties}</h2></Card>
-        <Card className="data-card"><p>Active Tenants</p><h2>{stats.totalTenants}</h2></Card>
-        <Card className="data-card"><p>Monthly Revenue</p><h2 className="text-green">{fmtCurrency(stats.monthlyRevenue)}</h2></Card>
-        <Card className="data-card"><p>Outstanding Balance</p><h2 className="text-red">{fmtCurrency(stats.outstanding)}</h2></Card>
+        <Card className="data-card"><p>{t('Total Properties')}</p><h2>{stats.totalProperties}</h2></Card>
+        <Card className="data-card"><p>{t('Active Tenants')}</p><h2>{stats.totalTenants}</h2></Card>
+        <Card className="data-card"><p>{t('Monthly Revenue')}</p><h2 className="text-green">{fmtCurrency(stats.monthlyRevenue)}</h2></Card>
+        <Card className="data-card"><p>{t('Outstanding Balance')}</p><h2 className="text-red">{fmtCurrency(stats.outstanding)}</h2></Card>
       </div>
 
       <div className="activity-grid">
         <Card className="activity-card">
-          <h3 className="data-card-header">Recent Activity</h3>
+          <h3 className="data-card-header">{t('Recent Activity')}</h3>
           <div className="table-container">
             <table className="data-table">
               <thead>
-                <tr><th>Activity</th><th>Tenant</th><th>Date</th></tr>
+                <tr><th>{t('Activity')}</th><th>{t('Tenant')}</th><th>{t('Date')}</th></tr>
               </thead>
               <tbody>
                 {recentActivity.length === 0 ? (
-                  <tr><td colSpan={3} className="text-center p-4">No recent activity.</td></tr>
-                ) : recentActivity.map(t => (
-                  <tr key={t.id}>
-                    <td>New Tenant Added</td>
-                    <td>{t.name}</td>
-                    <td>{formatDate(t.moveInDate)}</td>
+                  <tr><td colSpan={3} className="text-center p-4">{t('No recent activity.')}</td></tr>
+                ) : recentActivity.map(tenant => (
+                  <tr key={tenant.id}>
+                    <td>{t('New Tenant Added')}</td>
+                    <td>{tenant.name}</td>
+                    <td>{formatDate(tenant.moveInDate)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -136,16 +138,16 @@ export default function DashboardPage() {
         </Card>
 
         <Card className="quick-actions-card">
-          <h3>Quick Actions</h3>
+          <h3>{t('Quick Actions')}</h3>
           <div className="quick-actions">
-            <a href="/properties#add" className="action-link"><i className="fa-solid fa-plus"></i><span>Add Property</span></a>
-            <a href="/tenants#add" className="action-link"><i className="fa-solid fa-user-plus"></i><span>Add Tenant</span></a>
-            <a href="/payments#record" className="action-link"><i className="fa-solid fa-money-bill-wave"></i><span>Record Payment</span></a>
+            <a href="/properties#add" className="action-link"><i className="fa-solid fa-plus"></i><span>{t('Add Property')}</span></a>
+            <a href="/tenants#add" className="action-link"><i className="fa-solid fa-user-plus"></i><span>{t('Add Tenant')}</span></a>
+            <a href="/payments#record" className="action-link"><i className="fa-solid fa-money-bill-wave"></i><span>{t('Record Payment')}</span></a>
           </div>
         </Card>
 
         <Card className="quick-actions-card"> {/* Reusing quick-actions-card for styling */}
-            <h3>Upcoming Lease Expirations</h3>
+            <h3>{t('Upcoming Lease Expirations')}</h3>
             <div className="lease-expirations">
                 {expiringLeases.length > 0 ? (
                     expiringLeases.map(lease => {
@@ -162,7 +164,7 @@ export default function DashboardPage() {
                         );
                     })
                 ) : (
-                    <p className="text-center text-gray-500">No leases are expiring in the next 60 days.</p>
+                    <p className="text-center text-gray-500">{t('No leases are expiring in the next 60 days.')}</p>
                 )}
             </div>
         </Card>

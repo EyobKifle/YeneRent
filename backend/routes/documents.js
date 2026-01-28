@@ -131,6 +131,44 @@ router.post('/',
   }
 );
 
+// PUT /api/documents/:id - update document metadata
+router.put('/:id',
+  authorizeRoles('admin','property_manager'),
+  [
+    body('category').optional().isIn(['Lease Agreement', 'Payment Receipt', 'Tax Document', 'Tenant ID', 'Property Deed', 'Insurance Policy', 'Maintenance Report', 'Other']).withMessage('Invalid category'),
+    body('propertyId').optional().isMongoId(),
+    body('tenantId').optional().isMongoId(),
+    body('leaseId').optional().isMongoId(),
+    body('notes').optional().isString(),
+    body('tags').optional().isArray()
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const updateData = {};
+      if (req.body.category !== undefined) updateData.category = req.body.category;
+      if (req.body.propertyId !== undefined) updateData.propertyId = req.body.propertyId;
+      if (req.body.tenantId !== undefined) updateData.tenantId = req.body.tenantId;
+      if (req.body.leaseId !== undefined) updateData.leaseId = req.body.leaseId;
+      if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+      if (req.body.tags !== undefined) updateData.tags = req.body.tags;
+
+      const doc = await Document.findByIdAndUpdate(req.params.id, updateData, { new: true });
+      if (!doc) return res.status(404).json({ error: 'Document not found' });
+
+      res.json(doc);
+    } catch (err) {
+      console.error('Error updating document:', err);
+      if (err.name === 'CastError') return res.status(400).json({ error: 'Invalid document ID' });
+      res.status(500).json({ error: 'Failed to update document' });
+    }
+  }
+);
+
 // DELETE /api/documents/:id - delete a document and its file
 router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
   try {

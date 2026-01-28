@@ -42,10 +42,10 @@ const Settings = () => {
     setLoading(true);
     try {
       settingsService.saveSettings(settings);
-      setMessage('Settings saved successfully!');
+      setMessage(t('Settings saved successfully!'));
       setTimeout(() => setMessage(''), 3000);
     } catch  {
-      setMessage('Failed to save settings. Please try again.');
+      setMessage(t('Failed to save settings. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -54,8 +54,8 @@ const Settings = () => {
   return (
     <div className="settings-page">
       <div className="page-header">
-        <h1>Settings</h1>
-        <p>Manage your account preferences and application settings.</p>
+        <h1>{t('Settings')}</h1>
+        <p>{t('Manage your account preferences and application settings.')}</p>
       </div>
 
       {message && (
@@ -66,31 +66,31 @@ const Settings = () => {
 
       <div className="settings-grid">
         <Card className="settings-card">
-          <h3>Appearance</h3>
+          <h3>{t('Appearance')}</h3>
           <div className="setting-group">
-            <label>Theme</label>
+            <label>{t('Theme')}</label>
             <select value={theme} onChange={(e) => handleThemeChange(e.target.value)}>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
+              <option value="light">{t('Light')}</option>
+              <option value="dark">{t('Dark')}</option>
             </select>
           </div>
         </Card>
 
         <Card className="settings-card">
-          <h3>Regional</h3>
+          <h3>{t('Regional')}</h3>
           <div className="setting-group">
-            <label>Language</label>
+            <label>{t('Language')}</label>
             <select value={language} onChange={(e) => handleLanguageChange(e.target.value)}>
-              <option value="en">English</option>
-              <option value="am">Amharic</option>
+              <option value="en">{t('English')}</option>
+              <option value="am">{t('Amharic')}</option>
             </select>
           </div>
         </Card>
 
         <Card className="settings-card">
-          <h3>Business Settings</h3>
+          <h3>{t('Business Settings')}</h3>
           <div className="setting-group">
-            <label>VAT Rate (%)</label>
+            <label>{t('VAT Rate (%)')}</label>
             <input
               type="number"
               step="0.01"
@@ -99,7 +99,7 @@ const Settings = () => {
             />
           </div>
           <div className="setting-group">
-            <label>Withholding Tax Rate (%)</label>
+            <label>{t('Withholding Tax Rate (%)')}</label>
             <input
               type="number"
               step="0.01"
@@ -108,7 +108,7 @@ const Settings = () => {
             />
           </div>
           <div className="setting-group">
-            <label>Business Income Tax Rate (%)</label>
+            <label>{t('Business Income Tax Rate (%)')}</label>
             <input
               type="number"
               step="0.01"
@@ -119,9 +119,9 @@ const Settings = () => {
         </Card>
 
         <Card className="settings-card">
-          <h3>Account</h3>
+          <h3>{t('Account')}</h3>
           <div className="setting-group">
-            <label>Email Notifications</label>
+            <label>{t('Email Notifications')}</label>
             <input
               type="checkbox"
               checked={settings.notifications?.email || false}
@@ -132,7 +132,7 @@ const Settings = () => {
             />
           </div>
           <div className="setting-group">
-            <label>Push Notifications</label>
+            <label>{t('Push Notifications')}</label>
             <input
               type="checkbox"
               checked={settings.notifications?.push || false}
@@ -147,7 +147,7 @@ const Settings = () => {
 
       <div className="settings-actions">
         <Button onClick={handleSave} disabled={loading}>
-          {loading ? 'Saving...' : 'Save Settings'}
+          {loading ? t('Saving...') : t('Save Settings')}
         </Button>
       </div>
     </div>
