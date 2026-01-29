@@ -1,22 +1,20 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import User from './models/User.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 async function createProperAdmin() {
   try {
-    await mongoose.connect('mongodb+srv://yenerent_dev:12345@yenerent-dev.nuzl3ey.mongodb.net/YeneRent');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://yenerent_dev:12345@yenerent-dev.nuzl3ey.mongodb.net/YeneRent?retryWrites=true&w=majority&appName=YeneRent-Dev');
     console.log('Connected to MongoDB');
 
     // Check if admin user already exists
     const existingAdmin = await User.findOne({ email: 'admin@yenerent.com' });
     if (existingAdmin) {
       console.log('Admin user already exists, updating password...');
-      // Hash the password properly
-      const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
-      const salt = await bcrypt.genSalt(rounds);
-      const hashedPassword = await bcrypt.hash('admin123', salt);
-
-      existingAdmin.password = hashedPassword;
+      // Set plain text password; the User model's pre-save hook will hash it
+      existingAdmin.password = 'admin123';
       await existingAdmin.save();
 
       console.log('Admin password updated successfully');
@@ -24,15 +22,12 @@ async function createProperAdmin() {
       console.log('Email: admin@yenerent.com');
       console.log('Password: admin123');
     } else {
-      // Create new admin user with properly hashed password
-      const rounds = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
-      const salt = await bcrypt.genSalt(rounds);
-      const hashedPassword = await bcrypt.hash('admin123', salt);
-
+      // Create new admin user with plain text password
+      // The User model's pre-save hook will handle hashing automatically
       const adminUser = new User({
         name: 'System Admin',
         email: 'admin@yenerent.com',
-        password: hashedPassword,
+        password: 'admin123',
         role: 'admin',
         isActive: true
       });
