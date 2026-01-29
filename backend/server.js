@@ -29,6 +29,13 @@ import errorHandler from './middleware/errorHandler.js';
 import { sanitizeData } from './middleware/sanitization.js';
 
 dotenv.config();
+
+// Ensure JWT_SECRET is defined for development
+if (!process.env.JWT_SECRET) {
+  console.log('Warning: JWT_SECRET not defined in .env. Using default dev secret.');
+  process.env.JWT_SECRET = 'fallback_dev_secret_key_123';
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -142,7 +149,7 @@ app.use((req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB then start server
-mongoose.connect(process.env.MONGODB_URI, {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://yenerent_dev:12345@yenerent-dev.nuzl3ey.mongodb.net/YeneRent?retryWrites=true&w=majority&appName=YeneRent-Dev', {
   autoIndex: true,
 }).then(() => {
   console.log('MongoDB connected');

@@ -1,10 +1,13 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import User from './models/User.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 async function debugLogin() {
   try {
-    await mongoose.connect('mongodb+srv://yenerent_dev:12345@yenerent-dev.nuzl3ey.mongodb.net/YeneRent');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://yenerent_dev:12345@yenerent-dev.nuzl3ey.mongodb.net/YeneRent?retryWrites=true&w=majority&appName=YeneRent-Dev');
     console.log('Connected to MongoDB');
 
     // Find the admin user
