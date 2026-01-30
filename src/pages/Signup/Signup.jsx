@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import AlertPanel from '../../components/ui/AlertPanel';
 import './Signup.css';
 
 const Signup = () => {
@@ -11,14 +12,16 @@ const Signup = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
   const { signup } = useAuth();
+  const { t } = useLanguage();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
 
@@ -26,19 +29,20 @@ const Signup = () => {
       await signup(email, password, name);
       navigate('/dashboard'); // Redirect to dashboard on successful signup
     } catch (error) {
-      alert(error.message); // Display error message
+      setError(error.message); // Display error message
     }
   };
 
   return (
-    <div className="login-page">
-      <div className="login-container">
-        <div className="login-card">
-          <div className="login-header">
+    <div className="signup-page">
+      <div className="signup-container">
+        <div className="signup-card">
+          <div className="signup-header">
             <h1 data-i18n="Rental System">{t('Rental System')}</h1>
             <p data-i18n="Create your account">{t('Create your account')}</p>
           </div>
-          <form id="signup-form" className="login-form" onSubmit={handleSubmit}>
+          {error && <AlertPanel type="error" message={error} />}
+          <form id="signup-form" className="signup-form" onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="name" className="form-label" data-i18n="Full Name">Full Name</label>
               <input

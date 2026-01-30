@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button'
 import api from '../../utils/api'
 import { formatDate } from '../../utils/utils'
 import { useLanguage } from '../../contexts/LanguageContext'
+import { useAuth } from '../../contexts/AuthContext'
 
 const fmtCurrency = (v) => {
   try { return new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB', maximumFractionDigits: 0 }).format(v || 0) } catch { return `ETB ${Number(v||0).toLocaleString()}` }
@@ -13,6 +14,7 @@ const fmtCurrency = (v) => {
 
 export default function DashboardPage() {
   const { t } = useLanguage()
+  const { user } = useAuth()
   const [properties, setProperties] = useState([])
   const [tenants, setTenants] = useState([])
   const [payments, setPayments] = useState([])
@@ -23,16 +25,27 @@ export default function DashboardPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [props, tens, pays, lses] = await Promise.all([ // Fetch leases
-          api.get('properties'),
-          api.get('tenants'),
-          api.get('payments'),
-          api.get('leases')
-        ])
-        setProperties(props || [])
-        setTenants(tens || [])
-        setPayments(pays || [])
-        setLeases(lses || []) // Set leases state
+        if (user?.role === 'tenant') {
+          // For tenants, fetch only their relevant data
+          const [pays, lses] = await Promise.all([
+            api.get('payments'), // This should be filtered to tenant's payments
+            api.get('leases')    // This should be filtered to tenant's leases
+          ])
+          setPayments(pays || [])
+          setLeases(lses || [])
+        } else {
+          // For managers/admins, fetch all data
+          const [props, tens, pays, lses] = await Promise.all([
+            api.get('properties'),
+            api.get('tenants'),
+            api.get('payments'),
+            api.get('leases')
+          ])
+          setProperties(props || [])
+          setTenants(tens || [])
+          setPayments(pays || [])
+          setLeases(lses || [])
+        }
       } catch (err) {
         setError('Failed to load dashboard data. Please try again.')
         console.error('Dashboard data fetch error:', err)
@@ -40,7 +53,7 @@ export default function DashboardPage() {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [user])
 
   const stats = useMemo(() => {
     const totalProperties = properties.length

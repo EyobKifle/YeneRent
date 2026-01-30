@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import InSystemHeader from './InSystemHeader';
 import Footer from '../Footer/Footer';
 import Sidebar from './Sidebar';
@@ -8,6 +9,22 @@ import './Layout.css';
 const Layout = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isLoggedIn, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && !isLoggedIn) {
+      navigate('/login');
+    }
+  }, [isLoggedIn, loading, navigate]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isLoggedIn) {
+    return null;
+  }
 
   const toggleSidebar = () => {
     setSidebarOpen(!isSidebarOpen);
@@ -27,13 +44,16 @@ const Layout = () => {
     if (path.includes('/utilities')) return 'Utilities';
     if (path.includes('/leases')) return 'Leases';
     if (path.includes('/settings')) return 'Settings';
+    if (path.includes('/admin')) return 'Admin';
     return 'Rental Management';
   };
 
+  const isAdminPage = location.pathname.includes('/admin');
+
   return (
-    <div className={`app-layout ${!isSidebarOpen ? 'sidebar-collapsed' : ''}`}>
-      <InSystemHeader onSidebarToggle={toggleSidebar} pageTitle={getPageTitle()} />
-      <Sidebar isOpen={isSidebarOpen} />
+    <div className={`app-layout ${!isSidebarOpen && !isAdminPage ? 'sidebar-collapsed' : ''} ${isAdminPage ? 'admin-page' : ''}`}>
+      <InSystemHeader onSidebarToggle={isAdminPage ? null : toggleSidebar} pageTitle={getPageTitle()} />
+      {!isAdminPage && <Sidebar isOpen={isSidebarOpen} />}
       <div className="main-content">
         <main className="page-content">
           <Outlet /> {/* Child routes will render here */}

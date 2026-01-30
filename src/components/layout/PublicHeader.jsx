@@ -55,18 +55,26 @@ const PublicHeader = () => {
             </button>
             {showLanguageMenu && (
               <div id="language-menu-dropdown" className="dropdown-menu show">
-                <button
+                <a
+                  href="#"
                   className="dropdown-item"
-                  onClick={() => handleLanguageChange('en')}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleLanguageChange('en');
+                  }}
                 >
                   {t('English')}
-                </button>
-                <button
+                </a>
+                <a
+                  href="#"
                   className="dropdown-item"
-                  onClick={() => handleLanguageChange('am')}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleLanguageChange('am');
+                  }}
                 >
                   {t('Amharic')}
-                </button>
+                </a>
               </div>
             )}
           </div>

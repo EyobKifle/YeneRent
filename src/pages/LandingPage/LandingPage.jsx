@@ -79,6 +79,13 @@ const LandingPage = () => {
         };
     }, []);
 
+    const scrollToDemo = () => {
+        const demoSection = document.getElementById('demo');
+        if (demoSection) {
+            demoSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <>
         <main role="main">
@@ -88,8 +95,8 @@ const LandingPage = () => {
                     <h1 className="hero-title">{t('Simplify Rental Management — Track, Analyze, and Automate with Ease')}</h1>
                     <p>{t('Manage your entire rental property portfolio effortlessly. Our system provides powerful tools for tenant management, financial tracking, and automated tax reporting compliant with Ethiopian rules.')}</p>
                     <div className="hero-ctas">
-                        <Link to="#demo" className="btn btn-primary btn-large">{t('Try Demo')}</Link>
-                        <Link to="/trial-request" className="btn btn-secondary btn-large">{t('Request a Free Trial')}</Link>
+                        <button onClick={scrollToDemo} className="btn btn-primary btn-large">{t('View Demo')}</button>
+                        <Link to="/signup" className="btn btn-secondary btn-large">{t('Get Started')}</Link>
                     </div>
                 </div>
                 <div className="hero-video" data-animate="fade-in-right">
@@ -180,7 +187,7 @@ const LandingPage = () => {
                         Your browser does not support the video tag.
                     </video>
                 </div>
-                <Link to="demo-page.html" className="btn btn-primary btn-large">{t('See how it works — Explore the Demo')}</Link>
+                <Link to="/signup" className="btn btn-primary btn-large">{t('Let\'s get started')}</Link>
             </section>
 
             {/* --- 5. Pricing Section --- */}
@@ -196,7 +203,7 @@ const LandingPage = () => {
                             <li className="incompatible"><i className="fas fa-times"></i> {t('Tax Automation (Add-on)')}</li>
                             <li className="incompatible"><i className="fas fa-times"></i> {t('Dedicated Support')}</li>
                         </ul>
-                        <Link to="signup.html" className="btn btn-secondary">{t('Get Started')}</Link>
+                        <Link to="/signup" className="btn btn-secondary">{t('Get Started')}</Link>
                     </div>
                     <div className="price-card popular" data-animate="fade-in-up" style={{ transitionDelay: '0.1s' }}>
                         <h3>{t('Professional')}</h3>
@@ -208,7 +215,7 @@ const LandingPage = () => {
                             <li><i className="fas fa-check"></i> {t('Tax Automation')}</li>
                             <li><i className="fas fa-check"></i> {t('Priority Email Support')}</li>
                         </ul>
-                        <Link to="signup.html?plan=pro" className="btn btn-primary">{t('Start Trial')}</Link>
+                        <Link to="/signup" className="btn btn-primary">{t('Start Trial')}</Link>
                     </div>
                     <div className="price-card" data-animate="fade-in-up" style={{ transitionDelay: '0.2s' }}>
                         <h3>{t('Enterprise')}</h3>
@@ -221,8 +228,7 @@ const LandingPage = () => {
                         </ul>
                         <Link to="contact.html?plan=enterprise" className="btn btn-secondary">{t('Contact Sales')}</Link>
                     </div>
-                </div>
-                <Link to="pricing.html" className="compare-link">{t('Compare All Plans in Detail &rarr;')}</Link>
+                </div>                <Link to="pricing.html" className="compare-link">{t('Compare All Plans in Detail &rarr;')}</Link>
             </section>
 
             {/* --- 6. Testimonials Section --- */}

@@ -258,19 +258,34 @@ const api = {
 
   // Generic methods for backward compatibility
   async get(resource) {
-    return this[`get${resource.charAt(0).toUpperCase() + resource.slice(1)}`]();
+    const methodName = `get${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    if (typeof this[methodName] === 'function') {
+      return this[methodName]();
+    }
+    return apiClient.get(resource.startsWith('/') ? resource : `/${resource}`);
   },
 
   async create(resource, data) {
-    return this[`create${resource.charAt(0).toUpperCase() + resource.slice(1)}`](data);
+    const methodName = `create${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    return this[methodName](data);
   },
 
   async update(resource, id, data) {
-    return this[`update${resource.charAt(0).toUpperCase() + resource.slice(1)}`](id, data);
+    const methodName = `update${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    return this[methodName](id, data);
   },
 
   async delete(resource, id) {
-    return this[`delete${resource.charAt(0).toUpperCase() + resource.slice(1)}`](id);
+    const methodName = `delete${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    return this[methodName](id);
+  },
+
+  async post(endpoint, data) {
+    return apiClient.post(endpoint.startsWith('/') ? endpoint : `/${endpoint}`, data);
+  },
+
+  async put(endpoint, data) {
+    return apiClient.put(endpoint.startsWith('/') ? endpoint : `/${endpoint}`, data);
   },
 
   // Logout helper
@@ -281,9 +296,9 @@ const api = {
 
 // Named exports for individual functions
 export const seedData = api.seedData;
-export const get = api.get;
-export const create = api.create;
-export const update = api.update;
-export const remove = api.delete; // Alias for delete
+export const get = api.get.bind(api);
+export const create = api.create.bind(api);
+export const update = api.update.bind(api);
+export const remove = api.delete.bind(api); // Alias for delete
 
 export default api;

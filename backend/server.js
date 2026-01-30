@@ -10,6 +10,7 @@ import mongoose from 'mongoose';
 
 // Import routes
 import authRouter from './routes/auth.js';
+import adminRouter from './routes/admin.js';
 import propertiesRouter from './routes/properties.js';
 import tenantsRouter from './routes/tenants.js';
 import paymentsRouter from './routes/payments.js';
@@ -43,7 +44,7 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-  origin: 'http://localhost:5173', // Adjust for your frontend URL
+  origin: ['http://localhost:5173', 'http://localhost:5174'], // Allow both common Vite ports
   credentials: true
 }));
 
@@ -99,7 +100,6 @@ app.use((req, res, next) => {
   const userId = req.user?.userId || 'anonymous';
   res.on('finish', () => {
     const duration = Date.now() - start;
-    // eslint-disable-next-line no-console
     console.log(`[AUDIT] user=${userId} method=${req.method} path=${req.originalUrl} status=${res.statusCode} durationMs=${duration}`);
   });
   next();
@@ -110,6 +110,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/uploads', uploadsRouter);
 
 // Protected routes (non-versioned)
+app.use('/api/admin', authenticateToken, adminRouter);
 app.use('/api/properties', authenticateToken, propertiesRouter);
 app.use('/api/tenants', authenticateToken, tenantsRouter);
 app.use('/api/payments', authenticateToken, paymentsRouter);
@@ -123,6 +124,7 @@ app.use('/api/analytics', authenticateToken, analyticsRouter);
 
 // Versioned routes (/api/v1)
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/admin', authenticateToken, adminRouter);
 app.use('/api/v1/uploads', uploadsRouter);
 app.use('/api/v1/properties', authenticateToken, propertiesRouter);
 app.use('/api/v1/tenants', authenticateToken, tenantsRouter);

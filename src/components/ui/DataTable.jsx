@@ -1,41 +1,32 @@
 import React, { useState, useMemo } from 'react';
-import Button from './Button';
 import './DataTable.css';
 
 const DataTable = ({
-  columns,
   data,
-  loading = false,
-  emptyMessage = 'No data available',
+  columns,
   searchable = true,
   sortable = true,
   pagination = true,
   pageSize = 10,
-  onRowClick,
-  onEdit,
-  onDelete,
-  actions,
-  className = '',
-  ...props
+  onAction
 }) => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchTerm, setSearchTerm] = useState('');
 
   // Filter data based on search term
   const filteredData = useMemo(() => {
     if (!searchTerm) return data;
     return data.filter(item =>
-      Object.values(item).some(value =>
-        String(value).toLowerCase().includes(searchTerm.toLowerCase())
+      columns.some(column =>
+        String(item[column.key]).toLowerCase().includes(searchTerm.toLowerCase())
       )
     );
-  }, [data, searchTerm]);
+  }, [data, searchTerm, columns]);
 
   // Sort data
   const sortedData = useMemo(() => {
     if (!sortConfig.key) return filteredData;
-
     return [...filteredData].sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
@@ -57,82 +48,22 @@ const DataTable = ({
 
   const handleSort = (key) => {
     if (!sortable) return;
-
-    setSortConfig(prevConfig => ({
+    setSortConfig(prev => ({
       key,
-      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
   };
 
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
+  const handleAction = (action, item) => {
+    if (onAction) onAction(action, item);
   };
 
-  const renderSortIcon = (columnKey) => {
-    if (!sortable || sortConfig.key !== columnKey) return null;
-
-    return (
-      <i className={`fas fa-sort-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>
-    );
-  };
-
-  const renderCellContent = (item, column) => {
-    const value = item[column.key];
-
+  const renderCell = (item, column) => {
     if (column.render) {
-      return column.render(value, item);
+      return column.render(item[column.key], item);
     }
-
-    if (column.type === 'date') {
-      return new Date(value).toLocaleDateString();
-    }
-
-    if (column.type === 'currency') {
-      return `ETB ${Number(value).toLocaleString()}`;
-    }
-
-    return value;
+    return item[column.key];
   };
-
-  const renderActions = (item) => {
-    if (!actions && !onEdit && !onDelete) return null;
-
-    return (
-      <div className="table-actions">
-        {onEdit && (
-          <Button
-            variant="secondary"
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(item);
-            }}
-          >
-            <i className="fas fa-edit"></i>
-          </Button>
-        )}
-        {onDelete && (
-          <Button
-            variant="error"
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(item);
-            }}
-          >
-            <i className="fas fa-trash"></i>
-          </Button>
-        )}
-        {actions && actions(item)}
-      </div>
-    );
-  };
-
-  const tableClasses = [
-    'data-table',
-    loading ? 'data-table-loading' : '',
-    className
-  ].filter(Boolean).join(' ');
 
   return (
     <div className="data-table-container">
@@ -143,89 +74,75 @@ const DataTable = ({
             placeholder="Search..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
           />
         </div>
       )}
 
-      <div className={tableClasses} {...props}>
-        <table>
+      <div className="data-table-wrapper">
+        <table className="data-table">
           <thead>
             <tr>
               {columns.map(column => (
                 <th
                   key={column.key}
-                  onClick={() => handleSort(column.key)}
                   className={sortable && column.sortable !== false ? 'sortable' : ''}
+                  onClick={() => handleSort(column.key)}
                 >
-                  <div className="th-content">
-                    {column.label}
-                    {renderSortIcon(column.key)}
-                  </div>
+                  {column.label}
+                  {sortConfig.key === column.key && (
+                    <span className="sort-indicator">
+                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
                 </th>
               ))}
-              {(onEdit || onDelete || actions) && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={columns.length + (onEdit || onDelete || actions ? 1 : 0)} className="loading-cell">
-                  <div className="loading-spinner"></div>
-                  Loading...
-                </td>
+            {paginatedData.map((item, index) => (
+              <tr key={item._id || index}>
+                {columns.map(column => (
+                  <td key={column.key}>
+                    {column.key === 'actions' ? (
+                      <div>
+                        {column.actions?.map(action => (
+                          <button
+                            key={action.key}
+                            className="action-btn"
+                            onClick={() => handleAction(action.key, item)}
+                          >
+                            {action.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      renderCell(item, column)
+                    )}
+                  </td>
+                ))}
               </tr>
-            ) : paginatedData.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length + (onEdit || onDelete || actions ? 1 : 0)} className="empty-cell">
-                  {emptyMessage}
-                </td>
-              </tr>
-            ) : (
-              paginatedData.map((item, index) => (
-                <tr
-                  key={item.id || index}
-                  onClick={() => onRowClick && onRowClick(item)}
-                  className={onRowClick ? 'clickable' : ''}
-                >
-                  {columns.map(column => (
-                    <td key={column.key}>
-                      {renderCellContent(item, column)}
-                    </td>
-                  ))}
-                  {(onEdit || onDelete || actions) && (
-                    <td>{renderActions(item)}</td>
-                  )}
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>
 
       {pagination && totalPages > 1 && (
         <div className="data-table-pagination">
-          <Button
-            variant="secondary"
-            size="small"
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
             disabled={currentPage === 1}
-            onClick={() => handlePageChange(currentPage - 1)}
           >
             Previous
-          </Button>
-
-          <div className="pagination-info">
+          </button>
+          <span>
             Page {currentPage} of {totalPages}
-          </div>
-
-          <Button
-            variant="secondary"
-            size="small"
+          </span>
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
             disabled={currentPage === totalPages}
-            onClick={() => handlePageChange(currentPage + 1)}
           >
             Next
-          </Button>
+          </button>
         </div>
       )}
     </div>

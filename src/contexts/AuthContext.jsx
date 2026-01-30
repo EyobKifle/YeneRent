@@ -1,5 +1,6 @@
 // YeneRent/src/contexts/AuthContext.jsx
 import React, { createContext, useContext, useState } from 'react';
+import api from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -18,46 +19,52 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    if (email === 'demo@user.com' && password === 'password') {
-      const dummyUser = {
-        id: 'user-1',
-        name: 'Demo User',
-        email: email,
-        avatarUrl: null,
+    try {
+      const data = await api.login({ email, password });
+      const userData = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
       };
-      setUser(dummyUser);
+      if (data.token) {
+        sessionStorage.setItem('token', data.token);
+      }
+      setUser(userData);
       setIsLoggedIn(true);
-      sessionStorage.setItem('currentUser', JSON.stringify(dummyUser));
+      sessionStorage.setItem('currentUser', JSON.stringify(userData));
       sessionStorage.setItem('userLoggedIn', 'true');
       setLoading(false);
-      return { success: true };
-    } else {
+      return { success: true, redirectTo: userData.role === 'admin' || userData.role === 'owner' ? '/admin' : '/dashboard' };
+    } catch (error) {
       setLoading(false);
-      return { success: false, error: 'Invalid credentials' };
+      return { success: false, error: error.message || 'Login failed' };
     }
   };
 
   const signup = async (email, password, name) => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // For demo purposes, accept any signup
-    const newUser = {
-      id: `user-${Date.now()}`,
-      name: name,
-      email: email,
-      avatarUrl: null,
-    };
-    setUser(newUser);
-    setIsLoggedIn(true);
-    sessionStorage.setItem('currentUser', JSON.stringify(newUser));
-    sessionStorage.setItem('userLoggedIn', 'true');
-    setLoading(false);
-    return { success: true };
+    try {
+      const data = await api.register({ email, password, name });
+      const userData = {
+        id: data.user.id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
+      };
+      if (data.token) {
+        sessionStorage.setItem('token', data.token);
+      }
+      setUser(userData);
+      setIsLoggedIn(true);
+      sessionStorage.setItem('currentUser', JSON.stringify(userData));
+      sessionStorage.setItem('userLoggedIn', 'true');
+      setLoading(false);
+      return { success: true, redirectTo: userData.role === 'admin' ? '/admin' : '/dashboard' };
+    } catch (error) {
+      setLoading(false);
+      return { success: false, error: error.message || 'Signup failed' };
+    }
   };
 
   const logout = () => {
@@ -65,6 +72,8 @@ export const AuthProvider = ({ children }) => {
     setIsLoggedIn(false);
     sessionStorage.removeItem('currentUser');
     sessionStorage.removeItem('userLoggedIn');
+    sessionStorage.removeItem('token');
+    api.logout(); // Clear token
   };
 
   return (

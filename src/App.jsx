@@ -1,6 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
 
-// Import page components
 import LandingPage from './pages/LandingPage/LandingPage.jsx'
 import LoginPage from './pages/Login/Login.jsx'
 import DashboardPage from './pages/Dashboard/Dashboard.jsx'
@@ -23,6 +22,7 @@ import SignupPage from './pages/Signup/Signup.jsx'
 import UnitDetails from './pages/Units/UnitDetails.jsx'
 import UtilitiesPage from './pages/Utilities/Utilities.jsx'
 import UtilityDetails from './pages/Utilities/UtilityDetails.jsx'
+import AdminPage from './pages/Admin/Admin.jsx'
 
 // Import reusable components
 import Layout from './components/layout/Layout.jsx'
@@ -64,6 +64,7 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/utilities" element={<UtilitiesPage />} />
           <Route path="/utilities/:id" element={<UtilityDetails />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Route>
 
         {/* A catch-all route for 404 Not Found pages */}

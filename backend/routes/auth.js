@@ -41,7 +41,7 @@ router.post('/register', [
       name,
       email,
       password,
-      role: role || 'tenant',
+      role: role || 'customer',
       phone
     });
 
@@ -85,7 +85,7 @@ router.post('/login', [
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Email not found' });
     }
 
     // Check if user is active
@@ -96,7 +96,7 @@ router.post('/login', [
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Incorrect password' });
     }
 
     // Update last login

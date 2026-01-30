@@ -1,14 +1,12 @@
 /* Auth-specific styles */
 .auth-layout {
-  min-height: 80vh;;
-  background: white;
+  min-height: 80vh;
 }
 
 .auth-layout .main-content {
-  padding: 2rem 1rem;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
+  flex: 1;
 
 .auth-layout .auth-form {
   background: var(--card-bg);

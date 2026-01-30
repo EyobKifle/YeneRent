@@ -1,36 +1,23 @@
-:root {
-  --primary-color: #111827;
-  --primary-hover: #3453b6;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-  --radius-md: 0.5rem;
-  --radius-lg: 1rem;
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-  --font-family: "Inter", sans-serif;
-}
+
 
 /* Page layout */
 .login-page {
-  background-color: white;
+  background-color: var(--body-bg);
   font-family: var(--font-family);
- width: 400px;
- margin: auto;
+  margin-right:280px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
 }
 
 .login-main {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 1.5rem;
-  background-color: var(--gray-100);
+  padding: 1rem;
+  background-color: var(--body-bg);
 }
 
 /* Container */
@@ -48,21 +35,38 @@
 .login-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--gray-900);
+  color: var(--text-color);
   margin-bottom: 0.5rem;
 }
 
 .login-header p {
-  color: var(--gray-500);
+  color: var(--text-color-secondary);
   font-size: 0.9rem;
 }
 
+/* Error message */
+.error-message {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+[data-theme="dark"] .error-message {
+  background-color: #451a1a;
+  border-color: #7f1d1d;
+  color: #fca5a5;
+}
 /* Card */
 .login-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: var(--radius-lg);
   padding: 3rem;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 5px 5px 20px rgba(0,0,0,0.5);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -87,17 +91,18 @@
 .form-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--gray-700);
+  color: var(--text-color);
   margin-bottom: 0.4rem;
 }
 
 .form-input {
   width: 100%;
   padding: 0.8rem;
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 0.9rem;
-  background-color: white;
+  background-color: var(--card-bg);
+  color: var(--text-color);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -105,6 +110,29 @@
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Password input container */
+.password-input-container {
+  position: relative;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.2rem;
+  color: var(--gray-500);
+  padding: 0.25rem;
+  transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+  color: var(--primary-color);
 }
 
 /* Button */
@@ -140,7 +168,7 @@
 }
 
 .forgot-password a {
-  color: #020e23;
+  color: var(--text-color);
   text-decoration: none;
   font-size: 0.85rem;
   transition: color 0.2s ease;
@@ -150,6 +178,10 @@
   color: var(--primary-hover);
 }
 
+[data-theme="dark"] .forgot-password a {
+  color: white;
+}
+
 /* Signup link */
 .signup-link {
   text-align: center;
@@ -157,7 +189,7 @@
 }
 
 .signup-link a {
-  color: #020e23;
+  color: var(--text-color);
   text-decoration: none;
   font-size: 0.85rem;
   transition: color 0.2s ease;
@@ -165,6 +197,10 @@
 
 .signup-link a:hover {
   color: var(--primary-hover);
+}
+
+[data-theme="dark"] .signup-link a {
+  color: white;
 }
 
 /* Responsive adjustments */

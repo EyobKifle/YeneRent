@@ -91,7 +91,7 @@ export const validateBusinessRules = (req, res, next) => {
   }
 
   // Validate phone format if provided (basic validation)
-  if (req.body.phone && !/^[\+]?[0-9\s\-\(\)]+$/.test(req.body.phone)) {
+  if (req.body.phone && !/^[+]?[0-9\s\-()]+$/.test(req.body.phone)) {
     errors.push('Invalid phone number format');
   }
 

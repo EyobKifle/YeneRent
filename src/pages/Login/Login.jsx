@@ -2,23 +2,30 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import AlertPanel from '../../components/ui/AlertPanel';
 import './Login.css';
 
 const Login = () => {
     const [email, setEmail] = useState('demo@user.com'); // Pre-filled for demo
     const [password, setPassword] = useState('password'); // Pre-filled for demo
     const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
     const { login } = useAuth();
     const { t } = useLanguage();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError(''); // Clear previous errors
         try {
-            await login(email, password);
-            navigate('/dashboard'); // Redirect to dashboard on successful login
+            const result = await login(email, password);
+            if (result.success) {
+                navigate(result.redirectTo || '/dashboard'); // Redirect based on role
+            } else {
+                setError(result.error || 'Login failed');
+            }
         } catch (error) {
-            alert(error.message); // Display error message
+            setError(error.message || 'An unexpected error occurred');
         }
     };
 
@@ -30,6 +37,7 @@ const Login = () => {
                         <h1 data-i18n="Rental System">{t('Rental System')}</h1>
                         <p data-i18n="Sign in to manage your properties">{t('Sign in to manage your properties')}</p>
                     </div>
+                    {error && <AlertPanel type="error" message={error} />}
                     <form id="login-form" className="login-form" onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label htmlFor="email" className="form-label" data-i18n="Email Address">Email Address</label>

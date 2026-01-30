@@ -179,9 +179,17 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
                 {t('Settings')}
               </Link>
               <div className="dropdown-divider"></div>
-              <button id="logout-btn" className="dropdown-item" onClick={handleLogout}>
+              <a
+                href="#"
+                id="logout-btn"
+                className="dropdown-item"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleLogout();
+                }}
+              >
                 {t('Log Out')}
-              </button>
+              </a>
             </div>
           )}
         </div>

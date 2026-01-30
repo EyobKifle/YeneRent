@@ -1,40 +1,12 @@
-:root {
-  --primary-color: #111827;
-  --primary-hover: #566ebe;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #284982;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-  --radius-md: 0.5rem;
-  --radius-lg: 1rem;
-  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-  --font-family: "Inter", sans-serif;
-}
-
 /* Page layout */
 .signup-page {
-  background-color: white;
+  background-color: var(--body-bg);
   font-family: var(--font-family);
-  margin: 0;
+  margin-right: 280px;
+  align-items: center;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-}
-
-.login-page {
-  background-color: white;
-  font-family: var(--font-family);
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 1;
 }
 
 .signup-main {
@@ -60,18 +32,18 @@
 .signup-header h1 {
   font-size: 2rem;
   font-weight: 700;
-  color: var(--gray-900);
+  color: var(--text-color);
   margin-bottom: 0.5rem;
 }
 
 .signup-header p {
-  color: var(--gray-500);
+  color: var(--text-color-secondary);
   font-size: 0.9rem;
 }
 
 /* Card */
 .signup-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: var(--radius-lg);
   padding: 2rem;
   box-shadow: var(--shadow-lg);
@@ -79,16 +51,7 @@
   min-height: 450px; /* Signup has more fields */
 }
 
-.login-card {
-  background: white;
-  border-radius: var(--radius-lg);
-  padding: 2rem;
-  box-shadow: var(--shadow-lg);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  min-height: 350px; /* Login has fewer fields */
-}
-
-.signup-card:hover, .login-card:hover {
+.signup-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
 }
@@ -109,17 +72,18 @@
 .form-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--gray-700);
+  color: var(--text-color);
   margin-bottom: 0.4rem;
 }
 
 .form-input {
   width: 100%;
   padding: 0.8rem;
-  border: 1px solid var(--gray-300);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: 0.9rem;
-  background-color: white;
+  background-color: var(--card-bg);
+  color: var(--text-color);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -185,7 +149,7 @@
 }
 
 .login-link a {
-  color: #020e23;
+  color: var(--text-color);
   text-decoration: none;
   font-size: 0.85rem;
   transition: color 0.2s ease;
