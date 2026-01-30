@@ -22,6 +22,7 @@ import unitsRouter from './routes/units.js';
 import expensesRouter from './routes/expenses.js';
 import analyticsRouter from './routes/analytics.js';
 import uploadsRouter from './routes/uploads.js';
+import userRequestRouter from './routes/userRequests.js';
 
 
 // Middleware
@@ -129,8 +130,6 @@ app.use('/api/leases', authenticateToken, leasesRouter);
 app.use('/api/units', authenticateToken, unitsRouter);
 app.use('/api/expenses', authenticateToken, expensesRouter);
 app.use('/api/analytics', authenticateToken, analyticsRouter);
-
-// Versioned routes (/api/v1)
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/admin', authenticateToken, adminRouter);
 app.use('/api/v1/uploads', uploadsRouter);
@@ -144,6 +143,7 @@ app.use('/api/v1/leases', authenticateToken, leasesRouter);
 app.use('/api/v1/units', authenticateToken, unitsRouter);
 app.use('/api/v1/expenses', authenticateToken, expensesRouter);
 app.use('/api/v1/analytics', authenticateToken, analyticsRouter);
+app.use('/api/v1/user-requests', authenticateToken, userRequestRouter);
 
 
 // Error handling middleware

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import DetailsModal from '../../components/ui/DetailsModal';
+import NumberInput from '../../components/ui/NumberInput';
 import api from '../../utils/api';
 import '../../styles/pages/Maintenance.css';
 
@@ -17,7 +18,9 @@ const Maintenance = () => {
   const [properties, setProperties] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
-    property: '',
+    propertyId: '',
+    category: 'Other',
+    priority: 'Medium',
     status: 'pending',
     reportedDate: '',
     cost: ''
@@ -92,7 +95,9 @@ const Maintenance = () => {
     try {
       const maintenanceData = {
         title: formData.title,
-        property: formData.property,
+        propertyId: formData.propertyId,
+        category: formData.category,
+        priority: formData.priority,
         status: formData.status,
         reportedDate: formData.reportedDate,
         cost: parseFloat(formData.cost) || 0
@@ -113,7 +118,9 @@ const Maintenance = () => {
       // Reset form and close modal
       setFormData({
         title: '',
-        property: '',
+        propertyId: '',
+        category: 'Other',
+        priority: 'Medium',
         status: 'pending',
         reportedDate: '',
         cost: ''
@@ -269,15 +276,15 @@ const Maintenance = () => {
           <div className="form-group">
             <label htmlFor="property">Property</label>
             <select
-              id="property"
-              name="property"
-              value={formData.property}
+              id="propertyId"
+              name="propertyId"
+              value={formData.propertyId}
               onChange={handleInputChange}
               required
             >
               <option value="">Select Property</option>
               {properties.map(prop => (
-                <option key={prop} value={prop}>{prop}</option>
+                <option key={prop._id} value={prop._id}>{prop.name}</option>
               ))}
             </select>
           </div>

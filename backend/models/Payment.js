@@ -71,22 +71,8 @@ const paymentSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
-});
-
-// Update the updatedAt field before saving
-paymentSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+}, { timestamps: true });
 
 // Index for efficient queries
 paymentSchema.index({ leaseId: 1, date: -1 });

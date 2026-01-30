@@ -31,7 +31,7 @@ const propertySchema = new mongoose.Schema({
     required: true,
     min: 1
   },
-  image: {
+  imageUrl: {
     type: String,
     default: null
   },
@@ -42,21 +42,7 @@ const propertySchema = new mongoose.Schema({
   amenities: [{
     type: String,
     trim: true
-  }],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-// Update the updatedAt field before saving
-propertySchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+  }]
+}, { timestamps: true });
 
 export default mongoose.model('Property', propertySchema);

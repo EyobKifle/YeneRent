@@ -1,19 +1,19 @@
 .metric-card {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e0e0e0;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
   transition: box-shadow 0.2s ease;
 }
 
 .metric-card:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .metric-card-title {
   font-size: 14px;
-  color: #666;
+  color: var(--secondary-color);
   margin-bottom: 8px;
   font-weight: 500;
   text-transform: uppercase;
@@ -23,7 +23,7 @@
 .metric-card-value {
   font-size: 28px;
   font-weight: 700;
-  color: #333;
+  color: var(--text-color);
   margin-bottom: 8px;
 }
 
@@ -35,13 +35,13 @@
 }
 
 .metric-card-trend.positive {
-  color: #10b981;
+  color: var(--success-color);
 }
 
 .metric-card-trend.negative {
-  color: #ef4444;
+  color: var(--danger-color);
 }
 
 .metric-card-trend.neutral {
-  color: #6b7280;
+  color: var(--gray-500);
 }

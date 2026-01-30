@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Property from '../models/Property.js';
+import Unit from '../models/Unit.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -22,6 +23,16 @@ router.get('/', async (req, res) => {
 
     // Build query object
     let query = {};
+
+    // Filter based on user role
+    if (req.user.role === 'tenant') {
+      // Tenants can only see properties they have leases for
+      // For now, allow all - this could be enhanced to filter by leased properties
+    } else if (req.user.role === 'property_manager') {
+      // Property managers can see properties they manage
+      // For now, allow all - this could be enhanced to filter by managed properties
+    }
+    // Admins, owners, and customers can see all properties
 
     // Search functionality
     if (search) {
@@ -97,13 +108,13 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/properties - Create a new property
-router.post('/', authorizeRoles('admin','property_manager'), [
+router.post('/', authorizeRoles('owner','admin','property_manager','customer'), [
   body('name').trim().isLength({ min: 1 }).withMessage('Property name is required'),
   body('address').trim().isLength({ min: 1 }).withMessage('Property address is required'),
   body('type').isIn(['Apartment', 'Villa', 'Office', 'Commercial', 'House']).withMessage('Invalid property type'),
   body('taxType').isIn(['property-only', 'withholding-annual', 'withholding-property', 'all-taxes']).withMessage('Invalid tax type'),
   body('rent').isNumeric().withMessage('Rent must be a number'),
-  body('units').isNumeric().withMessage('Units must be a number')
+  body('units').isArray().withMessage('Units must be an array')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -111,9 +122,27 @@ router.post('/', authorizeRoles('admin','property_manager'), [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const property = new Property(req.body);
+    const { units, ...propertyData } = req.body;
+    propertyData.units = units.length; // Set units count
+
+    const property = new Property(propertyData);
     await property.save();
-    res.status(201).json(property);
+
+    // Create units
+    const createdUnits = [];
+    for (const unitData of units) {
+      const unit = new Unit({
+        ...unitData,
+        propertyId: property._id
+      });
+      await unit.save();
+      createdUnits.push(unit);
+    }
+
+    res.status(201).json({
+      ...property.toObject(),
+      createdUnits
+    });
   } catch (error) {
     console.error('Error creating property:', error);
     if (error.code === 11000) {
@@ -124,7 +153,7 @@ router.post('/', authorizeRoles('admin','property_manager'), [
 });
 
 // PUT /api/properties/:id - Update a property
-router.put('/:id', authorizeRoles('admin','property_manager'), [
+router.put('/:id', authorizeRoles('owner','admin','property_manager'), [
   body('name').optional().trim().isLength({ min: 1 }).withMessage('Property name cannot be empty'),
   body('address').optional().trim().isLength({ min: 1 }).withMessage('Property address cannot be empty'),
   body('type').optional().isIn(['Apartment', 'Villa', 'Office', 'Commercial', 'House']).withMessage('Invalid property type'),

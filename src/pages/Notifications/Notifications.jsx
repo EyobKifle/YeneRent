@@ -13,6 +13,10 @@ export default function NotificationsPage() {
   useEffect(() => {
     (async () => {
       try {
+        // Fetch admin messages from notifications API
+        const adminMessages = await api.get('notifications')
+        console.log('Admin messages:', adminMessages)
+
         const leases = await api.get('leases')
         const payments = await api.get('payments')
         const maintenance = await api.get('maintenance')
@@ -20,6 +24,21 @@ export default function NotificationsPage() {
         const properties = await api.get('properties')
 
         const notifs = []
+
+        // Admin messages
+        if (adminMessages?.data) {
+          adminMessages.data.forEach(msg => {
+            notifs.push({
+              id: `admin-${msg._id}`,
+              type: 'admin-message',
+              message: msg.title,
+              date: msg.createdAt,
+              priority: msg.type === 'admin' ? 'high' : 'medium',
+              read: msg.read,
+              metadata: msg
+            })
+          })
+        }
 
         // Lease expirations
         const today = new Date()
@@ -120,12 +139,25 @@ export default function NotificationsPage() {
         ) : (
           <div className="notifications-list">
             {notifications.map(notif => (
-              <div key={notif.id} className={`notification-item ${notif.priority}`}>
+              <div key={notif.id} className={`notification-item ${notif.priority} ${notif.read ? 'read' : 'unread'}`}>
                 <div className="notification-content">
                   <p>{notif.message}</p>
                   <span className="notification-date">{formatDate(notif.date)}</span>
+                  {notif.type === 'admin-message' && (
+                    <span className="notification-type">Admin Message</span>
+                  )}
                 </div>
-                <Button variant="secondary" size="small">View</Button>
+                {notif.type === 'admin-message' ? (
+                  <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => window.location.href = `/notifications/${notif.metadata._id}`}
+                  >
+                    View Details
+                  </Button>
+                ) : (
+                  <Button variant="secondary" size="small">View</Button>
+                )}
               </div>
             ))}
           </div>

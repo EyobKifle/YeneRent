@@ -68,20 +68,11 @@ const documentSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
-});
+}, { timestamps: true });
 
 // Update the updatedAt field before saving
 documentSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
   // Check if document is expired
   if (this.expiryDate && new Date() > this.expiryDate) {
     this.isExpired = true;

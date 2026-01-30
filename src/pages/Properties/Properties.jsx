@@ -1,17 +1,23 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/pages/Properties.css';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+import NumberInput from '../../components/ui/NumberInput';
 import api from '../../utils/api';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Properties = () => {
+  console.log('Properties component rendered');
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const { isLoggedIn, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -23,6 +29,22 @@ const Properties = () => {
     image: null,
     units: []
   });
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        console.log('Fetching properties...');
+        const response = await api.getProperties();
+        console.log('Properties response:', response);
+        setProperties(response.properties || []);
+      } catch (error) {
+        console.error('Error fetching properties:', error);
+        console.error('Error details:', error.message);
+      }
+    };
+
+    fetchProperties();
+  }, []);
 
   const filteredProperties = useMemo(() => {
     return properties.filter(prop =>
@@ -90,7 +112,7 @@ const Properties = () => {
         taxType: formData.taxType,
         description: formData.description,
         imageUrl,
-        units: processedUnits
+        units: processedUnits // Send actual units array
       };
 
       // Create property
@@ -210,10 +232,10 @@ const Properties = () => {
 
       <div id="property-list" className={viewMode}>
         {filteredProperties.map(prop => (
-          <div key={prop.id} className="property-card">
+          <div key={prop._id} className="property-card" onClick={() => navigate(`/units?propertyId=${prop._id}`)}>
             <div className="property-image-container">
-              {prop.image ? (
-                <img src={prop.image} alt={prop.name} className="property-image" />
+              {prop.imageUrl ? (
+                <img src={prop.imageUrl} alt={prop.name} className="property-image" />
               ) : (
                 <div className="property-placeholder">
                   <i className="fa-solid fa-building"></i>

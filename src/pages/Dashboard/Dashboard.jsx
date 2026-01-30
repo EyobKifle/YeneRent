@@ -80,9 +80,24 @@ export default function DashboardPage() {
   }, [properties, tenants, payments, leases, user])
 
   const recentActivity = useMemo(() => {
-    const sorted = [...tenants].sort((a,b)=> new Date(b.moveInDate) - new Date(a.moveInDate))
+    const tenantActivities = tenants.filter(tenant => tenant.moveInDate).map(tenant => ({
+      ...tenant,
+      activityType: 'tenant',
+      activityDate: new Date(tenant.moveInDate),
+      displayName: tenant.name,
+      activity: 'New Tenant Added'
+    }))
+    const propertyActivities = properties.filter(property => property.createdAt).map(property => ({
+      ...property,
+      activityType: 'property',
+      activityDate: new Date(property.createdAt),
+      displayName: property.name,
+      activity: 'New Property Added'
+    }))
+    const allActivities = [...tenantActivities, ...propertyActivities]
+    const sorted = allActivities.sort((a,b) => b.activityDate - a.activityDate)
     return sorted.slice(0,3)
-  }, [tenants])
+  }, [tenants, properties])
 
   const activityRows = useMemo(() => {
     return recentActivity.length === 0 ? [{ id: 'no-activity', type: 'empty' }] : recentActivity.map(tenant => ({ ...tenant, type: 'activity' }))
@@ -90,12 +105,12 @@ export default function DashboardPage() {
 
   const expiringLeases = useMemo(() => {
     const today = new Date();
-    const sixtyDaysFromNow = new Date();
-    sixtyDaysFromNow.setDate(today.getDate() + 60);
+    const fiveDaysFromNow = new Date();
+    fiveDaysFromNow.setDate(today.getDate() + 5);
 
     return leases.filter(lease => {
         const endDate = new Date(lease.endDate);
-        return endDate >= today && endDate <= sixtyDaysFromNow;
+        return endDate >= today && endDate <= fiveDaysFromNow;
     }).sort((a, b) => new Date(a.endDate) - new Date(b.endDate));
   }, [leases]);
 
@@ -180,10 +195,10 @@ export default function DashboardPage() {
                   row.type === 'empty' ? (
                     <tr key="no-activity"><td colSpan={3} className="text-center p-4">{t('No recent activity.')}</td></tr>
                   ) : (
-                    <tr key={row.id || `tenant-${index}`}>
-                      <td>{t('New Tenant Added')}</td>
-                      <td>{row.name}</td>
-                      <td>{formatDate(row.moveInDate)}</td>
+                    <tr key={row._id || `activity-${index}`}>
+                      <td>{row.activity}</td>
+                      <td>{row.displayName}</td>
+                      <td>{formatDate(row.activityDate)}</td>
                     </tr>
                   )
                 ))}
@@ -206,10 +221,10 @@ export default function DashboardPage() {
             <div className="lease-expirations">
                 {expiringLeases.length > 0 ? (
                     expiringLeases.map(lease => {
-                        const tenant = tenants.find(t => t.id === lease.tenantId);
-                        const property = properties.find(p => p.id === lease.propertyId);
+                        const tenant = tenants.find(t => t._id === lease.tenantId);
+                        const property = properties.find(p => p._id === lease.propertyId);
                         return (
-                            <div key={lease.id} className="lease-expiration-item">
+                            <div key={lease._id} className="lease-expiration-item">
                                 <div>
                                     <p>{tenant?.name || 'N/A'}</p>
                                     <p className="text-sm text-gray-500">{property?.name || 'N/A'}</p>
@@ -219,7 +234,7 @@ export default function DashboardPage() {
                         );
                     })
                 ) : (
-                    <p className="text-center text-gray-500">{t('No leases are expiring in the next 60 days.')}</p>
+                    <p className="text-center text-gray-500">{t('No leases are expiring in the next 5 days.')}</p>
                 )}
             </div>
         </Card>

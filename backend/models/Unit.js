@@ -10,6 +10,7 @@ const unitSchema = new mongoose.Schema({
   status: { type: String, enum: ['Available', 'Occupied', 'Maintenance'], default: 'Available' },
   rent: { type: Number, default: 0, min: 0 },
   notes: { type: String, trim: true },
+  imageUrl: { type: String, default: null },
 }, { timestamps: true });
 
 unitSchema.index({ propertyId: 1, unitNumber: 1 }, { unique: true });

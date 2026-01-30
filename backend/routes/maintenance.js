@@ -11,6 +11,16 @@ router.get('/', async (req, res) => {
     const { propertyId, unitId, status, category } = req.query;
     let query = {};
 
+    // Filter based on user role
+    if (req.user.role === 'tenant') {
+      // Tenants can only see maintenance requests for their leased units
+      // For now, allow all - this could be enhanced to filter by leased units
+    } else if (req.user.role === 'property_manager') {
+      // Property managers can see maintenance for properties they manage
+      // For now, allow all - this could be enhanced to filter by managed properties
+    }
+    // Admins, owners, and customers can see all maintenance requests
+
     if (propertyId) query.propertyId = propertyId;
     if (unitId) query.unitId = unitId;
     if (status) query.status = status;
@@ -94,7 +104,7 @@ router.put('/:id', authorizeRoles('admin','property_manager'), [
   body('title').optional().trim().isLength({ min: 1 }).withMessage('Title cannot be empty'),
   body('category').optional().isIn(['Plumbing', 'Electrical', 'HVAC', 'Structural', 'Appliance', 'Cleaning', 'Security', 'Other']).withMessage('Invalid category'),
   body('priority').optional().isIn(['Low', 'Medium', 'High', 'Urgent']).withMessage('Invalid priority'),
-  body('status').optional().isIn(['Pending', 'In Progress', 'Completed', 'Cancelled']).withMessage('Invalid status'),
+  body('status').optional().isIn(['pending', 'in-progress', 'completed', 'cancelled']).withMessage('Invalid status'),
   body('reportedDate').optional().isISO8601().withMessage('Valid reported date is required'),
   body('cost').optional().isNumeric().withMessage('Cost must be a number'),
   body('assignedTo').optional().isMongoId().withMessage('Valid assigned user ID is required')
@@ -170,7 +180,7 @@ router.get('/priorities/list', async (req, res) => {
 
 router.get('/statuses/list', async (req, res) => {
   try {
-    const statuses = ['Pending', 'In Progress', 'Completed', 'Cancelled'];
+    const statuses = ['pending', 'in-progress', 'completed', 'cancelled'];
     res.json(statuses);
   } catch (error) {
     console.error('Error fetching statuses:', error);

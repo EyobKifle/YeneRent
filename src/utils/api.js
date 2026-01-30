@@ -42,15 +42,20 @@ class ApiClient {
 
   async request(endpoint, options = {}, retryCount = 0) {
     const url = `${this.baseURL}${endpoint}`;
+    const isFormData = options.body instanceof FormData;
     const config = {
       headers: {
-        'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
         ...options.headers,
       },
       credentials: 'include',
       ...options,
     };
+
+    // Don't set Content-Type for FormData, let browser set it
+    if (!isFormData) {
+      config.headers['Content-Type'] = 'application/json';
+    }
 
     // Add authorization header if token exists
     const token = localStorage.getItem('token');
@@ -127,14 +132,14 @@ class ApiClient {
   async post(endpoint, data) {
     return this.request(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data instanceof FormData ? data : JSON.stringify(data),
     });
   }
 
   async put(endpoint, data) {
     return this.request(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: data instanceof FormData ? data : JSON.stringify(data),
     });
   }
 
@@ -329,6 +334,10 @@ const api = {
 
   async updateProfile(data) {
     return apiClient.put('/auth/me', data);
+  },
+
+  async getSubscription() {
+    return apiClient.get('/subscriptions/current');
   },
 
   async forgotPassword(email) {

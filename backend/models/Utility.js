@@ -74,22 +74,8 @@ const utilitySchema = new mongoose.Schema({
   reminderSent: {
     type: Boolean,
     default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
   }
-});
-
-// Update the updatedAt field before saving
-utilitySchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+}, { timestamps: true });
 
 // Index for efficient queries
 utilitySchema.index({ propertyId: 1, status: 1 });

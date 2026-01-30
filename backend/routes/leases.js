@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
       // Property managers can see leases for properties they manage
       // For now, allow all - this could be enhanced to filter by managed properties
     }
-    // Admins can see all leases
+    // Admins, owners, and customers can see all leases
 
     const leases = await Lease.find(query)
       .populate('tenantId', 'name email phone')

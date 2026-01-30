@@ -7,7 +7,19 @@ const router = express.Router();
 // GET /api/tenants - Get all tenants
 router.get('/', async (req, res) => {
   try {
-    const tenants = await Tenant.find()
+    let query = {};
+
+    // Filter based on user role
+    if (req.user.role === 'tenant') {
+      // Tenants can only see their own record
+      query._id = req.user.userId;
+    } else if (req.user.role === 'property_manager') {
+      // Property managers can see tenants for properties they manage
+      // For now, allow all - this could be enhanced to filter by managed properties
+    }
+    // Admins, owners, and customers can see all tenants
+
+    const tenants = await Tenant.find(query)
       .populate('unitId', 'unitNumber')
       .populate('documents', 'name type category')
       .sort({ createdAt: -1 });

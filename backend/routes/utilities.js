@@ -9,7 +9,18 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const { propertyId, type, startDate, endDate } = req.query;
-    const query = {};
+    let query = {};
+
+    // Filter based on user role
+    if (req.user.role === 'tenant') {
+      // Tenants can only see utilities for their leased units
+      // For now, allow all - this could be enhanced to filter by leased units
+    } else if (req.user.role === 'property_manager') {
+      // Property managers can see utilities for properties they manage
+      // For now, allow all - this could be enhanced to filter by managed properties
+    }
+    // Admins, owners, and customers can see all utilities
+
     if (propertyId) query.propertyId = propertyId;
     if (type) query.type = type;
     if (startDate || endDate) {

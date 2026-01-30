@@ -35,8 +35,11 @@ export function formatDate(date, options = {}) {
     const settings = settingsService.getSettings();
     const calendarType = settings.regional.calendar;
 
+    // Handle Date objects or strings
+    const dateObj = date instanceof Date ? date : new Date(typeof date === 'string' ? date.replace(/-/g, '/') : date);
+
     if (calendarType === 'ethiopian') {
-        const etDate = new EthiopianDate(date);
+        const etDate = new EthiopianDate(dateObj);
         // Format to 'DD/MM/YYYY'
         return `${String(etDate.date).padStart(2, '0')}/${String(etDate.month).padStart(2, '0')}/${etDate.year}`;
     } else {
@@ -46,9 +49,7 @@ export function formatDate(date, options = {}) {
             month: 'short',
             day: 'numeric'
         };
-        // Ensure the date object is created correctly, especially on Safari
-        const safeDate = new Date(date.replace(/-/g, '/'));
-        return safeDate.toLocaleDateString('en-US', { ...defaultOptions, ...options });
+        return dateObj.toLocaleDateString('en-US', { ...defaultOptions, ...options });
     }
 }
 
@@ -192,4 +193,24 @@ export function getRelativeTime(dateString) {
     } else {
         return `${years} years ago`;
     }
+}
+
+/**
+ * Formats a number with commas as thousands separators.
+ * @param {number} num - The number to format.
+ * @returns {string} - The formatted number string.
+ */
+export function formatNumberWithCommas(num) {
+    if (num === null || num === undefined || isNaN(num)) return '';
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/**
+ * Parses a string with commas and returns the numeric value.
+ * @param {string} str - The string to parse.
+ * @returns {number} - The parsed number.
+ */
+export function parseNumberWithCommas(str) {
+    if (!str) return 0;
+    return parseFloat(str.replace(/,/g, '')) || 0;
 }

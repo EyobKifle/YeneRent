@@ -1,18 +1,18 @@
 import mongoose from 'mongoose';
-import User from './models/User.js';
+import Property from './models/Property.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-async function checkUsers() {
+async function checkProperties() {
   try {
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://yenerent_dev:12345@yenerent-dev.nuzl3ey.mongodb.net/YeneRent?retryWrites=true&w=majority&appName=YeneRent-Dev');
     console.log('Connected to MongoDB');
 
-    const users = await User.find({}, 'name email role isActive');
-    console.log(`Found ${users.length} users:`);
-    users.forEach(user => {
-      console.log(`- ${user.name} (${user.email}) - Role: ${user.role} - Active: ${user.isActive}`);
+    const properties = await Property.find({});
+    console.log(`Found ${properties.length} properties:`);
+    properties.forEach(prop => {
+      console.log(`- ${prop.name} (${prop._id})`);
     });
 
     await mongoose.disconnect();
@@ -21,4 +21,4 @@ async function checkUsers() {
   }
 }
 
-checkUsers();
+checkProperties();

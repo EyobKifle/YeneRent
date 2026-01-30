@@ -5,6 +5,88 @@ import Button from '../../components/ui/Button'
 import api from '../../utils/api'
 import './Profile.css'
 
+const UserRequestForm = ({ onRequestCreated }) => {
+  const [formData, setFormData] = useState({
+    type: 'support',
+    title: '',
+    description: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!formData.title.trim() || !formData.description.trim()) {
+      setMessage('Please fill in all fields.')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await api.post('user-requests', formData)
+      setMessage('Request submitted successfully!')
+      setFormData({ type: 'support', title: '', description: '' })
+      if (onRequestCreated) onRequestCreated()
+    } catch (error) {
+      setMessage(error.message || 'Failed to submit request.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="user-request-form">
+      <h4>Submit a Request</h4>
+      {message && (
+        <div className={`message ${message.includes('success') ? 'success' : 'error'}`}>
+          {message}
+        </div>
+      )}
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="request-type">Request Type</label>
+          <select
+            id="request-type"
+            value={formData.type}
+            onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+          >
+            <option value="support">Support</option>
+            <option value="feature_request">Feature Request</option>
+            <option value="bug_report">Bug Report</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div className="form-group">
+          <label htmlFor="request-title">Title</label>
+          <input
+            type="text"
+            id="request-title"
+            value={formData.title}
+            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            placeholder="Brief title for your request"
+            maxLength="200"
+            required
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="request-description">Description</label>
+          <textarea
+            id="request-description"
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            placeholder="Detailed description of your request"
+            rows="4"
+            required
+          />
+        </div>
+        <Button type="submit" disabled={loading}>
+          {loading ? 'Submitting...' : 'Submit Request'}
+        </Button>
+      </form>
+    </div>
+  )
+}
+
 export default function ProfilePage() {
   const { user, logout } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
@@ -20,6 +102,8 @@ export default function ProfilePage() {
   const [pwdLoading, setPwdLoading] = useState(false)
   const [pwdMessage, setPwdMessage] = useState('')
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '' })
+  const [subscription, setSubscription] = useState(null)
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -30,6 +114,25 @@ export default function ProfilePage() {
         address: user.address || '',
         avatarUrl: user.avatarUrl || ''
       })
+    }
+  }, [user])
+
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      setSubscriptionLoading(true)
+      try {
+        const subscriptionData = await api.getSubscription()
+        setSubscription(subscriptionData)
+      } catch (error) {
+        console.error('Error fetching subscription:', error)
+        // Subscription might not exist, which is fine
+      } finally {
+        setSubscriptionLoading(false)
+      }
+    }
+
+    if (user) {
+      fetchSubscription()
     }
   }, [user])
 
@@ -204,6 +307,46 @@ export default function ProfilePage() {
         </form>
       </Card>
 
+      <Card className="subscription-card">
+        <h3>Subscription</h3>
+        {subscriptionLoading ? (
+          <p>Loading subscription...</p>
+        ) : subscription ? (
+          <div className="subscription-info">
+            <div className="subscription-detail">
+              <span>Current Plan:</span>
+              <span>{subscription.plan.charAt(0).toUpperCase() + subscription.plan.slice(1)}</span>
+            </div>
+            <div className="subscription-detail">
+              <span>Billing Cycle:</span>
+              <span>{subscription.billingCycle}</span>
+            </div>
+            <div className="subscription-detail">
+              <span>Status:</span>
+              <span>{subscription.status}</span>
+            </div>
+            <div className="subscription-detail">
+              <span>Next Billing:</span>
+              <span>{new Date(subscription.nextBillingDate).toLocaleDateString()}</span>
+            </div>
+            <div className="profile-actions">
+              <Button variant="secondary" onClick={() => window.location.href = '/subscription'}>
+                Update Subscription
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="subscription-info">
+            <p>No active subscription found.</p>
+            <div className="profile-actions">
+              <Button variant="primary" onClick={() => window.location.href = '/subscription'}>
+                Choose Plan
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+
       <Card className="password-card">
         <h3>Account Security</h3>
         {pwdMessage && (
@@ -255,6 +398,12 @@ export default function ProfilePage() {
             Logout
           </Button>
         </div>
+      </Card>
+
+      <Card className="requests-card">
+        <h3>Support & Requests</h3>
+        <p>Need help or have suggestions? Submit a request and our team will get back to you.</p>
+        <UserRequestForm />
       </Card>
     </div>
   )

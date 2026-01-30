@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
       // Property managers can see payments for properties they manage
       // For now, allow all - this could be enhanced to filter by managed properties
     }
-    // Admins can see all payments
+    // Admins, owners, and customers can see all payments
 
     if (status) query.status = status;
     if (tenantId && req.user.role !== 'tenant') query.tenantId = tenantId; // Allow filtering by tenantId for non-tenants

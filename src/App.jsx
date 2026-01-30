@@ -20,6 +20,7 @@ import MaintenancePage from './pages/Maintenance/Maintenance.jsx'
 import MaintenanceDetails from './pages/Maintenance/MaintenanceDetails.jsx'
 import MaintenanceEdit from './pages/Maintenance/MaintenanceEdit.jsx'
 import NotificationsPage from './pages/Notifications/Notifications.jsx'
+import MessageDetails from './pages/Notifications/MessageDetails.jsx'
 import PaymentDetails from './pages/Payments/PaymentDetails.jsx'
 import ProfilePage from './pages/Profile/Profile.jsx'
 import SettingsPage from './pages/Settings/Settings.jsx'
@@ -28,6 +29,7 @@ import UnitDetails from './pages/Units/UnitDetails.jsx'
 import UtilitiesPage from './pages/Utilities/Utilities.jsx'
 import UtilityDetails from './pages/Utilities/UtilityDetails.jsx'
 import AdminPage from './pages/Admin/Admin.jsx'
+import SetupPage from './pages/Setup/Setup.jsx'
 
 // Import reusable components
 import Layout from './components/layout/Layout.jsx'
@@ -71,11 +73,13 @@ function App() {
           <Route path="/maintenance/:id" element={<MaintenanceDetails />} />
           <Route path="/maintenance/:id/edit" element={<MaintenanceEdit />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/notifications/:id" element={<MessageDetails />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/utilities" element={<UtilitiesPage />} />
           <Route path="/utilities/:id" element={<UtilityDetails />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/setup" element={<SetupPage />} />
         </Route>
 
         {/* A catch-all route for 404 Not Found pages */}

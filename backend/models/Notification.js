@@ -7,7 +7,7 @@ const notificationSchema = new Schema({
   fromUser: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   title: { type: String, required: true, trim: true, maxlength: 200 },
   message: { type: String, required: true, trim: true },
-  type: { type: String, enum: ['system', 'message', 'alert', 'reminder'], default: 'message' },
+  type: { type: String, enum: ['system', 'message', 'alert', 'reminder', 'admin'], default: 'message' },
   read: { type: Boolean, default: false, index: true },
   readAt: { type: Date, default: null },
   metadata: { type: Schema.Types.Mixed, default: null },

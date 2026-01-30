@@ -86,7 +86,7 @@ router.post('/send', authorizeRoles('owner','admin','property_manager'), [
   body('toUser').isString().trim().notEmpty().withMessage('toUser is required'),
   body('title').isString().trim().isLength({ min: 1, max: 200 }).withMessage('title is required'),
   body('message').isString().trim().isLength({ min: 1 }).withMessage('message is required'),
-  body('type').optional().isIn(['system','message','alert','reminder']).withMessage('Invalid type'),
+  body('type').optional().isIn(['system','message','alert','reminder','admin']).withMessage('Invalid type'),
   body('metadata').optional()
 ], async (req, res) => {
   try {
