@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 
 import User from '../models/User.js';
+import Subscription from '../models/Subscription.js';
+import Storage from '../models/Storage.js';
 import Property from '../models/Property.js';
 import Unit from '../models/Unit.js';
 import Tenant from '../models/Tenant.js';
@@ -21,6 +23,8 @@ const seed = async () => {
     // Clear existing (dev only)
     await Promise.all([
       User.deleteMany({}),
+      Subscription.deleteMany({}),
+      Storage.deleteMany({}),
       Property.deleteMany({}),
       Unit.deleteMany({}),
       Tenant.deleteMany({}),
@@ -32,10 +36,27 @@ const seed = async () => {
 
     // Users
     const password = await bcrypt.hash('Password123!', parseInt(process.env.BCRYPT_ROUNDS || '10', 10));
-    const [admin, manager, tenantUser] = await User.create([
+    const [admin, adminCom, manager, tenantUser] = await User.create([
       { name: 'Admin User', email: 'admin@yenerent.test', role: 'admin', password },
+      { name: 'Admin User (.com)', email: 'admin@yenerent.com', role: 'admin', password },
       { name: 'Manager User', email: 'manager@yenerent.test', role: 'property_manager', password },
       { name: 'Tenant User', email: 'tenant@yenerent.test', role: 'tenant', password },
+    ]);
+
+    // Subscriptions
+    const subscriptions = await Subscription.create([
+      { user: admin._id, plan: 'professional', billingCycle: 'monthly', amount: 99.99, status: 'active', nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+      { user: adminCom._id, plan: 'professional', billingCycle: 'monthly', amount: 99.99, status: 'active', nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+      { user: manager._id, plan: 'basic', billingCycle: 'monthly', amount: 49.99, status: 'active', nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+      { user: tenantUser._id, plan: 'basic', billingCycle: 'monthly', amount: 29.99, status: 'trial', nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+    ]);
+
+    // Storage
+    const storages = await Storage.create([
+      { user: admin._id, usedStorage: 524288000, storageLimit: 1073741824 }, // 500MB used, 1GB limit
+      { user: adminCom._id, usedStorage: 524288000, storageLimit: 1073741824 }, // 500MB used, 1GB limit
+      { user: manager._id, usedStorage: 262144000, storageLimit: 536870912 }, // 250MB used, 512MB limit
+      { user: tenantUser._id, usedStorage: 104857600, storageLimit: 268435456 }, // 100MB used, 256MB limit
     ]);
 
     // Properties
@@ -86,7 +107,9 @@ const seed = async () => {
     ]);
 
     console.log('Seed data created:', {
-      users: [admin.email, manager.email, tenantUser.email],
+      users: [admin.email, adminCom.email, manager.email, tenantUser.email],
+      subscriptions: subscriptions.length,
+      storages: storages.length,
       properties: props.length,
       units: units.length,
       tenants: tenants.length,

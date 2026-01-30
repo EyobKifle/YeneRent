@@ -130,7 +130,7 @@ router.get('/users', async (req, res) => {
         }
       }
     ]);
-    res.json(users);
+    res.json({ data: users });
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
@@ -147,7 +147,7 @@ router.put('/users/:id/role', async (req, res) => {
     // Log the action
     try {
       await AuditLog.create({
-        actor: req.user.id,
+        actor: req.user.userId,
         action: 'role_changed',
         target: user._id,
         details: { oldRole: user.role, newRole: role },
@@ -157,7 +157,7 @@ router.put('/users/:id/role', async (req, res) => {
     }
 
     res.json(user);
-  } catch (error) {
+  } catch  {
     res.status(500).json({ error: 'Failed to update user role' });
   }
 });
@@ -172,7 +172,7 @@ router.put('/users/:id/status', async (req, res) => {
     // Log the action
     try {
       await AuditLog.create({
-        actor: req.user.id,
+        actor: req.user.userId,
         action: isActive ? 'user_activated' : 'user_suspended',
         target: user._id,
       });
@@ -235,7 +235,7 @@ router.put('/subscriptions/:id/retry', async (req, res) => {
     // Log the action
     try {
       await AuditLog.create({
-        actor: req.user.id,
+        actor: req.user.userId,
         action: 'payment_retry_attempted',
         target: subscription.user,
         details: { subscriptionId: subscription._id },
@@ -245,7 +245,7 @@ router.put('/subscriptions/:id/retry', async (req, res) => {
     }
 
     res.json({ message: 'Payment retry initiated' });
-  } catch (error) {
+  } catch  {
     res.status(500).json({ error: 'Failed to retry payment' });
   }
 });
@@ -260,7 +260,7 @@ router.put('/subscriptions/:id/upgrade', async (req, res) => {
     // Log the action
     try {
       await AuditLog.create({
-        actor: req.user.id,
+        actor: req.user.userId,
         action: 'subscription_upgraded',
         target: subscription.user,
         details: { subscriptionId: subscription._id, newPlan, newAmount },
@@ -285,7 +285,7 @@ router.put('/subscriptions/:id/cancel', async (req, res) => {
     // Log the action
     try {
       await AuditLog.create({
-        actor: req.user.id,
+        actor: req.user.userId,
         action: 'subscription_canceled',
         target: subscription.user,
         details: { subscriptionId: subscription._id },
@@ -328,7 +328,7 @@ router.get('/storage', async (req, res) => {
       },
       perUser: storage
     });
-  } catch (error) {
+  } catch  {
     res.status(500).json({ error: 'Failed to fetch storage data' });
   }
 });
@@ -343,7 +343,7 @@ router.put('/storage/:id/limit', async (req, res) => {
     // Log the action
     try {
       await AuditLog.create({
-        actor: req.user.id,
+        actor: req.user.userId,
         action: 'storage_limit_changed',
         target: storage.user,
         details: { newLimit: storageLimit },

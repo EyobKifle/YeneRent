@@ -28,7 +28,7 @@ async function debugLogin() {
     });
 
     // Test password comparison
-    const testPassword = 'admin123';
+    const testPassword = 'Password123!';
     console.log('Testing password:', testPassword);
 
     const isValid = await user.comparePassword(testPassword);

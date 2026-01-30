@@ -5,6 +5,7 @@ import Lease from '../models/Lease.js';
 import Property from '../models/Property.js';
 import Unit from '../models/Unit.js';
 import Tenant from '../models/Tenant.js';
+import Maintenance from '../models/Maintenance.js';
 import TaxCalculator from '../../src/utils/taxCalculator.js';
 
 const router = express.Router();

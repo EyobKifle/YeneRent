@@ -6,8 +6,8 @@ import AlertPanel from '../../components/ui/AlertPanel';
 import './Login.css';
 
 const Login = () => {
-    const [email, setEmail] = useState('demo@user.com'); // Pre-filled for demo
-    const [password, setPassword] = useState('password'); // Pre-filled for demo
+    const [email, setEmail] = useState('admin@yenerent.test'); // Pre-filled for demo
+    const [password, setPassword] = useState('Password123!'); // Pre-filled for demo
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
@@ -46,7 +46,7 @@ const Login = () => {
                                 id="email"
                                 className="form-input"
                                 placeholder="Enter your email"
-                                required
+                                  required
                                 autoComplete="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}

@@ -6,12 +6,14 @@ const Chart = ({ type = 'line', data, title, height = 200 }) => {
     return <div className="chart-placeholder">No data available</div>;
   }
 
-  const maxValue = Math.max(...data.map(item => item.value));
-  const minValue = Math.min(...data.map(item => item.value));
+  const values = data.map(item => item.value);
+  const maxValue = Math.max(...values);
+  const minValue = Math.min(...values);
+  const range = maxValue - minValue || 1; // Avoid division by zero
 
   const getPointPosition = (value, index) => {
-    const x = (index / (data.length - 1)) * 100;
-    const y = ((maxValue - value) / (maxValue - minValue || 1)) * 80 + 10; // 10% margin
+    const x = data.length > 1 ? (index / (data.length - 1)) * 100 : 50;
+    const y = ((maxValue - value) / range) * 80 + 10; // 10% margin
     return { x, y };
   };
 
@@ -85,7 +87,7 @@ const Chart = ({ type = 'line', data, title, height = 200 }) => {
             <div
               key={index}
               className="chart-label"
-              style={{ left: `${(index / (data.length - 1)) * 100}%` }}
+              style={{ left: `${data.length > 1 ? (index / (data.length - 1)) * 100 : 50}%` }}
             >
               {item.label}
             </div>

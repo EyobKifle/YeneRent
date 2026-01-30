@@ -7,6 +7,7 @@ import ProgressBar from '../../components/ui/ProgressBar';
 import AlertPanel from '../../components/ui/AlertPanel';
 import Chart from '../../components/ui/Chart';
 import SideDrawer from '../../components/ui/SideDrawer';
+import EmptyState from '../../components/shared/EmptyState';
 import api from '../../utils/api';
 
 const Admin = () => {
@@ -18,11 +19,13 @@ const Admin = () => {
 
   const fetchData = async (tab) => {
     try {
-      const result = await api.get(`admin/${tab}`);
-      setData(result);
+      console.log(`Fetching admin/${tab} data...`);
+      const response = await api.get(`admin/${tab}`);
+      console.log(`Received data for ${tab}:`, response);
+      setData(response);
     } catch (error) {
       console.error('Error fetching data:', error);
-      alert(`Failed to load ${tab} data. Please try again.`);
+      alert(`Failed to load ${tab} data. Please try again. Error: ${error.message}`);
       setData({}); // Reset data on error
     }
   };
@@ -79,35 +82,42 @@ const Admin = () => {
         {activeTab === 'audit-logs' && <ReportsTab data={data} />}
       </div>
 
-      <SideDrawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title={drawerTitle}
-      >
-        {drawerContent}
-      </SideDrawer>
+  {drawerOpen && (
+  <SideDrawer
+    isOpen={drawerOpen}
+    onClose={() => setDrawerOpen(false)}
+    title={drawerTitle}
+  >
+    {drawerContent}
+  </SideDrawer>
+)}
+
     </div>
   );
 };
 
 const OverviewTab = ({ data }) => {
-  const mrrChartData = data.mrrHistory?.map(item => ({
+  const safeData = data || {};
+  const mrrChartData = safeData.mrrHistory?.map(item => ({
     label: item._id,
-    value: item.total
+    value: item.total || 0
   })) || [];
 
-  const userGrowthData = data.userGrowth?.map(item => ({
+  const userGrowthData = safeData.userGrowth?.map(item => ({
     label: item._id,
-    value: item.newUsers
+    value: item.newUsers || 0
   })) || [];
 
-  const storageGrowthData = data.storageGrowth?.map(item => ({
+  const storageGrowthData = safeData.storageGrowth?.map(item => ({
     label: item._id,
-    value: item.totalStorage
+    value: item.totalStorage || 0
   })) || [];
 
   return (
     <div>
+      {/* Temporary verification - remove after confirming data renders correctly */}
+      <pre>{JSON.stringify(data, null, 2)}</pre>
+
       <div className="metrics-grid">
         <MetricCard
           title="Total Users"
@@ -160,9 +170,15 @@ const OverviewTab = ({ data }) => {
       </div>
 
       <div className="charts-container">
-        <Chart type="line" data={mrrChartData} title="MRR Over Last 6 Months" />
-        <Chart type="bar" data={userGrowthData} title="New Users Growth" />
-        <Chart type="area" data={storageGrowthData} title="Storage Growth" />
+        {mrrChartData.length > 0 && (
+          <Chart type="line" data={mrrChartData} title="MRR Over Last 6 Months" />
+        )}
+        {userGrowthData.length > 0 && (
+          <Chart type="bar" data={userGrowthData} title="New Users Growth" />
+        )}
+        {storageGrowthData.length > 0 && (
+          <Chart type="area" data={storageGrowthData} title="Storage Growth" />
+        )}
       </div>
     </div>
   );
@@ -453,7 +469,7 @@ const ReportsTab = ({ data }) => {
     dateTo: ''
   });
 
-  const filteredData = data.filter(log => {
+  const filteredData = (Array.isArray(data) ? data : []).filter(log => {
     const matchesAction = !filters.action || log.action.includes(filters.action);
     const matchesActor = !filters.actor || log.actor?.name?.toLowerCase().includes(filters.actor.toLowerCase());
     const logDate = new Date(log.createdAt);
@@ -526,10 +542,18 @@ const ReportsTab = ({ data }) => {
         </div>
       </div>
 
-      <DataTable
-        data={filteredData}
-        columns={columns}
-      />
+      {filteredData.length === 0 ? (
+        <EmptyState
+          icon="📋"
+          title="No audit logs found"
+          description="There are no audit logs matching your filters. Try adjusting your search criteria."
+        />
+      ) : (
+        <DataTable
+          data={filteredData}
+          columns={columns}
+        />
+      )}
     </div>
   );
 };

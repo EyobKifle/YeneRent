@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
         role: data.user.role,
       };
       if (data.token) {
-        sessionStorage.setItem('token', data.token);
+        localStorage.setItem('token', data.token);
       }
       setUser(userData);
       setIsLoggedIn(true);
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }) => {
         role: data.user.role,
       };
       if (data.token) {
-        sessionStorage.setItem('token', data.token);
+        localStorage.setItem('token', data.token);
       }
       setUser(userData);
       setIsLoggedIn(true);

@@ -14,15 +14,17 @@ const DataTable = ({
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const [currentPage, setCurrentPage] = useState(1);
 
+  const dataArray = Array.isArray(data) ? data : [];
+
   // Filter data based on search term
   const filteredData = useMemo(() => {
-    if (!searchTerm) return data;
-    return data.filter(item =>
+    if (!searchTerm) return dataArray;
+    return dataArray.filter(item =>
       columns.some(column =>
         String(item[column.key]).toLowerCase().includes(searchTerm.toLowerCase())
       )
     );
-  }, [data, searchTerm, columns]);
+  }, [dataArray, searchTerm, columns]);
 
   // Sort data
   const sortedData = useMemo(() => {
@@ -39,9 +41,10 @@ const DataTable = ({
 
   // Paginate data
   const paginatedData = useMemo(() => {
-    if (!pagination) return sortedData;
+    const sortedDataArray = Array.isArray(sortedData) ? sortedData : [];
+    if (!pagination) return sortedDataArray;
     const startIndex = (currentPage - 1) * pageSize;
-    return sortedData.slice(startIndex, startIndex + pageSize);
+    return sortedDataArray.slice(startIndex, startIndex + pageSize);
   }, [sortedData, currentPage, pageSize, pagination]);
 
   const totalPages = Math.ceil(sortedData.length / pageSize);
@@ -78,72 +81,78 @@ const DataTable = ({
         </div>
       )}
 
-      <div className="data-table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              {columns.map(column => (
-                <th
-                  key={column.key}
-                  className={sortable && column.sortable !== false ? 'sortable' : ''}
-                  onClick={() => handleSort(column.key)}
-                >
-                  {column.label}
-                  {sortConfig.key === column.key && (
-                    <span className="sort-indicator">
-                      {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                    </span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedData.map((item, index) => (
-              <tr key={item._id || index}>
-                {columns.map(column => (
-                  <td key={column.key}>
-                    {column.key === 'actions' ? (
-                      <div>
-                        {column.actions?.map(action => (
-                          <button
-                            key={action.key}
-                            className="action-btn"
-                            onClick={() => handleAction(action.key, item)}
-                          >
-                            {action.label}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      renderCell(item, column)
-                    )}
-                  </td>
+      {dataArray.length === 0 ? (
+        <div className="no-data-message">No data available</div>
+      ) : (
+        <>
+          <div className="data-table-wrapper">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {columns.map(column => (
+                    <th
+                      key={column.key}
+                      className={sortable && column.sortable !== false ? 'sortable' : ''}
+                      onClick={() => handleSort(column.key)}
+                    >
+                      {column.label}
+                      {sortConfig.key === column.key && (
+                        <span className="sort-indicator">
+                          {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedData.map((item, index) => (
+                  <tr key={item._id || index}>
+                    {columns.map(column => (
+                      <td key={column.key}>
+                        {column.key === 'actions' ? (
+                          <div>
+                            {column.actions?.map(action => (
+                              <button
+                                key={action.key}
+                                className="action-btn"
+                                onClick={() => handleAction(action.key, item)}
+                              >
+                                {action.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          renderCell(item, column)
+                        )}
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              </tbody>
+            </table>
+          </div>
 
-      {pagination && totalPages > 1 && (
-        <div className="data-table-pagination">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </button>
-        </div>
+          {pagination && totalPages > 1 && (
+            <div className="data-table-pagination">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <span>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
