@@ -1,9 +1,15 @@
-import { useState, useEffect } from 'react';
-import Modal from './Modal';
-import Button from './Button';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import Button from '../../components/ui/Button';
+import { useLanguage } from '../../contexts/LanguageContext';
+import './TenantEdit.css';
 
-const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
+export default function TenantEdit() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -23,61 +29,45 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
   });
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (isOpen) {
-      fetchUnits();
-      if (tenant) {
-        // Populate form for editing
+    const fetchData = async () => {
+      try {
+        const [unitsData, tenantData] = await Promise.all([
+          api.get('units'),
+          api.get(`/tenants/${id}`)
+        ]);
+        setUnits(unitsData || []);
         setFormData({
-          name: tenant.name || '',
-          email: tenant.email || '',
-          phone: tenant.phone || '',
-          unitId: tenant.unitId || '',
-          moveInDate: tenant.moveInDate || '',
-          moveOutDate: tenant.moveOutDate || '',
-          tinNumber: tenant.tinNumber || '',
-          emergencyContact: tenant.emergencyContact || {
+          name: tenantData.name || '',
+          email: tenantData.email || '',
+          phone: tenantData.phone || '',
+          unitId: tenantData.unitId || '',
+          moveInDate: tenantData.moveInDate || '',
+          moveOutDate: tenantData.moveOutDate || '',
+          tinNumber: tenantData.tinNumber || '',
+          emergencyContact: tenantData.emergencyContact || {
             name: '',
             phone: '',
             relationship: ''
           },
-          status: tenant.status || 'active',
-          notes: tenant.notes || '',
-          idPhotos: tenant.idPhotos || []
+          status: tenantData.status || 'active',
+          notes: tenantData.notes || '',
+          idPhotos: tenantData.idPhotos || []
         });
-      } else {
-        // Reset form for adding
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          unitId: '',
-          moveInDate: '',
-          moveOutDate: '',
-          tinNumber: '',
-          emergencyContact: {
-            name: '',
-            phone: '',
-            relationship: ''
-          },
-          status: 'active',
-          notes: '',
-          idPhotos: []
-        });
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setFetchLoading(false);
       }
-    }
-  }, [isOpen, tenant]);
+    };
 
-  const fetchUnits = async () => {
-    try {
-      const unitsData = await api.get('units');
-      setUnits(unitsData || []);
-    } catch (error) {
-      console.error('Error fetching units:', error);
+    if (id) {
+      fetchData();
     }
-  };
+  }, [id]);
 
   const handleInputChange = (e) => {
     const { name, value, type, files } = e.target;
@@ -92,7 +82,6 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
       }));
     } else if (type === 'file') {
       if (name === 'idPhotos') {
-        // Handle multiple ID photo files
         const newFiles = Array.from(files);
         setFormData(prev => ({
           ...prev,
@@ -110,7 +99,6 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         [name]: value
       }));
     }
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -143,22 +131,26 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
     try {
       let idPhotoUrls = [];
 
-      // Upload ID photos if present
       if (formData.idPhotos.length > 0) {
         for (const photo of formData.idPhotos) {
-          const formDataUpload = new FormData();
-          formDataUpload.append('file', photo);
+          if (photo.url) {
+            // Already uploaded
+            idPhotoUrls.push(photo);
+          } else {
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', photo);
 
-          const uploadResponse = await api.post('uploads/image', formDataUpload, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
+            const uploadResponse = await api.post('uploads/image', formDataUpload, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
 
-          idPhotoUrls.push({
-            url: uploadResponse.url,
-            name: photo.name
-          });
+            idPhotoUrls.push({
+              url: uploadResponse.url,
+              name: photo.name
+            });
+          }
         }
       }
 
@@ -175,55 +167,43 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         idPhotos: idPhotoUrls.length > 0 ? idPhotoUrls : undefined
       };
 
-      let result;
-      if (tenant) {
-        // Update existing tenant
-        result = await api.put(`tenants/${tenant.id}`, tenantData);
-      } else {
-        // Create new tenant
-        result = await api.post('tenants', tenantData);
-      }
-      onTenantAdded(result);
-      handleClose();
+      await api.put(`tenants/${id}`, tenantData);
+      navigate(`/tenants/${id}`);
     } catch (error) {
-      console.error('Error creating tenant:', error);
+      console.error('Error updating tenant:', error);
       if (error.errors) {
         setErrors(error.errors.reduce((acc, err) => ({ ...acc, [err.path]: err.msg }), {}));
       } else if (error.error) {
         setErrors({ general: error.error });
       } else {
-        setErrors({ general: 'Failed to create tenant' });
+        setErrors({ general: 'Failed to update tenant' });
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClose = () => {
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      unitId: '',
-      moveInDate: '',
-      moveOutDate: '',
-      tinNumber: '',
-      emergencyContact: {
-        name: '',
-        phone: '',
-        relationship: ''
-      },
-      status: 'active',
-      notes: '',
-      idPhotos: []
-    });
-    setErrors({});
-    onClose();
+  const handleBack = () => {
+    navigate(`/tenants/${id}`);
   };
 
+  if (fetchLoading) {
+    return <div className="loading">Loading...</div>;
+  }
+
   return (
-    <Modal title={tenant ? "Edit Tenant" : "Add New Tenant"} isOpen={isOpen} onClose={handleClose}>
-      <form onSubmit={handleSubmit} className="modal-form">
+    <div className="tenant-edit-page">
+      <div className="page-header">
+        <div>
+          <Button variant="secondary" onClick={handleBack}>
+            <i className="fa-solid fa-arrow-left"></i> Back to Details
+          </Button>
+          <h1>Edit Tenant</h1>
+          <p>Update tenant information.</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="edit-form">
         {errors.general && (
           <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>
             {errors.general}
@@ -231,7 +211,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         )}
 
         <div className="form-group">
-          <label htmlFor="name">Name *</label>
+          <label htmlFor="name">{t('Name')} *</label>
           <input
             type="text"
             id="name"
@@ -244,7 +224,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="email">Email *</label>
+          <label htmlFor="email">{t('Email')} *</label>
           <input
             type="email"
             id="email"
@@ -257,7 +237,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="phone">Phone *</label>
+          <label htmlFor="phone">{t('Phone')} *</label>
           <input
             type="tel"
             id="phone"
@@ -270,24 +250,24 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="unitId">Unit</label>
+          <label htmlFor="unitId">{t('Unit')}</label>
           <select
             id="unitId"
             name="unitId"
             value={formData.unitId}
             onChange={handleInputChange}
           >
-            <option value="">Select Unit (Optional)</option>
+            <option value="">{t('Select Unit (Optional)')}</option>
             {units.map(unit => (
               <option key={unit.id} value={unit.id}>
-                Unit {unit.unitNumber} - {unit.propertyId?.name || 'Unknown Property'}
+                {t('Unit')} {unit.unitNumber} - {unit.propertyId?.name || t('Unknown Property')}
               </option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="moveInDate">Move-in Date</label>
+          <label htmlFor="moveInDate">{t('Move-in Date')}</label>
           <input
             type="date"
             id="moveInDate"
@@ -298,7 +278,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="moveOutDate">Move-out Date</label>
+          <label htmlFor="moveOutDate">{t('Move-out Date')}</label>
           <input
             type="date"
             id="moveOutDate"
@@ -309,7 +289,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="tinNumber">TIN Number</label>
+          <label htmlFor="tinNumber">{t('TIN Number')}</label>
           <input
             type="text"
             id="tinNumber"
@@ -320,7 +300,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="emergencyContact.name">Emergency Contact Name</label>
+          <label htmlFor="emergencyContact.name">{t('Emergency Contact Name')}</label>
           <input
             type="text"
             id="emergencyContact.name"
@@ -331,7 +311,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="emergencyContact.phone">Emergency Contact Phone</label>
+          <label htmlFor="emergencyContact.phone">{t('Emergency Contact Phone')}</label>
           <input
             type="tel"
             id="emergencyContact.phone"
@@ -342,7 +322,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="emergencyContact.relationship">Emergency Contact Relationship</label>
+          <label htmlFor="emergencyContact.relationship">{t('Emergency Contact Relationship')}</label>
           <input
             type="text"
             id="emergencyContact.relationship"
@@ -353,21 +333,21 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="status">Status</label>
+          <label htmlFor="status">{t('Status')}</label>
           <select
             id="status"
             name="status"
             value={formData.status}
             onChange={handleInputChange}
           >
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="former">Former</option>
+            <option value="active">{t('Active')}</option>
+            <option value="inactive">{t('Inactive')}</option>
+            <option value="former">{t('Former')}</option>
           </select>
         </div>
 
         <div className="form-group">
-          <label htmlFor="notes">Notes</label>
+          <label htmlFor="notes">{t('Notes')}</label>
           <textarea
             id="notes"
             name="notes"
@@ -378,7 +358,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="idPhotos">ID Photos</label>
+          <label htmlFor="idPhotos">{t('ID Photos')}</label>
           <input
             type="file"
             id="idPhotos"
@@ -390,13 +370,13 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
           {formData.idPhotos?.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.5rem' }}>
-                Selected photos ({formData.idPhotos.length}):
+                {t('Selected photos')} ({formData.idPhotos.length}):
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {formData.idPhotos.map((photo, index) => (
                   <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
                     <img
-                      src={URL.createObjectURL(photo)}
+                      src={photo.url || URL.createObjectURL(photo)}
                       alt={`ID Photo ${index + 1}`}
                       style={{
                         width: '80px',
@@ -436,16 +416,14 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-actions">
-          <Button type="button" variant="secondary" onClick={handleClose}>
-            Cancel
+          <Button type="button" variant="secondary" onClick={handleBack}>
+            {t('Cancel')}
           </Button>
           <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? (tenant ? 'Updating...' : 'Adding...') : (tenant ? 'Update Tenant' : 'Add Tenant')}
+            {loading ? t('Updating...') : t('Update Tenant')}
           </Button>
         </div>
       </form>
-    </Modal>
+    </div>
   );
-};
-
-export default AddTenantModal;
+}

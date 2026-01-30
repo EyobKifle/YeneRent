@@ -4,15 +4,51 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 class ApiClient {
   constructor(baseURL) {
     this.baseURL = baseURL;
+    this.cache = new Map(); // Simple in-memory cache
   }
 
-  async request(endpoint, options = {}) {
+  // Simple cache key generator
+  getCacheKey(endpoint, options) {
+    return `${options.method || 'GET'}_${endpoint}`;
+  }
+
+  // Check if we should use cache
+  shouldUseCache(endpoint, options) {
+    return (options.method || 'GET') === 'GET' && !endpoint.includes('?'); // Only cache simple GET requests
+  }
+
+  // Get cached data if available and not expired
+  getCached(endpoint, options) {
+    if (!this.shouldUseCache(endpoint, options)) return null;
+    const key = this.getCacheKey(endpoint, options);
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < 5 * 60 * 1000) { // 5 minutes cache
+      return cached.data;
+    }
+    return null;
+  }
+
+  // Set cache
+  setCache(endpoint, options, data) {
+    if (!this.shouldUseCache(endpoint, options)) return;
+    const key = this.getCacheKey(endpoint, options);
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  // Sleep function for retry delays
+  sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async request(endpoint, options = {}, retryCount = 0) {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache',
         ...options.headers,
       },
+      credentials: 'include',
       ...options,
     };
 
@@ -22,16 +58,63 @@ class ApiClient {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // Check cache for GET requests
+    if (this.shouldUseCache(endpoint, options)) {
+      const cached = this.getCached(endpoint, options);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       const response = await fetch(url, config);
 
+      if (response.status === 304) {
+        // Not Modified - return null or cached data if available
+        return null;
+      }
+
+      if (response.status === 429 && retryCount < 3) {
+        // Rate limited - retry with exponential backoff
+        const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+        console.warn(`Rate limited (429), retrying in ${delay}ms...`);
+        await this.sleep(delay);
+        return this.request(endpoint, options, retryCount + 1);
+      }
+
       if (!response.ok) {
+        // Check if it's a network error that should be retried
+        if ((response.status >= 500 || response.status === 408) && retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.warn(`Server error (${response.status}), retrying in ${delay}ms...`);
+          await this.sleep(delay);
+          return this.request(endpoint, options, retryCount + 1);
+        }
+
         const errorData = await response.json().catch(() => ({}));
+        // Handle validation errors which return { errors: [...] }
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorMessage = errorData.errors.map(err => err.msg || err.message).join(', ');
+          throw new Error(errorMessage);
+        }
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+
+      // Cache successful GET responses
+      this.setCache(endpoint, options, data);
+
+      return data;
     } catch (error) {
+      // Retry on network errors
+      if ((error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < 3) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.warn(`Network error, retrying in ${delay}ms...`, error.message);
+        await this.sleep(delay);
+        return this.request(endpoint, options, retryCount + 1);
+      }
+
       console.error(`API request failed: ${endpoint}`, error);
       throw error;
     }
@@ -258,7 +341,8 @@ const api = {
 
   // Generic methods for backward compatibility
   async get(resource) {
-    const methodName = `get${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    const singular = resource.endsWith('s') ? resource.slice(0, -1) : resource;
+    const methodName = `get${singular.charAt(0).toUpperCase() + singular.slice(1)}`;
     if (typeof this[methodName] === 'function') {
       return this[methodName]();
     }
@@ -266,17 +350,20 @@ const api = {
   },
 
   async create(resource, data) {
-    const methodName = `create${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    const singular = resource.endsWith('s') ? resource.slice(0, -1) : resource;
+    const methodName = `create${singular.charAt(0).toUpperCase() + singular.slice(1)}`;
     return this[methodName](data);
   },
 
   async update(resource, id, data) {
-    const methodName = `update${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    const singular = resource.endsWith('s') ? resource.slice(0, -1) : resource;
+    const methodName = `update${singular.charAt(0).toUpperCase() + singular.slice(1)}`;
     return this[methodName](id, data);
   },
 
   async delete(resource, id) {
-    const methodName = `delete${resource.charAt(0).toUpperCase() + resource.slice(1)}`;
+    const singular = resource.endsWith('s') ? resource.slice(0, -1) : resource;
+    const methodName = `delete${singular.charAt(0).toUpperCase() + singular.slice(1)}`;
     return this[methodName](id);
   },
 

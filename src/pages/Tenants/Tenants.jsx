@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './Tenants.css'
 import { Card } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import AddTenantModal from '../../components/ui/AddTenantModal'
+import DetailsModal from '../../components/ui/DetailsModal'
 import api from '../../utils/api'
 import { useLanguage } from '../../contexts/LanguageContext'
 
 export default function TenantsPage() {
   const { t } = useLanguage()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [tenants, setTenants] = useState([])
   const [properties, setProperties] = useState([])
@@ -15,6 +18,7 @@ export default function TenantsPage() {
   const [leases, setLeases] = useState([])
   const [openActionId, setOpenActionId] = useState(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -29,11 +33,12 @@ export default function TenantsPage() {
 
   useEffect(() => {
     (async () => {
-      const [ts, ps, us, ls] = await Promise.all([
-        api.get('tenants'), api.get('properties'), api.get('units'), api.get('leases')
-      ])
+      const ts = await api.get('tenants')
+      const ps = await api.get('properties')
+      const us = await api.get('units')
+      const ls = await api.get('leases')
       setTenants(ts || [])
-      setProperties(ps || [])
+      setProperties(ps.properties || [])
       setUnits(us || [])
       setLeases(ls || [])
     })()
@@ -41,12 +46,11 @@ export default function TenantsPage() {
 
   const getLeaseStatus = (lease) => {
     if (!lease) return { text: 'No Lease', class: 'status-expired' }
- const today = new Date().setHours(0,0,0,0)
+    const today = new Date().setHours(0,0,0,0)
     // Use a fixed date or a default value that doesn't change on re-render if lease.startDate/endDate is missing
     const start = new Date(lease.startDate || '1970-01-01').setHours(0,0,0,0)
     const end = new Date(lease.endDate || '1970-01-01').setHours(0,0,0,0)
     if (today > end) return { text: 'Expired', class: 'status-expired' }
-   if (today > end) return { text: 'Expired', class: 'status-expired' }
     if (today >= start && today <= end) return { text: 'Active', class: 'status-active' }
     return { text: 'Upcoming', class: 'status-upcoming' }
   }
@@ -60,9 +64,30 @@ export default function TenantsPage() {
     })
   }, [search, tenants, units, properties])
 
-  const handleTenantAdded = (newTenant) => {
-    setTenants(prev => [...prev, newTenant])
+
+
+  const handleViewDetails = (tenant) => {
+    navigate(`/tenants/${tenant.id}`)
   }
+
+  const handleEditTenant = (tenant) => {
+    navigate(`/tenants/${tenant.id}/edit`)
+  }
+
+  const handleDeleteTenant = async (tenant) => {
+    if (window.confirm(t('Are you sure you want to delete this tenant?'))) {
+      try {
+        await api.delete(`tenants/${tenant.id}`)
+        setTenants(prev => prev.filter(t => t.id !== tenant.id))
+        alert(t('Tenant deleted successfully'))
+      } catch (error) {
+        console.error('Failed to delete tenant:', error)
+        alert(t('Failed to delete tenant'))
+      }
+    }
+  }
+
+
 
   return (
     <div className="tenants-page">
@@ -111,19 +136,19 @@ export default function TenantsPage() {
                       <div className="action-dropdown">
                         <button className="action-dropdown-btn" onClick={(e) => {
                           e.stopPropagation();
-                          setOpenActionId(openActionId === t.id ? null : t.id);
+                          setOpenActionId(openActionId === tenant.id ? null : tenant.id);
                         }}>
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         {openActionId === tenant.id && (
                         <div className="dropdown-menu align-right show">
-                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View tenant details'); }}>
+                          <a key="view" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(tenant); }}>
                             <i className="fa-solid fa-eye"></i>{t('View Details')}
                           </a>
-                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Edit tenant'); }}>
+                          <a key="edit" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditTenant(tenant); }}>
                             <i className="fa-solid fa-pencil"></i>{t('Edit')}
                           </a>
-                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Delete tenant'); }}>
+                          <a key="delete" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteTenant(tenant); }}>
                             <i className="fa-solid fa-trash-can"></i>{t('Delete')}
                           </a>
                         </div>
@@ -141,8 +166,11 @@ export default function TenantsPage() {
       <AddTenantModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onTenantAdded={handleTenantAdded}
+        onTenantAdded={(newTenant) => {
+          setTenants(prev => [newTenant, ...prev])
+        }}
       />
+
     </div>
   )
 }

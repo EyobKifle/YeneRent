@@ -54,7 +54,7 @@ app.use(helmet());
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // Limit each IP to 1000 requests per windowMs (increased for development/testing)
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -62,6 +62,14 @@ app.use(limiter);
 
 // Request logging
 app.use(morgan('dev'));
+
+// Cache control middleware for API routes
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
 
 // Body parsers
 app.use(express.json());

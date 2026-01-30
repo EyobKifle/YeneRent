@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import './Navbar.css';
 
@@ -7,20 +7,19 @@ const Navbar = () => {
     const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const location = useLocation();
-    const [pageTitle, setPageTitle] = useState('Rental Management'); // Default title
 
-    // Effect to update page title based on route
-    useEffect(() => {
+    // Memoized page title based on route
+    const pageTitle = useMemo(() => {
         const path = location.pathname;
         // This is a simplified mapping. In a real app, you might have a more robust routing config.
-        if (path.includes('/dashboard')) setPageTitle('Dashboard');
-        else if (path.includes('/properties')) setPageTitle('Properties');
-        else if (path.includes('/analytics')) setPageTitle('Analytics');
-        else if (path.includes('/tenants')) setPageTitle('Tenants');
-        else if (path.includes('/units')) setPageTitle('Units');
-        else if (path.includes('/documents')) setPageTitle('Documents');
-        else if (path.includes('/payments')) setPageTitle('Payment Schedule');
-        else setPageTitle('Rental Management'); // Fallback for other pages
+        if (path.includes('/dashboard')) return 'Dashboard';
+        else if (path.includes('/properties')) return 'Properties';
+        else if (path.includes('/analytics')) return 'Analytics';
+        else if (path.includes('/tenants')) return 'Tenants';
+        else if (path.includes('/units')) return 'Units';
+        else if (path.includes('/documents')) return 'Documents';
+        else if (path.includes('/payments')) return 'Payment Schedule';
+        else return 'Rental Management'; // Fallback for other pages
     }, [location.pathname]);
 
     const toggleSidebar = () => {

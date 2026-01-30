@@ -11,6 +11,7 @@ class SettingsService {
             appearance: { theme: 'light' }, // 'light' or 'dark'
             general: { lastNotificationCheck: null },
             tax: {
+                includeVAT: true,
                 vatRate: 0.15,
                 withholdingTaxRate: 0.15,
                 businessIncomeTaxRate: 0.30,

@@ -243,3 +243,12 @@
     background-color: var(--accent-color);
   }
 }
+
+/* Data Card and Table Container Heights */
+.data-card {
+  height: 500px;
+}
+
+.table-container {
+  height: 500px;
+}

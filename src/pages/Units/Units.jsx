@@ -16,9 +16,9 @@ export default function UnitsPage() {
 
   useEffect(() => {
     (async () => {
-      const [ps, us, ts] = await Promise.all([
-        api.get('properties'), api.get('units'), api.get('tenants')
-      ])
+      const ps = await api.get('properties')
+      const us = await api.get('units')
+      const ts = await api.get('tenants')
       setProperties(ps || [])
       setUnits(us || [])
       setTenants(ts || [])

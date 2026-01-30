@@ -1,12 +1,15 @@
-import { useState, useEffect } from 'react';
+yes import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
+import NumberInput from './NumberInput';
 import api from '../../utils/api';
 
 const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
   const [formData, setFormData] = useState({
     leaseId: '',
     amount: '',
+    type: 'Rent',
+    withholdingAmount: '',
     date: new Date().toISOString().split('T')[0], // Today's date
     dueDate: '',
     method: '',
@@ -26,6 +29,15 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
       fetchLeases();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (formData.amount && formData.type === 'Rent') {
+      const withholding = parseFloat(formData.amount) * 0.15;
+      setFormData(prev => ({ ...prev, withholdingAmount: withholding.toFixed(2) }));
+    } else {
+      setFormData(prev => ({ ...prev, withholdingAmount: '' }));
+    }
+  }, [formData.amount, formData.type]);
 
   const fetchLeases = async () => {
     try {
@@ -102,6 +114,8 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         tenantId: selectedLease.tenantId,
         propertyId: selectedLease.propertyId,
         amount: parseFloat(formData.amount),
+        type: formData.type,
+        withholdingAmount: parseFloat(formData.withholdingAmount) || 0,
         date: formData.date,
         dueDate: formData.dueDate,
         method: formData.method,
@@ -135,6 +149,8 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
     setFormData({
       leaseId: '',
       amount: '',
+      type: 'Rent',
+      withholdingAmount: '',
       date: new Date().toISOString().split('T')[0],
       dueDate: '',
       method: '',
@@ -196,6 +212,37 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
             className={errors.amount ? 'error' : ''}
           />
           {errors.amount && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.amount}</span>}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="type">Payment Type</label>
+          <select
+            id="type"
+            name="type"
+            value={formData.type}
+            onChange={handleInputChange}
+          >
+            <option value="Rent">Rent</option>
+            <option value="Deposit">Deposit</option>
+            <option value="Late Fee">Late Fee</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Utility">Utility</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="withholdingAmount">Withholding Amount</label>
+          <input
+            type="number"
+            id="withholdingAmount"
+            name="withholdingAmount"
+            value={formData.withholdingAmount}
+            onChange={handleInputChange}
+            step="0.01"
+            min="0"
+            readOnly
+          />
         </div>
 
         <div className="form-group">

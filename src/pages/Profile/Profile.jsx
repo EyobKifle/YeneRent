@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { Card } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
+import api from '../../utils/api'
 import './Profile.css'
 
 export default function ProfilePage() {
@@ -16,6 +17,9 @@ export default function ProfilePage() {
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [pwdMessage, setPwdMessage] = useState('')
+  const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '' })
 
   useEffect(() => {
     if (user) {
@@ -40,14 +44,12 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setLoading(true)
     try {
-      // Simulate API call to update profile
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      // In a real app, you'd call an API here
+      await api.updateProfile({ name: formData.name, phone: formData.phone })
       setMessage('Profile updated successfully!')
       setIsEditing(false)
       setTimeout(() => setMessage(''), 3000)
-    } catch {
-      setMessage('Failed to update profile. Please try again.')
+    } catch (e) {
+      setMessage(e.message || 'Failed to update profile. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -203,10 +205,51 @@ export default function ProfilePage() {
       </Card>
 
       <Card className="password-card">
-        <h3>Account Actions</h3>
+        <h3>Account Security</h3>
+        {pwdMessage && (
+          <div className={`message ${pwdMessage.includes('success') ? 'success' : 'error'}`}>
+            {pwdMessage}
+          </div>
+        )}
+        <div className="form-group">
+          <label htmlFor="currentPassword">Current Password</label>
+          <input
+            type="password"
+            id="currentPassword"
+            name="currentPassword"
+            value={pwdForm.currentPassword}
+            onChange={(e) => setPwdForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+          />
+        </div>
+        <div className="form-group">
+          <label htmlFor="newPassword">New Password</label>
+          <input
+            type="password"
+            id="newPassword"
+            name="newPassword"
+            value={pwdForm.newPassword}
+            onChange={(e) => setPwdForm(prev => ({ ...prev, newPassword: e.target.value }))}
+          />
+        </div>
         <div className="profile-actions">
-          <Button variant="secondary" onClick={() => alert('Change password functionality not implemented yet')}>
-            Change Password
+          <Button variant="secondary" onClick={async () => {
+            setPwdLoading(true)
+            setPwdMessage('')
+            try {
+              if (!pwdForm.currentPassword || !pwdForm.newPassword) {
+                setPwdMessage('Please enter current and new password.')
+              } else {
+                await api.updateProfile({ currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword })
+                setPwdMessage('Password updated successfully!')
+                setPwdForm({ currentPassword: '', newPassword: '' })
+              }
+            } catch (e) {
+              setPwdMessage(e.message || 'Failed to change password.')
+            } finally {
+              setPwdLoading(false)
+            }
+          }} disabled={pwdLoading}>
+            {pwdLoading ? 'Updating...' : 'Change Password'}
           </Button>
           <Button variant="danger" onClick={logout}>
             Logout

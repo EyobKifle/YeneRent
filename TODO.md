@@ -1,29 +1,37 @@
-# Login Issue Resolution
+# YeneRent Feature Implementation TODO
 
-## Problem Identified
-The "failed to fetch" error during login was caused by two issues:
-1. CORS configuration issue - backend only allowed ports 5173 and 5174, but frontend was on 5178
-2. Backend server was not running
+## 1. UI Enhancements
+- [ ] Add automatic comma formatting to number inputs in all add methods (properties, tenants, leases, payments, etc.)
+- [ ] Implement automatic withholding tax calculation in payment recording (excluding type)
 
-## Root Cause
-- Frontend running on http://localhost:5178
-- Backend CORS configuration only allowed http://localhost:5173 and http://localhost:5174
-- Backend server was not running, causing ERR_CONNECTION_REFUSED
+## 2. Settings Page Updates
+- [ ] Add VAT settings option (include/exclude VAT, set VAT amount)
+- [ ] Update settingsService to handle VAT preferences
 
-## Solution Applied
-- Updated backend/server.js CORS configuration to include ports 5173-5178
-- Started the backend server using `npm run dev` in the backend directory
-- Server is now running on port 5000 with MongoDB connected
+## 3. Profile Page Enhancements
+- [ ] Display current subscription/package model in profile
+- [ ] Add option to update subscription model with redirect to appropriate page
 
-## Verification Steps
-- [x] Backend server is running on port 5000
-- [x] Frontend is running on port 5178
-- [x] CORS configuration updated to allow port 5178
-- [x] MongoDB connection established
-- [x] Login should now work with admin@yenerent.test / Password123!
+## 4. Setup Page Creation
+- [ ] Create setup page for post-subscription selection
+- [ ] Implement payment process and receipt upload functionality
 
-## Additional Notes
-- The seed data creates admin users with email: admin@yenerent.test and admin@yenerent.com
-- Both use password: Password123!
-- The Login.jsx component has admin@yenerent.test pre-filled, which matches the seed data
-- If you need to seed the database, run: `cd backend && npm run seed`
+## 5. Admin User Request Management
+- [ ] Create user request model and API endpoints
+- [ ] Add admin interface to view user requests
+- [ ] Implement grant/refuse/pending actions with messaging
+- [ ] Add notifications system for user messages
+
+## 6. Notification System Enhancements
+- [ ] Update notifications to show admin messages
+- [ ] Create dedicated page for message details
+
+## 7. Backend Updates
+- [ ] Update models for subscription, requests, notifications
+- [ ] Add API routes for request management
+- [ ] Implement withholding tax calculations in backend
+
+## 8. Testing and Validation
+- [ ] Test all new features
+- [ ] Validate UI changes across different screens
+- [ ] Ensure proper error handling

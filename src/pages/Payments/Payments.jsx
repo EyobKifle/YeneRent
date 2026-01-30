@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { formatCurrency, formatDate, getPaymentStatus, debounce } from '../../utils/utils';
 import { Card } from '../../components/ui/Card';
 import StatsCard from '../../components/ui/StatsCard';
 import Button from '../../components/ui/Button';
 import RecordPaymentModal from '../../components/ui/RecordPaymentModal';
+import DetailsModal from '../../components/ui/DetailsModal';
 import { useLanguage } from '../../contexts/LanguageContext';
 import './Payments.css';
 
@@ -25,6 +27,7 @@ const SimpleTable = ({ headers, data, renderRow }) => (
 
 const Payments = () => {
     const { t } = useLanguage();
+    const navigate = useNavigate();
     const [payments, setPayments] = useState([]);
     const [leases, setLeases] = useState([]);
     const [tenants, setTenants] = useState([]);
@@ -127,6 +130,10 @@ const Payments = () => {
         }
     };
 
+    const handleViewDetails = (payment) => {
+        navigate(`/payments/${payment.id}`);
+    };
+
     if (loading) {
         return <div>Loading...</div>;
     }
@@ -184,7 +191,7 @@ const Payments = () => {
                                         </button>
                                         {openActionId === payment.id && (
                                         <div className="dropdown-menu align-right show">
-                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View payment details'); }}><i className="fa-solid fa-eye"></i>{t('View Details')}</a>
+                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(payment); }}><i className="fa-solid fa-eye"></i>{t('View Details')}</a>
                                             <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download receipt'); }}><i className="fa-solid fa-download"></i>{t('Receipt')}</a>
                                         </div>
                                         )}
@@ -206,6 +213,8 @@ const Payments = () => {
                 onClose={() => setIsRecordModalOpen(false)}
                 onPaymentRecorded={handlePaymentRecorded}
             />
+
+
         </div>
     );
 };

@@ -8,7 +8,19 @@ const router = express.Router();
 // GET /api/leases - Get all leases
 router.get('/', async (req, res) => {
   try {
-    const leases = await Lease.find()
+    let query = {};
+
+    // Filter based on user role
+    if (req.user.role === 'tenant') {
+      // Tenants can only see their own leases
+      query.tenantId = req.user.userId;
+    } else if (req.user.role === 'property_manager') {
+      // Property managers can see leases for properties they manage
+      // For now, allow all - this could be enhanced to filter by managed properties
+    }
+    // Admins can see all leases
+
+    const leases = await Lease.find(query)
       .populate('tenantId', 'name email phone')
       .populate('unitId', 'unitNumber')
       .populate('propertyId', 'name address')

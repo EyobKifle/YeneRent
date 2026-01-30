@@ -2,9 +2,22 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
+import rateLimit from 'express-rate-limit';
 import User from '../models/User.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Rate limiter for login attempts: 50 attempts per 15 minutes
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // Limit each IP to 50 login attempts per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many login attempts from this IP, please try again after 15 minutes.'
+  }
+});
 
 // Generate JWT token
 const generateToken = (userId, role) => {
@@ -20,7 +33,7 @@ router.post('/register', [
   body('name').trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('role').optional().isIn(['admin', 'property_manager', 'tenant']).withMessage('Invalid role')
+  body('role').optional().isIn(['owner', 'admin', 'property_manager', 'tenant', 'customer']).withMessage('Invalid role')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -70,7 +83,7 @@ router.post('/register', [
 // @route   POST /api/auth/login
 // @desc    Authenticate user and get token
 // @access  Public
-router.post('/login', [
+router.post('/login', loginLimiter, [
   body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email'),
   body('password').exists().withMessage('Password is required')
 ], async (req, res) => {
@@ -127,7 +140,7 @@ router.post('/login', [
 // @route   GET /api/auth/me
 // @desc    Get current user profile
 // @access  Private
-router.get('/me', async (req, res) => {
+router.get('/me', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId).select('-password');
     if (!user) {
@@ -145,6 +158,7 @@ router.get('/me', async (req, res) => {
 // @desc    Update current user profile
 // @access  Private
 router.put('/me', [
+  authenticateToken,
   body('name').optional().trim().isLength({ min: 2 }).withMessage('Name must be at least 2 characters'),
   body('phone').optional().trim(),
   body('currentPassword').optional(),
@@ -282,7 +296,7 @@ router.post('/reset-password', [
 // @route   POST /api/auth/send-verification
 // @desc    Send email verification
 // @access  Private
-router.post('/send-verification', async (req, res) => {
+router.post('/send-verification', authenticateToken, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) {

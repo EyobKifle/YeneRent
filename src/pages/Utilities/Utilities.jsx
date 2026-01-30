@@ -1,21 +1,23 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+import NumberInput from '../../components/ui/NumberInput';
 import api from '../../utils/api';
-import { useLanguage } from '../../contexts/LanguageContext';
-import '/src/pages/Utilities/Utilities.css';
+import './Utilities.css';
 
 const Utilities = () => {
-  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [utilities, setUtilities] = useState([]);
+  const [properties, setProperties] = useState([]);
+  const [selectedUtility, setSelectedUtility] = useState(null);
   const [formData, setFormData] = useState({
     type: '',
-    property: '',
+    propertyId: '',
     amount: '',
     dueDate: '',
-    status: 'unpaid',
+    status: 'Unpaid',
     billImage: null
   });
 
@@ -30,19 +32,30 @@ const Utilities = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openActionId]);
 
-  // Mock data - in a real app, this would come from an API
-  const utilities = [
-    { id: 1, type: 'Electricity', property: '123 Main St', amount: 150.00, dueDate: '2023-10-15', status: 'unpaid' },
-    { id: 2, type: 'Water', property: '456 Elm St', amount: 75.50, dueDate: '2023-10-20', status: 'paid' },
-    // Add more mock data as needed
-  ];
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [utilitiesData, propertiesData] = await Promise.all([
+          api.get('utilities'),
+          api.get('properties')
+        ]);
+        setUtilities(utilitiesData || []);
+        setProperties(propertiesData.properties || []);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+      }
+    };
+    fetchData();
+  }, []);
 
   const filteredUtilities = useMemo(() => {
-    return utilities.filter(util =>
-      util.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      util.property.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm, utilities]);
+    return utilities.filter(util => {
+      const property = properties.find(p => p.id === util.propertyId);
+      return util.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             (property?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  }, [searchTerm, utilities, properties]);
 
   const handleAddUtility = () => {
     setIsModalOpen(true);
@@ -71,7 +84,7 @@ const Utilities = () => {
 
       const utilityData = {
         type: formData.type,
-        property: formData.property,
+        propertyId: formData.propertyId,
         amount: parseFloat(formData.amount),
         dueDate: formData.dueDate,
         status: formData.status,
@@ -79,34 +92,78 @@ const Utilities = () => {
         billName
       };
 
-      // In a real app, this would make an API call to save the utility bill
-      console.log('Adding utility bill:', utilityData);
+      if (selectedUtility) {
+        // Update existing utility
+        await api.put(`utilities/${selectedUtility.id}`, utilityData);
+        setUtilities(prev => prev.map(u => u.id === selectedUtility.id ? { ...u, ...utilityData } : u));
+        alert('Utility bill updated successfully');
+      } else {
+        // Create new utility
+        const newUtility = await api.post('utilities', utilityData);
+        setUtilities(prev => [newUtility, ...prev]);
+        alert('Utility bill added successfully');
+      }
 
       // Reset form and close modal
       setFormData({
         type: '',
-        property: '',
+        propertyId: '',
         amount: '',
         dueDate: '',
-        status: 'unpaid',
+        status: 'Unpaid',
         billImage: null
       });
+      setSelectedUtility(null);
       setIsModalOpen(false);
     } catch (error) {
-      console.error('Error adding utility bill:', error);
+      console.error('Error saving utility bill:', error);
+      alert('Failed to save utility bill');
+    }
+  };
+
+  const handleEditUtility = (utility) => {
+    setFormData({
+      type: utility.type || '',
+      propertyId: utility.propertyId || '',
+      amount: utility.amount || '',
+      dueDate: utility.dueDate || '',
+      status: utility.status || 'Unpaid',
+      billImage: null
+    });
+    setSelectedUtility(utility);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteUtility = async (utility) => {
+    if (window.confirm('Are you sure you want to delete this utility bill?')) {
+      try {
+        await api.delete(`utilities/${utility.id}`);
+        setUtilities(prev => prev.filter(u => u.id !== utility.id));
+        alert('Utility bill deleted successfully');
+      } catch (error) {
+        console.error('Failed to delete utility bill:', error);
+        alert('Failed to delete utility bill');
+      }
     }
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const { name, value, type, files } = e.target;
+    if (type === 'file') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0] || null
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const getStatusBadgeClass = (status) => {
-    return status === 'paid' ? 'status-badge status-paid' : 'status-badge status-unpaid';
+    return status === 'Paid' ? 'status-badge status-paid' : 'status-badge status-unpaid';
   };
 
   return (
@@ -146,18 +203,20 @@ const Utilities = () => {
             </tr>
           </thead>
           <tbody id="utilities-table-body">
-            {filteredUtilities.map(util => (
-              <tr key={util.id}>
-                <td>{util.type}</td>
-                <td>{util.property}</td>
-                <td>${util.amount.toFixed(2)}</td>
-                <td>{util.dueDate}</td>
-                <td>
-                  <span className={getStatusBadgeClass(util.status)}>
-                    {util.status.charAt(0).toUpperCase() + util.status.slice(1)}
-                  </span>
-                </td>
-                <td>
+            {filteredUtilities.map(util => {
+              const property = properties.find(p => p.id === util.propertyId);
+              return (
+                <tr key={util.id}>
+                  <td>{util.type}</td>
+                  <td>{property?.name || 'N/A'}</td>
+                  <td>${util.amount ? util.amount.toFixed(2) : '0.00'}</td>
+                  <td>{util.dueDate ? new Date(util.dueDate).toLocaleDateString() : 'N/A'}</td>
+                  <td>
+                    <span className={getStatusBadgeClass(util.status)}>
+                      {util.status.charAt(0).toUpperCase() + util.status.slice(1)}
+                    </span>
+                  </td>
+                  <td>
                   <div className="action-dropdown">
                     <button 
                       className="action-dropdown-btn" 
@@ -170,10 +229,10 @@ const Utilities = () => {
                     </button>
                     {openActionId === util.id && (
                     <div className="dropdown-menu align-right show">
-                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Edit utility bill'); }}>
+                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditUtility(util); }}>
                         <i className="fa-solid fa-pencil"></i>Edit
                       </a>
-                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Delete utility bill'); }}>
+                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteUtility(util); }}>
                         <i className="fa-solid fa-trash-can"></i>Delete
                       </a>
                     </div>
@@ -181,7 +240,7 @@ const Utilities = () => {
                   </div>
                 </td>
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
         </div>
@@ -221,31 +280,30 @@ const Utilities = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="property">Property</label>
+            <label htmlFor="propertyId">Property</label>
             <select
-              id="property"
-              name="property"
-              value={formData.property}
+              id="propertyId"
+              name="propertyId"
+              value={formData.propertyId}
               onChange={handleInputChange}
               required
             >
               <option value="">Select Property</option>
-              <option value="123 Main St">123 Main St</option>
-              <option value="456 Elm St">456 Elm St</option>
-              <option value="789 Oak Ave">789 Oak Ave</option>
+              {properties.map(property => (
+                <option key={property.id} value={property.id}>{property.name}</option>
+              ))}
             </select>
           </div>
 
           <div className="form-group">
             <label htmlFor="amount">Amount ($)</label>
-            <input
-              type="number"
-              id="amount"
-              name="amount"
+            <NumberInput
               value={formData.amount}
-              onChange={handleInputChange}
-              step="0.01"
-              min="0"
+              onChange={(value) => setFormData(prev => ({ ...prev, amount: value }))}
+              placeholder="Enter amount"
+              className="form-input"
+              min={0}
+              step={0.01}
               required
             />
           </div>
@@ -270,8 +328,10 @@ const Utilities = () => {
               value={formData.status}
               onChange={handleInputChange}
             >
-              <option value="unpaid">Unpaid</option>
-              <option value="paid">Paid</option>
+              <option value="Unpaid">Unpaid</option>
+              <option value="Paid">Paid</option>
+              <option value="Overdue">Overdue</option>
+              <option value="Pending">Pending</option>
             </select>
           </div>
 

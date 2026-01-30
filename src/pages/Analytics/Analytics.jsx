@@ -29,11 +29,7 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
-// Utility function to format date-time (assuming it's in utils.js)
-const formatDateTime = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
+
 
 
 // AnalyticsDataService adapted for React
@@ -84,7 +80,8 @@ class AnalyticsDataService {
 
     async _getProperties() {
         if (!this.cache.properties) {
-            this.cache.properties = await this.api.get("properties");
+            const response = await this.api.get("properties");
+            this.cache.properties = response.properties || [];
         }
         return this.cache.properties;
     }
@@ -143,10 +140,6 @@ class AnalyticsDataService {
         const taxData = this.taxCalculator.calculateAllTaxes({ totalRevenue, totalExpenses, paymentsByProperty: incomeByProperty, expenses: filteredExpenses });
 
         const transactions = this._collateTransactions(filteredPayments, filteredExpenses);
-        const auditLog = [
-            { timestamp: new Date().toISOString(), user: "admin@test.com", action: "Generated Report", entity: "Analytics", details: `Date Range: ${start} to ${end}` },
-            { timestamp: "2023-05-10T10:00:00Z", user: "admin@test.com", action: "Created", entity: "Expense", details: "ID: exp-123, Amount: 5000 ETB" },
-        ];
 
         return {
             summary: { totalRevenue, totalExpenses, netProfit, taxData },
@@ -155,7 +148,7 @@ class AnalyticsDataService {
                 expenseByCategory,
                 profitLoss: AnalyticsDataService.getMonthlyProfitLoss(filteredPayments, filteredExpenses, start, end),
             },
-            tables: { transactions, taxSummary: taxData, auditLog },
+            tables: { transactions, taxSummary: taxData },
         };
     }
 
@@ -271,7 +264,7 @@ const Analytics = () => {
                 analyticsDataService.current = new AnalyticsDataService(api, taxCalculator.current);
 
                 const fetchedProperties = await api.get('properties');
-                setProperties(fetchedProperties);
+                setProperties(fetchedProperties.properties || []);
 
                 // Set default date range (last 12 months)
                 const today = new Date();
@@ -642,35 +635,7 @@ const Analytics = () => {
                 </table>
             </div>
 
-            <div className="data-card">
-                <h3>Audit Log</h3>
-                <table id="audit-log-table-body" className="data-table">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>User</th>
-                            <th>Action</th>
-                            <th>Entity</th>
-                            <th>Details</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {reportData && reportData.tables.auditLog.length > 0 ? (
-                            reportData.tables.auditLog.map((row, index) => (
-                                <tr key={index}>
-                                    <td>{formatDateTime(row.timestamp)}</td>
-                                    <td>{row.user}</td>
-                                    <td>{row.action}</td>
-                                    <td>{row.entity}</td>
-                                    <td>{row.details}</td>
-                                </tr>
-                            ))
-                        ) : (
-                            <tr><td colSpan="5">No audit log available</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+
             <div id="report-footer" className="report-footer"></div>
         </div>
     );

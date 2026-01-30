@@ -1,0 +1,142 @@
+/* === Maintenance Edit Page Specific Styles === */
+
+.maintenance-edit-page .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.maintenance-edit-page .page-header h1 {
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.maintenance-edit-page .page-header p {
+    color: var(--gray-600);
+    font-size: 0.9rem;
+}
+
+.edit-form {
+    background-color: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--gray-700);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--gray-200);
+}
+
+.error-message {
+    background-color: #fee;
+    color: #c33;
+    padding: 0.75rem;
+    border-radius: var(--radius-md);
+    border: 1px solid #fcc;
+    margin-bottom: 1rem;
+}
+
+.error-text {
+    color: #c33;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.form-input.error {
+    border-color: #c33;
+}
+
+/* === Responsive Media Queries === */
+
+@media (max-width: 768px) {
+  .maintenance-edit-page .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .maintenance-edit-page .page-header h1 {
+    margin-top: 0;
+    margin-bottom: 0.125rem;
+  }
+
+  .maintenance-edit-page .page-header p {
+    font-size: 0.85rem;
+  }
+
+  .edit-form {
+    padding: 1.5rem;
+    margin: 0 1rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .maintenance-edit-page .page-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .maintenance-edit-page .page-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .maintenance-edit-page .page-header p {
+    font-size: 0.8rem;
+  }
+
+  .edit-form {
+    padding: 1rem;
+    margin: 0 0.5rem;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 0.625rem;
+    font-size: 0.9rem;
+  }
+}

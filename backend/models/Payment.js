@@ -21,6 +21,17 @@ const paymentSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+  type: {
+    type: String,
+    required: true,
+    enum: ['Rent', 'Deposit', 'Late Fee', 'Maintenance', 'Utility', 'Other'],
+    default: 'Rent'
+  },
+  withholdingAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   date: {
     type: Date,
     required: true

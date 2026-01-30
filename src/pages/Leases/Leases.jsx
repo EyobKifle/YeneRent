@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { get, create, update, remove } from '../../utils/api';
+import { useNavigate } from 'react-router-dom';
+import api from '../../utils/api';
 import { formatDate, formatCurrency, debounce, generateId, readFileAsDataURL } from '../../utils/utils';
 import Button from '../../components/ui/Button';
+import NumberInput from '../../components/ui/NumberInput';
 import './Leases.css';
 
 // Placeholder for a generic Modal component (to be replaced by a proper UI component later)
@@ -24,6 +26,7 @@ const Modal = ({ title, children, onClose, isOpen, maxWidth = '500px' }) => {
 };
 
 const Leases = () => {
+    const navigate = useNavigate();
     const [leases, setLeases] = useState([]);
     const [tenants, setTenants] = useState([]);
     const [properties, setProperties] = useState([]);
@@ -59,15 +62,15 @@ const Leases = () => {
         try {
             setLoading(true);
             const [fetchedLeases, fetchedTenants, fetchedProperties, fetchedUnits] = await Promise.all([
-                get(LEASE_KEY),
-                get(TENANT_KEY),
-                get(PROPERTY_KEY),
-                get(UNIT_KEY)
+                api.get(LEASE_KEY),
+                api.get(TENANT_KEY),
+                api.get(PROPERTY_KEY),
+                api.get(UNIT_KEY)
             ]);
-            setLeases(fetchedLeases);
-            setTenants(fetchedTenants);
-            setProperties(fetchedProperties);
-            setUnits(fetchedUnits);
+            setLeases(fetchedLeases || []);
+            setTenants(fetchedTenants || []);
+            setProperties(fetchedProperties.properties || []);
+            setUnits(fetchedUnits || []);
         } catch (err) {
             console.error('Failed to fetch data:', err);
             setError('Failed to load data.');
@@ -187,21 +190,21 @@ const Leases = () => {
 
         try {
             if (currentLease && !isRenewal) {
-                await update(LEASE_KEY, leaseData.id, leaseData);
+                await api.put(`${LEASE_KEY}/${leaseData.id}`, leaseData);
                 setLeases(leases.map(l => l.id === leaseData.id ? leaseData : l));
                 alert('Lease updated successfully!');
             } else {
-                await create(LEASE_KEY, leaseData);
-                setLeases([...leases, leaseData]);
+                const newLease = await api.post(LEASE_KEY, leaseData);
+                setLeases([...leases, newLease]);
                 alert('Lease created successfully!');
             }
 
             // Update tenant and unit records (simplified for now, actual logic might be more complex)
             const tenantToUpdate = tenants.find(t => t.id === leaseData.tenantId);
-            if (tenantToUpdate) await update(TENANT_KEY, tenantToUpdate.id, { ...tenantToUpdate, unitId: leaseData.unitId });
+            if (tenantToUpdate) await api.put(`${TENANT_KEY}/${tenantToUpdate.id}`, { ...tenantToUpdate, unitId: leaseData.unitId });
 
             const unitToUpdate = units.find(u => u.id === leaseData.unitId);
-            if (unitToUpdate) await update(UNIT_KEY, unitToUpdate.id, { ...unitToUpdate, tenantId: leaseData.tenantId });
+            if (unitToUpdate) await api.put(`${UNIT_KEY}/${unitToUpdate.id}`, { ...unitToUpdate, tenantId: leaseData.tenantId });
 
             // TODO: Generate or update payment schedule for this lease
             // This would involve creating/updating payment records based on leaseData
@@ -216,9 +219,8 @@ const Leases = () => {
 
     // --- Lease Details Modal Logic ---
     const openLeaseDetailsModal = useCallback((lease) => {
-        setCurrentLease(lease);
-        setIsDetailsModalOpen(true);
-    }, []);
+        navigate(`/leases/${lease.id}`);
+    }, [navigate]);
 
     const renderDocPreview = (url, name) => {
         if (!url) return <p className="text-sm text-gray-500">Not provided</p>;
@@ -234,8 +236,7 @@ const Leases = () => {
     const handleAddLease = () => openLeaseModal();
 
     const handleEditLease = (leaseId) => {
-        const leaseToEdit = leases.find(l => l.id === leaseId);
-        if (leaseToEdit) openLeaseModal(leaseToEdit);
+        navigate(`/leases/${leaseId}/edit`);
     };
 
     const handleRenewLease = (leaseId) => {
@@ -246,7 +247,7 @@ const Leases = () => {
     const handleDeleteLease = async (leaseId) => {
         if (window.confirm('Are you sure you want to delete this lease?')) {
             try {
-                await remove(LEASE_KEY, leaseId);
+                await api.delete(LEASE_KEY, leaseId);
                 setLeases(leases.filter(l => l.id !== leaseId));
                 alert('Lease deleted successfully!');
                 fetchAllData(); // Re-fetch all data to ensure consistency
@@ -257,10 +258,7 @@ const Leases = () => {
         }
     };
 
-    const debouncedSearch = useCallback(
-        debounce((value) => setSearchTerm(value), 300),
-        []
-    );
+    const debouncedSearch = useRef(debounce((value) => setSearchTerm(value), 300)).current;
 
     if (loading) {
         return <div className="loading">Loading leases...</div>;
@@ -335,16 +333,16 @@ const Leases = () => {
                                                         </button>
                                                         {openActionId === lease.id && (
                                                         <div className="dropdown-menu align-right show">
-                                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); openLeaseDetailsModal(lease); }}>
+                                                            <a key="view" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); openLeaseDetailsModal(lease); }}>
                                                                 <i className="fa-solid fa-eye"></i>View Details
                                                             </a>
-                                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditLease(lease.id); }}>
+                                                            <a key="edit" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditLease(lease.id); }}>
                                                                 <i className="fa-solid fa-pencil"></i>Edit
                                                             </a>
-                                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleRenewLease(lease.id); }}>
+                                                            <a key="renew" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleRenewLease(lease.id); }}>
                                                                 <i className="fa-solid fa-rotate"></i>Renew
                                                             </a>
-                                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteLease(lease.id); }}>
+                                                            <a key="delete" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteLease(lease.id); }}>
                                                                 <i className="fa-solid fa-trash-can"></i>Delete
                                                             </a>
                                                         </div>
@@ -459,25 +457,23 @@ const Leases = () => {
                     <div className="form-row-columns">
                         <div className="form-group">
                             <label htmlFor="lease-rent" className="form-label">Monthly Rent (ETB)</label>
-                            <input
-                                type="number"
-                                id="lease-rent"
-                                className="form-input"
+                            <NumberInput
                                 value={formRentAmount}
-                                onChange={(e) => setFormRentAmount(e.target.value)}
+                                onChange={(value) => setFormRentAmount(value)}
+                                placeholder="Enter rent amount"
+                                className="form-input"
+                                min={0}
                                 required
-                                min="0"
                             />
                         </div>
                         <div className="form-group">
                             <label htmlFor="lease-withholding" className="form-label">Withholding Amount (Optional)</label>
-                            <input
-                                type="number"
-                                id="lease-withholding"
-                                className="form-input"
+                            <NumberInput
                                 value={formWithholdingAmount}
-                                onChange={(e) => setFormWithholdingAmount(e.target.value)}
-                                min="0"
+                                onChange={(value) => setFormWithholdingAmount(value)}
+                                placeholder="Enter withholding amount"
+                                className="form-input"
+                                min={0}
                             />
                         </div>
                     </div>

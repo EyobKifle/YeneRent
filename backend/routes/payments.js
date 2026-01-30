@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Payment from '../models/Payment.js';
+import Lease from '../models/Lease.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -11,8 +12,18 @@ router.get('/', async (req, res) => {
     const { status, tenantId, leaseId, startDate, endDate } = req.query;
     let query = {};
 
+    // Filter based on user role
+    if (req.user.role === 'tenant') {
+      // Tenants can only see their own payments
+      query.tenantId = req.user.userId;
+    } else if (req.user.role === 'property_manager') {
+      // Property managers can see payments for properties they manage
+      // For now, allow all - this could be enhanced to filter by managed properties
+    }
+    // Admins can see all payments
+
     if (status) query.status = status;
-    if (tenantId) query.tenantId = tenantId;
+    if (tenantId && req.user.role !== 'tenant') query.tenantId = tenantId; // Allow filtering by tenantId for non-tenants
     if (leaseId) query.leaseId = leaseId;
     if (startDate || endDate) {
       query.dueDate = {};
@@ -74,7 +85,9 @@ router.post('/', authorizeRoles('admin','property_manager'), [
   body('leaseId').isMongoId().withMessage('Invalid lease ID'),
   body('tenantId').isMongoId().withMessage('Invalid tenant ID'),
   body('propertyId').isMongoId().withMessage('Invalid property ID'),
-  body('method').isIn(['Bank Transfer', 'Cash', 'CBE Birr', 'Dashen Bank', 'Awash International Bank', 'Other']).withMessage('Invalid payment method')
+  body('method').isIn(['Bank Transfer', 'Cash', 'CBE Birr', 'Dashen Bank', 'Awash International Bank', 'Other']).withMessage('Invalid payment method'),
+  body('type').isIn(['Rent', 'Deposit', 'Late Fee', 'Maintenance', 'Utility', 'Other']).withMessage('Invalid payment type'),
+  body('withholdingAmount').optional().isNumeric().withMessage('Withholding amount must be a number')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

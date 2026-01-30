@@ -13,13 +13,11 @@ export default function NotificationsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const [leases, payments, maintenance, tenants, properties] = await Promise.all([
-          api.get('leases'),
-          api.get('payments'),
-          api.get('maintenance'),
-          api.get('tenants'),
-          api.get('properties')
-        ])
+        const leases = await api.get('leases')
+        const payments = await api.get('payments')
+        const maintenance = await api.get('maintenance')
+        const tenants = await api.get('tenants')
+        const properties = await api.get('properties')
 
         const notifs = []
 

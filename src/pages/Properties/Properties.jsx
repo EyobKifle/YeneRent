@@ -293,15 +293,13 @@ const Properties = () => {
 
           <div className="form-group">
             <label htmlFor="rent">Default Monthly Rent (ETB)</label>
-            <input
-              type="number"
-              id="rent"
-              name="rent"
+            <NumberInput
               value={formData.rent}
-              onChange={handleInputChange}
-              required
-              min="0"
+              onChange={(value) => setFormData(prev => ({ ...prev, rent: value }))}
+              placeholder="Enter rent amount"
               className="form-input"
+              min={0}
+              required
             />
           </div>
 
@@ -380,43 +378,43 @@ const Properties = () => {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Bedrooms</label>
-                      <input
-                        type="number"
+                      <NumberInput
                         value={unit.bedrooms}
-                        onChange={(e) => handleUnitChange(index, 'bedrooms', parseInt(e.target.value) || 0)}
+                        onChange={(value) => handleUnitChange(index, 'bedrooms', value)}
+                        placeholder="Enter bedrooms"
                         className="form-input"
-                        min="0"
+                        min={0}
                       />
                     </div>
                     <div className="form-group">
                       <label>Bathrooms</label>
-                      <input
-                        type="number"
+                      <NumberInput
                         value={unit.bathrooms}
-                        onChange={(e) => handleUnitChange(index, 'bathrooms', parseInt(e.target.value) || 0)}
+                        onChange={(value) => handleUnitChange(index, 'bathrooms', value)}
+                        placeholder="Enter bathrooms"
                         className="form-input"
-                        min="0"
+                        min={0}
                       />
                     </div>
                     <div className="form-group">
                       <label>Size (sq ft)</label>
-                      <input
-                        type="number"
+                      <NumberInput
                         value={unit.size}
-                        onChange={(e) => handleUnitChange(index, 'size', parseInt(e.target.value) || 0)}
+                        onChange={(value) => handleUnitChange(index, 'size', value)}
+                        placeholder="Enter size"
                         className="form-input"
-                        min="0"
+                        min={0}
                       />
                     </div>
                   </div>
                   <div className="form-group">
                     <label>Rent (ETB)</label>
-                    <input
-                      type="number"
+                    <NumberInput
                       value={unit.rent}
-                      onChange={(e) => handleUnitChange(index, 'rent', parseInt(e.target.value) || 0)}
+                      onChange={(value) => handleUnitChange(index, 'rent', value)}
+                      placeholder="Enter rent"
                       className="form-input"
-                      min="0"
+                      min={0}
                     />
                   </div>
                   <div className="form-group">

@@ -1,12 +1,20 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+import DetailsModal from '../../components/ui/DetailsModal';
+import api from '../../utils/api';
 import '../../styles/pages/Maintenance.css';
 
 const Maintenance = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedMaintenance, setSelectedMaintenance] = useState(null);
+  const [maintenanceRequests, setMaintenanceRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     property: '',
@@ -26,34 +34,25 @@ const Maintenance = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openActionId]);
 
-  // Mock data - in a real app, this would come from an API
-  const maintenanceRequests = [
-    {
-      id: 1,
-      title: 'Leaky Faucet',
-      property: 'Sunset Apartments',
-      status: 'pending',
-      reportedDate: '2023-10-15',
-      cost: 150.00
-    },
-    {
-      id: 2,
-      title: 'Broken Light Fixture',
-      property: 'Green Valley Villas',
-      status: 'in-progress',
-      reportedDate: '2023-10-20',
-      cost: 75.50
-    },
-    {
-      id: 3,
-      title: 'Clogged Drain',
-      property: 'Sunset Apartments',
-      status: 'completed',
-      reportedDate: '2023-10-10',
-      cost: 200.00
-    },
-    // Add more mock data as needed
-  ];
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [maintenanceData, propertiesData] = await Promise.all([
+          api.get('maintenance'),
+          api.get('properties')
+        ]);
+        setMaintenanceRequests(maintenanceData || []);
+        setProperties(propertiesData.properties || []);
+      } catch (error) {
+        console.error('Failed to fetch maintenance data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const filteredRequests = useMemo(() => {
     return maintenanceRequests.filter(request =>
@@ -67,19 +66,64 @@ const Maintenance = () => {
     setIsModalOpen(true);
   };
 
-  const handleFormSubmit = (e) => {
+  const handleViewDetails = (request) => {
+    navigate(`/maintenance/${request.id}`);
+  };
+
+  const handleEditRequest = (request) => {
+    navigate(`/maintenance/${request.id}/edit`);
+  };
+
+  const handleDeleteRequest = async (request) => {
+    if (window.confirm('Are you sure you want to delete this maintenance request?')) {
+      try {
+        await api.delete(`maintenance/${request.id}`);
+        setMaintenanceRequests(prev => prev.filter(r => r.id !== request.id));
+        alert('Maintenance request deleted successfully');
+      } catch (error) {
+        console.error('Failed to delete maintenance request:', error);
+        alert('Failed to delete maintenance request');
+      }
+    }
+  };
+
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    // In a real app, this would make an API call
-    console.log('Adding maintenance request:', formData);
-    // Reset form and close modal
-    setFormData({
-      title: '',
-      property: '',
-      status: 'pending',
-      reportedDate: '',
-      cost: ''
-    });
-    setIsModalOpen(false);
+    try {
+      const maintenanceData = {
+        title: formData.title,
+        property: formData.property,
+        status: formData.status,
+        reportedDate: formData.reportedDate,
+        cost: parseFloat(formData.cost) || 0
+      };
+
+      if (selectedMaintenance) {
+        // Update existing request
+        await api.put(`maintenance/${selectedMaintenance.id}`, maintenanceData);
+        setMaintenanceRequests(prev => prev.map(r => r.id === selectedMaintenance.id ? { ...r, ...maintenanceData } : r));
+        alert('Maintenance request updated successfully');
+      } else {
+        // Create new request
+        const newRequest = await api.post('maintenance', maintenanceData);
+        setMaintenanceRequests(prev => [newRequest, ...prev]);
+        alert('Maintenance request added successfully');
+      }
+
+      // Reset form and close modal
+      setFormData({
+        title: '',
+        property: '',
+        status: 'pending',
+        reportedDate: '',
+        cost: ''
+      });
+      setSelectedMaintenance(null);
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Failed to save maintenance request:', error);
+      alert('Failed to save maintenance request');
+    }
   };
 
   const handleInputChange = (e) => {
@@ -131,61 +175,68 @@ const Maintenance = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="table-container">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Property</th>
-              <th>Status</th>
-              <th>Reported Date</th>
-              <th>Cost</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="maintenance-list">
-            {filteredRequests.map(request => (
-              <tr key={request.id}>
-                <td>{request.title}</td>
-                <td>{request.property}</td>
-                <td>
-                  <span className={getStatusBadgeClass(request.status)}>
-                    {formatStatus(request.status)}
-                  </span>
-                </td>
-                <td>{request.reportedDate}</td>
-                <td>${request.cost.toFixed(2)}</td>
-                <td>
-                  <div className="action-dropdown">
-                    <button 
-                      className="action-dropdown-btn" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setOpenActionId(openActionId === request.id ? null : request.id);
-                      }}
-                    >
-                      <i className="fa-solid fa-ellipsis-vertical"></i>
-                    </button>
-                    {openActionId === request.id && (
-                    <div className="dropdown-menu align-right show">
-                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('View maintenance request'); }}>
-                        <i className="fa-solid fa-eye"></i>View Details
-                      </a>
-                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Edit maintenance request'); }}>
-                        <i className="fa-solid fa-pencil"></i>Edit
-                      </a>
-                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Delete maintenance request'); }}>
-                        <i className="fa-solid fa-trash-can"></i>Delete
-                      </a>
-                    </div>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
+        {loading ? (
+          <div className="loading-indicator">
+            <i className="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading maintenance requests...</p>
+          </div>
+        ) : (
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Property</th>
+                  <th>Status</th>
+                  <th>Reported Date</th>
+                  <th>Cost</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="maintenance-list">
+                {filteredRequests.map(request => (
+                  <tr key={request.id}>
+                    <td>{request.title}</td>
+                    <td>{request.property}</td>
+                    <td>
+                      <span className={getStatusBadgeClass(request.status)}>
+                        {formatStatus(request.status)}
+                      </span>
+                    </td>
+                    <td>{request.reportedDate}</td>
+                    <td>${request.cost ? request.cost.toFixed(2) : '0.00'}</td>
+                    <td>
+                      <div className="action-dropdown">
+                        <button
+                          className="action-dropdown-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenActionId(openActionId === request.id ? null : request.id);
+                          }}
+                        >
+                          <i className="fa-solid fa-ellipsis-vertical"></i>
+                        </button>
+                        {openActionId === request.id && (
+                        <div className="dropdown-menu align-right show">
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(request); }}>
+                            <i className="fa-solid fa-eye"></i>View Details
+                          </a>
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditRequest(request); }}>
+                            <i className="fa-solid fa-pencil"></i>Edit
+                          </a>
+                          <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteRequest(request); }}>
+                            <i className="fa-solid fa-trash-can"></i>Delete
+                          </a>
+                        </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {filteredRequests.length === 0 && (
@@ -225,10 +276,9 @@ const Maintenance = () => {
               required
             >
               <option value="">Select Property</option>
-              <option value="Sunset Apartments">Sunset Apartments</option>
-              <option value="Green Valley Villas">Green Valley Villas</option>
-              <option value="123 Main St">123 Main St</option>
-              <option value="456 Elm St">456 Elm St</option>
+              {properties.map(prop => (
+                <option key={prop} value={prop}>{prop}</option>
+              ))}
             </select>
           </div>
 
@@ -260,15 +310,12 @@ const Maintenance = () => {
 
           <div className="form-group">
             <label htmlFor="cost">Estimated Cost ($)</label>
-            <input
-              type="number"
-              id="cost"
-              name="cost"
+            <NumberInput
               value={formData.cost}
-              onChange={handleInputChange}
-              step="0.01"
-              min="0"
+              onChange={(value) => setFormData(prev => ({ ...prev, cost: value }))}
               placeholder="0.00"
+              min={0}
+              step={0.01}
             />
           </div>
 
@@ -282,7 +329,7 @@ const Maintenance = () => {
           </div>
         </form>
       </Modal>
-      <div id="maintenance-details-modal"></div>
+
     </div>
   );
 };

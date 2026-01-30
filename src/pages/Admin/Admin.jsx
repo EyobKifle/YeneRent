@@ -22,11 +22,21 @@ const Admin = () => {
       console.log(`Fetching admin/${tab} data...`);
       const response = await api.get(`admin/${tab}`);
       console.log(`Received data for ${tab}:`, response);
-      setData(response);
+      // Normalize response per tab shape
+      if (tab === 'users') {
+        setData(response?.data || []);
+      } else {
+        setData(response);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       alert(`Failed to load ${tab} data. Please try again. Error: ${error.message}`);
-      setData({}); // Reset data on error
+      // Reset data on error to appropriate empty structure
+      if (tab === 'users' || tab === 'subscriptions' || tab === 'audit-logs') {
+        setData([]);
+      } else {
+        setData({});
+      }
     }
   };
 

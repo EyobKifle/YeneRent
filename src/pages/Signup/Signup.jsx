@@ -13,9 +13,35 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [passwordWarning, setPasswordWarning] = useState('');
   const navigate = useNavigate();
   const { signup } = useAuth();
   const { t } = useLanguage();
+
+  const checkPasswordStrength = (password) => {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    if (password.length < minLength) {
+      return 'Password must be at least 8 characters long';
+    }
+    if (!hasUpperCase) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!hasLowerCase) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!hasNumbers) {
+      return 'Password must contain at least one number';
+    }
+    if (!hasSpecialChar) {
+      return 'Password must contain at least one special character';
+    }
+    return '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +68,7 @@ const Signup = () => {
             <p data-i18n="Create your account">{t('Create your account')}</p>
           </div>
           {error && <AlertPanel type="error" message={error} />}
+          {passwordWarning && <AlertPanel type="warning" message={passwordWarning} />}
           <form id="signup-form" className="signup-form" onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="name" className="form-label" data-i18n="Full Name">Full Name</label>
@@ -82,7 +109,11 @@ const Signup = () => {
                   required
                   autoComplete="new-password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    const warning = checkPasswordStrength(e.target.value);
+                    setPasswordWarning(warning);
+                  }}
                 />
                 <button
                   type="button"
