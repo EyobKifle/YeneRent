@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Document from '../models/Document.js';
-import { authorizeRoles } from '../middleware/roles.js';
+
 
 const router = express.Router();
 
@@ -80,9 +80,9 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/documents - upload a new document
 router.post('/',
-  authorizeRoles('admin','property_manager'),
   upload.single('file'),
   [
+    body('name').optional().isString().trim(),
     body('category').isIn(['Lease Agreement', 'Payment Receipt', 'Tax Document', 'Tenant ID', 'Property Deed', 'Insurance Policy', 'Maintenance Report', 'Other']).withMessage('Invalid category'),
     body('propertyId').optional().isMongoId(),
     body('tenantId').optional().isMongoId(),
@@ -106,7 +106,7 @@ router.post('/',
       const url = `/uploads/${path.basename(file.path)}`;
 
       const doc = new Document({
-        name: path.basename(file.filename, path.extname(file.filename)),
+        name: req.body.name || path.basename(file.filename, path.extname(file.filename)),
         originalName: file.originalname,
         type: file.mimetype,
         size: file.size,
@@ -133,7 +133,6 @@ router.post('/',
 
 // PUT /api/documents/:id - update document metadata
 router.put('/:id',
-  authorizeRoles('admin','property_manager'),
   [
     body('category').optional().isIn(['Lease Agreement', 'Payment Receipt', 'Tax Document', 'Tenant ID', 'Property Deed', 'Insurance Policy', 'Maintenance Report', 'Other']).withMessage('Invalid category'),
     body('propertyId').optional().isMongoId(),
@@ -170,7 +169,7 @@ router.put('/:id',
 );
 
 // DELETE /api/documents/:id - delete a document and its file
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const doc = await Document.findByIdAndDelete(req.params.id);
     if (!doc) return res.status(404).json({ error: 'Document not found' });

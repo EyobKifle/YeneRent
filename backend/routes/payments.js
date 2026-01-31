@@ -79,7 +79,7 @@ router.get('/lease/:leaseId', async (req, res) => {
 });
 
 // POST /api/payments - Create a new payment
-router.post('/', authorizeRoles('admin','property_manager'), [
+router.post('/', [
   body('amount').isNumeric().withMessage('Amount must be a number'),
   body('dueDate').isISO8601().withMessage('Due date must be a valid date'),
   body('leaseId').isMongoId().withMessage('Invalid lease ID'),
@@ -108,7 +108,7 @@ router.post('/', authorizeRoles('admin','property_manager'), [
 });
 
 // PUT /api/payments/:id - Update a payment
-router.put('/:id', authorizeRoles('admin','property_manager'), [
+router.put('/:id', [
   body('amount').optional().isNumeric().withMessage('Amount must be a number'),
   body('dueDate').optional().isISO8601().withMessage('Due date must be a valid date'),
   body('leaseId').optional().isMongoId().withMessage('Invalid lease ID'),
@@ -145,7 +145,7 @@ router.put('/:id', authorizeRoles('admin','property_manager'), [
 });
 
 // DELETE /api/payments/:id - Delete a payment
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const payment = await Payment.findByIdAndDelete(req.params.id);
     if (!payment) {
@@ -322,6 +322,7 @@ router.get('/analytics/summary', async (req, res) => {
 });
 
 // POST /api/payments/generate - Generate payments for active leases
+ 
 router.post('/generate/monthly', authorizeRoles('admin','property_manager'), async (req, res) => {
   try {
     const { month, year } = req.query;

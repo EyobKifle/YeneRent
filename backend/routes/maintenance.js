@@ -99,7 +99,7 @@ router.post('/', authorizeRoles('admin','property_manager'), [
 });
 
 // PUT /api/maintenance/:id - Update a maintenance request
-router.put('/:id', authorizeRoles('admin','property_manager'), [
+router.put('/:id', [
   body('propertyId').optional().isMongoId().withMessage('Valid property ID is required'),
   body('title').optional().trim().isLength({ min: 1 }).withMessage('Title cannot be empty'),
   body('category').optional().isIn(['Plumbing', 'Electrical', 'HVAC', 'Structural', 'Appliance', 'Cleaning', 'Security', 'Other']).withMessage('Invalid category'),
@@ -138,7 +138,7 @@ router.put('/:id', authorizeRoles('admin','property_manager'), [
 });
 
 // DELETE /api/maintenance/:id - Delete a maintenance request
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const maintenance = await Maintenance.findByIdAndDelete(req.params.id);
     if (!maintenance) {

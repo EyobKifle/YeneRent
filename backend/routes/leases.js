@@ -1,3 +1,4 @@
+ 
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Lease from '../models/Lease.js';
@@ -15,11 +16,8 @@ router.get('/', async (req, res) => {
       // Tenants can only see their own leases
       query.tenantId = req.user.userId;
     } else if (req.user.role === 'property_manager') {
-      // Property managers can see leases for properties they manage
-      // For now, allow all - this could be enhanced to filter by managed properties
-    }
     // Admins, owners, and customers can see all leases
-
+    }
     const leases = await Lease.find(query)
       .populate('tenantId', 'name email phone')
       .populate('unitId', 'unitNumber')
@@ -67,7 +65,7 @@ router.get('/tenant/:tenantId', async (req, res) => {
 });
 
 // POST /api/leases - Create a new lease
-router.post('/', authorizeRoles('admin','property_manager'), [
+router.post('/', authorizeRoles('admin','customer','owner','property_manager'), [
   body('tenantId').isMongoId().withMessage('Valid tenant ID is required'),
   body('unitId').isMongoId().withMessage('Valid unit ID is required'),
   body('propertyId').isMongoId().withMessage('Valid property ID is required'),
@@ -117,7 +115,7 @@ router.post('/', authorizeRoles('admin','property_manager'), [
 });
 
 // PUT /api/leases/:id - Update a lease
-router.put('/:id', authorizeRoles('admin','property_manager'), [
+router.put('/:id', [
   body('tenantId').optional().isMongoId().withMessage('Valid tenant ID is required'),
   body('unitId').optional().isMongoId().withMessage('Valid unit ID is required'),
   body('propertyId').optional().isMongoId().withMessage('Valid property ID is required'),
@@ -154,7 +152,7 @@ router.put('/:id', authorizeRoles('admin','property_manager'), [
 });
 
 // DELETE /api/leases/:id - Delete a lease
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const lease = await Lease.findByIdAndDelete(req.params.id);
     if (!lease) {

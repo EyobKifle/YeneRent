@@ -2,7 +2,6 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Property from '../models/Property.js';
 import Unit from '../models/Unit.js';
-import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
 
@@ -108,7 +107,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/properties - Create a new property
-router.post('/', authorizeRoles('owner','admin','property_manager','customer'), [
+router.post('/', [
   body('name').trim().isLength({ min: 1 }).withMessage('Property name is required'),
   body('address').trim().isLength({ min: 1 }).withMessage('Property address is required'),
   body('type').isIn(['Apartment', 'Villa', 'Office', 'Commercial', 'House']).withMessage('Invalid property type'),
@@ -153,7 +152,7 @@ router.post('/', authorizeRoles('owner','admin','property_manager','customer'), 
 });
 
 // PUT /api/properties/:id - Update a property
-router.put('/:id', authorizeRoles('owner','admin','property_manager'), [
+router.put('/:id', [
   body('name').optional().trim().isLength({ min: 1 }).withMessage('Property name cannot be empty'),
   body('address').optional().trim().isLength({ min: 1 }).withMessage('Property address cannot be empty'),
   body('type').optional().isIn(['Apartment', 'Villa', 'Office', 'Commercial', 'House']).withMessage('Invalid property type'),
@@ -191,7 +190,7 @@ router.put('/:id', authorizeRoles('owner','admin','property_manager'), [
 });
 
 // DELETE /api/properties/:id - Delete a property
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const property = await Property.findByIdAndDelete(req.params.id);
     if (!property) {

@@ -61,7 +61,17 @@ const tenantSchema = new mongoose.Schema({
   notes: {
     type: String,
     trim: true
-  }
+  },
+  idPhotos: [{
+    url: {
+      type: String,
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    }
+  }]
 }, { timestamps: true });
 
 export default mongoose.model('Tenant', tenantSchema);

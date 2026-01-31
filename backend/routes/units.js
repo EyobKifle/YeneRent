@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import Unit from '../models/Unit.js';
 import { authorizeRoles } from '../middleware/roles.js';
+import Unit from '../models/Unit.js';
 
 const router = express.Router();
 
@@ -49,7 +49,8 @@ router.get('/property/:propertyId', async (req, res) => {
 });
 
 // POST /api/units - Create a new unit
-router.post('/', authorizeRoles('admin','property_manager'), [
+ 
+router.post('/', authorizeRoles('admin','owner','customer','property_manager'), [
   body('propertyId').isMongoId().withMessage('Valid property ID is required'),
   body('unitNumber').trim().isLength({ min: 1 }).withMessage('Unit number is required'),
   body('rent').optional().isNumeric().withMessage('Rent must be a number')
@@ -74,7 +75,7 @@ router.post('/', authorizeRoles('admin','property_manager'), [
 });
 
 // PUT /api/units/:id - Update a unit
-router.put('/:id', authorizeRoles('admin','property_manager'), [
+router.put('/:id', [
   body('propertyId').optional().isMongoId().withMessage('Valid property ID is required'),
   body('unitNumber').optional().trim().isLength({ min: 1 }).withMessage('Unit number cannot be empty'),
   body('rent').optional().isNumeric().withMessage('Rent must be a number')
@@ -109,7 +110,7 @@ router.put('/:id', authorizeRoles('admin','property_manager'), [
 });
 
 // DELETE /api/units/:id - Delete a unit
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const unit = await Unit.findByIdAndDelete(req.params.id);
     if (!unit) {
