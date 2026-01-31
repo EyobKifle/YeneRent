@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const maintenanceSchema = new mongoose.Schema({
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   propertyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
   unitId: { type: mongoose.Schema.Types.ObjectId, ref: 'Unit', default: null },
   assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
@@ -13,6 +14,12 @@ const maintenanceSchema = new mongoose.Schema({
   completedDate: { type: Date, default: null },
   cost: { type: Number, default: 0, min: 0 },
   notes: { type: String, trim: true },
+  receiptUrl: { type: String, default: null },
+  receiptName: { type: String, default: null },
+  images: [{
+    url: { type: String, required: true },
+    caption: { type: String, trim: true }
+  }]
 }, { timestamps: true });
 
 export default mongoose.model('Maintenance', maintenanceSchema);

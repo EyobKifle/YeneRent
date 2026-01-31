@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Utility from '../models/Utility.js';
+import Property from '../models/Property.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -12,14 +13,12 @@ router.get('/', async (req, res) => {
     let query = {};
 
     // Filter based on user role
-    if (req.user.role === 'tenant') {
-      // Tenants can only see utilities for their leased units
-      // For now, allow all - this could be enhanced to filter by leased units
-    } else if (req.user.role === 'property_manager') {
-      // Property managers can see utilities for properties they manage
-      // For now, allow all - this could be enhanced to filter by managed properties
+    // Admins can see all utilities
+    // Owners/Customers/PMs can only see utilities for their properties
+    if (req.user.role !== 'admin' && req.user.role !== 'tenant') {
+       const properties = await Property.find({ ownerId: req.user.userId }).distinct('_id');
+       query.propertyId = { $in: properties };
     }
-    // Admins, owners, and customers can see all utilities
 
     if (propertyId) query.propertyId = propertyId;
     if (type) query.type = type;
@@ -67,7 +66,18 @@ router.post('/', authorizeRoles('admin','property_manager','customer','tenant'),
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const item = new Utility(req.body);
+    // Verify ownership
+    if (req.user.role !== 'admin' && req.user.role !== 'tenant') {
+      const ownsProperty = await Property.exists({ _id: req.body.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) {
+        return res.status(403).json({ error: 'Access denied: You do not own this property' });
+      }
+    }
+
+    const item = new Utility({
+      ...req.body,
+      ownerId: req.user.userId
+    });
     await item.save();
     await item.populate('propertyId', 'name address');
     res.status(201).json(item);
@@ -91,11 +101,20 @@ router.put('/:id', authorizeRoles('admin','property_manager','customer','tenant'
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const item = await Utility.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('propertyId', 'name address');
+    let item;
+    if (req.user.role === 'admin') {
+      item = await Utility.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('propertyId', 'name address');
+    } else {
+      item = await Utility.findOneAndUpdate(
+        { _id: req.params.id, ownerId: req.user.userId },
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('propertyId', 'name address');
+    }
 
     if (!item) return res.status(404).json({ error: 'Utility not found' });
 
@@ -110,7 +129,12 @@ router.put('/:id', authorizeRoles('admin','property_manager','customer','tenant'
 // DELETE /api/utilities/:id - delete utility
 router.delete('/:id', authorizeRoles('admin','property_manager','customer','tenant'), async (req, res) => {
   try {
-    const item = await Utility.findByIdAndDelete(req.params.id);
+    let item;
+    if (req.user.role === 'admin') {
+      item = await Utility.findByIdAndDelete(req.params.id);
+    } else {
+      item = await Utility.findOneAndDelete({ _id: req.params.id, ownerId: req.user.userId });
+    }
     if (!item) return res.status(404).json({ error: 'Utility not found' });
     res.json({ message: 'Utility deleted successfully' });
   } catch (err) {

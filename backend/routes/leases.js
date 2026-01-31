@@ -2,6 +2,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Lease from '../models/Lease.js';
+import Property from '../models/Property.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -15,9 +16,11 @@ router.get('/', async (req, res) => {
     if (req.user.role === 'tenant') {
       // Tenants can only see their own leases
       query.tenantId = req.user.userId;
-    } else if (req.user.role === 'property_manager') {
-    // Admins, owners, and customers can see all leases
+    } else if (req.user.role === 'owner' || req.user.role === 'customer' || req.user.role === 'property_manager') {
+      // Owners/Customers/PMs can only see leases they own
+      query.ownerId = req.user.userId;
     }
+    // Admins can see all leases
     const leases = await Lease.find(query)
       .populate('tenantId', 'name email phone')
       .populate('unitId', 'unitNumber')
@@ -79,6 +82,14 @@ router.post('/', authorizeRoles('admin','customer','owner','property_manager'), 
       return res.status(400).json({ errors: errors.array() });
     }
 
+    // Verify ownership
+    if (req.user.role !== 'admin') {
+      const ownsProperty = await Property.exists({ _id: req.body.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) {
+        return res.status(403).json({ error: 'Access denied: You do not own this property' });
+      }
+    }
+
     // Check if unit is already leased for the given period
     const existingLease = await Lease.findOne({
       unitId: req.body.unitId,
@@ -102,7 +113,11 @@ router.post('/', authorizeRoles('admin','customer','owner','property_manager'), 
       return res.status(400).json({ error: 'Unit is already leased for the specified period' });
     }
 
-    const lease = new Lease(req.body);
+
+    const lease = new Lease({
+      ...req.body,
+      ownerId: req.user.userId
+    });
     await lease.save();
     await lease.populate('tenantId', 'name email phone');
     await lease.populate('unitId', 'unitNumber');
@@ -129,13 +144,24 @@ router.put('/:id', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const lease = await Lease.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('tenantId', 'name email phone')
-     .populate('unitId', 'unitNumber')
-     .populate('propertyId', 'name address');
+    let lease;
+    if (req.user.role === 'admin') {
+      lease = await Lease.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('tenantId', 'name email phone')
+       .populate('unitId', 'unitNumber')
+       .populate('propertyId', 'name address');
+    } else {
+      lease = await Lease.findOneAndUpdate(
+        { _id: req.params.id, ownerId: req.user.userId },
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('tenantId', 'name email phone')
+       .populate('unitId', 'unitNumber')
+       .populate('propertyId', 'name address');
+    }
 
     if (!lease) {
       return res.status(404).json({ error: 'Lease not found' });
@@ -154,7 +180,12 @@ router.put('/:id', [
 // DELETE /api/leases/:id - Delete a lease
 router.delete('/:id', async (req, res) => {
   try {
-    const lease = await Lease.findByIdAndDelete(req.params.id);
+    let lease;
+    if (req.user.role === 'admin') {
+      lease = await Lease.findByIdAndDelete(req.params.id);
+    } else {
+      lease = await Lease.findOneAndDelete({ _id: req.params.id, ownerId: req.user.userId });
+    }
     if (!lease) {
       return res.status(404).json({ error: 'Lease not found' });
     }

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const unitSchema = new mongoose.Schema({
+  ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   propertyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Property', required: true },
   unitNumber: { type: String, required: true, trim: true },
   floor: { type: String, trim: true },

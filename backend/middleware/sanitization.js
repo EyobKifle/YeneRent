@@ -10,15 +10,10 @@ export const sanitizeData = (req, res, next) => {
       if (typeof obj[key] === 'string') {
         // Trim whitespace
         obj[key] = obj[key].trim();
-
-        // Escape HTML to prevent XSS
-        obj[key] = validator.escape(obj[key]);
-
-        // Remove potential SQL injection patterns (basic)
-        obj[key] = obj[key].replace(/['";\\]/g, '');
-
-        // Remove script tags
-        obj[key] = obj[key].replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        
+        // Note: We avoid validator.escape() here because it corrupts data like URLs (turns / into &#x2F;)
+        // React handles XSS protection on display.
+        // We also avoid stripping characters like ' " ; \ which might be valid in descriptions.
       } else if (typeof obj[key] === 'object' && obj[key] !== null) {
         sanitizeObject(obj[key]);
       }

@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import Document from '../models/Document.js';
+import Property from '../models/Property.js';
 
 
 const router = express.Router();
@@ -52,7 +53,20 @@ router.get('/', async (req, res) => {
   try {
     const { propertyId, tenantId, leaseId, category } = req.query;
     const query = {};
-    if (propertyId) query.propertyId = propertyId;
+    
+    if (req.user.role !== 'admin') {
+      const properties = await Property.find({ ownerId: req.user.userId }).distinct('_id');
+      query.propertyId = { $in: properties };
+    }
+
+    if (propertyId) {
+      if (req.user.role !== 'admin') {
+         // Verify user owns the requested property
+         const ownsProperty = await Property.exists({ _id: propertyId, ownerId: req.user.userId });
+         if (!ownsProperty) return res.status(403).json({ error: 'Access denied to this property' });
+      }
+      query.propertyId = propertyId;
+    }
     if (tenantId) query.tenantId = tenantId;
     if (leaseId) query.leaseId = leaseId;
     if (category) query.category = category;
@@ -101,11 +115,21 @@ router.post('/',
 
       if (!req.file) return res.status(400).json({ error: 'File is required' });
 
+      // Verify ownership if propertyId is provided
+      if (req.body.propertyId && req.user.role !== 'admin' && req.user.role !== 'tenant') {
+        const ownsProperty = await Property.exists({ _id: req.body.propertyId, ownerId: req.user.userId });
+        if (!ownsProperty) {
+           if (req.file) fs.unlink(req.file.path, () => {});
+           return res.status(403).json({ error: 'Access denied: You do not own this property' });
+        }
+      }
+
       const file = req.file;
       const relativePath = path.relative(path.join(__dirname, '..'), file.path).replace(/\\/g, '/');
       const url = `/uploads/${path.basename(file.path)}`;
 
       const doc = new Document({
+        ownerId: req.user.userId,
         name: req.body.name || path.basename(file.filename, path.extname(file.filename)),
         originalName: file.originalname,
         type: file.mimetype,

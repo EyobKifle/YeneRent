@@ -1,10 +1,15 @@
 import mongoose from 'mongoose';
 
 const utilitySchema = new mongoose.Schema({
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   type: {
     type: String,
     required: true,
-    enum: ['Electricity', 'Water', 'Gas', 'Internet', 'Cable TV', 'Trash Collection', 'Security', 'Other']
+    enum: ['Electricity', 'Water', 'Gas', 'Internet', 'Cable TV', 'Trash', 'Trash Collection', 'Security', 'Other']
   },
   propertyId: {
     type: mongoose.Schema.Types.ObjectId,

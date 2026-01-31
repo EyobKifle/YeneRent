@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Expense from '../models/Expense.js';
+import Property from '../models/Property.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -10,6 +11,10 @@ router.get('/', async (req, res) => {
   try {
     const { propertyId, category, startDate, endDate } = req.query;
     let query = {};
+    if (req.user.role !== 'admin') {
+      const properties = await Property.find({ ownerId: req.user.userId }).distinct('_id');
+      query.propertyId = { $in: properties };
+    }
 
     if (propertyId) query.propertyId = propertyId;
     if (category) query.category = category;
@@ -48,6 +53,10 @@ router.get('/:id', async (req, res) => {
 // GET /api/expenses/property/:propertyId - Get expenses for a specific property
 router.get('/property/:propertyId', async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      const ownsProperty = await Property.exists({ _id: req.params.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) return res.status(403).json({ error: 'Access denied to this property' });
+    }
     const expenses = await Expense.find({ propertyId: req.params.propertyId })
       .sort({ date: -1 });
     res.json(expenses);
@@ -71,7 +80,18 @@ router.post('/', authorizeRoles('admin','property_manager','customer'), [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const expense = new Expense(req.body);
+    // Verify ownership
+    if (req.user.role !== 'admin') {
+      const ownsProperty = await Property.exists({ _id: req.body.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) {
+        return res.status(403).json({ error: 'Access denied: You do not own this property' });
+      }
+    }
+
+    const expense = new Expense({
+      ...req.body,
+      ownerId: req.user.userId
+    });
     await expense.save();
     await expense.populate('propertyId', 'name address');
     res.status(201).json(expense);

@@ -1,6 +1,8 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Tenant from '../models/Tenant.js';
+import Property from '../models/Property.js';
+import Unit from '../models/Unit.js';
 
 const router = express.Router();
 
@@ -13,15 +15,15 @@ router.get('/', async (req, res) => {
     if (req.user.role === 'tenant') {
       // Tenants can only see their own record
       query._id = req.user.userId;
-    } else if (req.user.role === 'property_manager') {
-      // Property managers can see tenants for properties they manage
-      // For now, allow all - this could be enhanced to filter by managed properties
+    } else if (req.user.role === 'owner' || req.user.role === 'customer' || req.user.role === 'property_manager') {
+      // Owners/Customers/PMs can only see tenants they own
+      query.ownerId = req.user.userId;
     }
-    // Admins, owners, and customers can see all tenants
+    // Admins can see all tenants
 
     const tenants = await Tenant.find(query)
       .populate('unitId', 'unitNumber')
-      .populate('documents', 'name type category')
+      .populate('documents', 'name type category url')
       .sort({ createdAt: -1 });
     res.json(tenants);
   } catch (error) {
@@ -35,7 +37,7 @@ router.get('/:id', async (req, res) => {
   try {
     const tenant = await Tenant.findById(req.params.id)
       .populate('unitId', 'unitNumber')
-      .populate('documents', 'name type category');
+      .populate('documents', 'name type category url');
     if (!tenant) {
       return res.status(404).json({ error: 'Tenant not found' });
     }
@@ -58,7 +60,7 @@ router.get('/property/:propertyId', async (req, res) => {
         match: { propertyId: req.params.propertyId },
         select: 'unitNumber'
       })
-      .populate('documents', 'name type category')
+      .populate('documents', 'name type category url')
       .sort({ createdAt: -1 });
 
     // Filter out tenants without units in the specified property
@@ -82,10 +84,27 @@ router.post('/', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const tenant = new Tenant(req.body);
+    // Verify unit ownership
+    if (req.body.unitId && req.user.role !== 'admin') {
+      const unit = await Unit.findById(req.body.unitId);
+      if (!unit) {
+         return res.status(400).json({ error: 'Valid unit ID is required' });
+      }
+      
+      const ownsProperty = await Property.exists({ _id: unit.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) {
+        return res.status(403).json({ error: 'Access denied: You do not own the property for this unit' });
+      }
+    }
+
+
+    const tenant = new Tenant({
+      ...req.body,
+      ownerId: req.user.userId
+    });
     await tenant.save();
     await tenant.populate('unitId', 'unitNumber');
-    await tenant.populate('documents', 'name type category');
+    await tenant.populate('documents', 'name type category url');
     res.status(201).json(tenant);
   } catch (error) {
     console.error('Error creating tenant:', error);
@@ -108,11 +127,20 @@ router.put('/:id', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const tenant = await Tenant.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('unitId', 'unitNumber').populate('documents', 'name type category');
+    let tenant;
+    if (req.user.role === 'admin') {
+      tenant = await Tenant.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('unitId', 'unitNumber').populate('documents', 'name type category url');
+    } else {
+      tenant = await Tenant.findOneAndUpdate(
+        { _id: req.params.id, ownerId: req.user.userId },
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('unitId', 'unitNumber').populate('documents', 'name type category url');
+    }
 
     if (!tenant) {
       return res.status(404).json({ error: 'Tenant not found' });
@@ -134,7 +162,12 @@ router.put('/:id', [
 // DELETE /api/tenants/:id - Delete a tenant
 router.delete('/:id', async (req, res) => {
   try {
-    const tenant = await Tenant.findByIdAndDelete(req.params.id);
+    let tenant;
+    if (req.user.role === 'admin') {
+      tenant = await Tenant.findByIdAndDelete(req.params.id);
+    } else {
+      tenant = await Tenant.findOneAndDelete({ _id: req.params.id, ownerId: req.user.userId });
+    }
     if (!tenant) {
       return res.status(404).json({ error: 'Tenant not found' });
     }
@@ -159,6 +192,12 @@ router.get('/stats/overview', async (req, res) => {
       matchQuery = {
         unitId: { $exists: true, $ne: null }
       };
+    }
+
+    if (req.user.role !== 'admin') {
+      const properties = await Property.find({ ownerId: req.user.userId }).distinct('_id');
+      const units = await Unit.find({ propertyId: { $in: properties } }).distinct('_id');
+      matchQuery.unitId = { $in: units };
     }
 
     const stats = await Tenant.aggregate([

@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Maintenance from '../models/Maintenance.js';
+import Property from '../models/Property.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -12,14 +13,12 @@ router.get('/', async (req, res) => {
     let query = {};
 
     // Filter based on user role
-    if (req.user.role === 'tenant') {
-      // Tenants can only see maintenance requests for their leased units
-      // For now, allow all - this could be enhanced to filter by leased units
-    } else if (req.user.role === 'property_manager') {
-      // Property managers can see maintenance for properties they manage
-      // For now, allow all - this could be enhanced to filter by managed properties
+    // Admins can see all maintenance requests
+    // Owners/Customers/PMs can only see maintenance for their properties
+    if (req.user.role !== 'admin' && req.user.role !== 'tenant') {
+       const properties = await Property.find({ ownerId: req.user.userId }).distinct('_id');
+       query.propertyId = { $in: properties };
     }
-    // Admins, owners, and customers can see all maintenance requests
 
     if (propertyId) query.propertyId = propertyId;
     if (unitId) query.unitId = unitId;
@@ -61,6 +60,10 @@ router.get('/:id', async (req, res) => {
 // GET /api/maintenance/property/:propertyId - Get maintenance for a specific property
 router.get('/property/:propertyId', async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      const ownsProperty = await Property.exists({ _id: req.params.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) return res.status(403).json({ error: 'Access denied to this property' });
+    }
     const maintenance = await Maintenance.find({ propertyId: req.params.propertyId })
       .populate('unitId', 'unitNumber')
       .sort({ reportedDate: -1 });
@@ -86,7 +89,18 @@ router.post('/', authorizeRoles('admin','property_manager','tenant','owner','cus
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const maintenance = new Maintenance(req.body);
+    // Verify ownership for owners/customers
+    if (req.user.role !== 'admin' && req.user.role !== 'tenant') {
+      const ownsProperty = await Property.exists({ _id: req.body.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) {
+        return res.status(403).json({ error: 'Access denied: You do not own this property' });
+      }
+    }
+
+    const maintenance = new Maintenance({
+      ...req.body,
+      ownerId: req.user.userId
+    });
     await maintenance.save();
     await maintenance.populate('propertyId', 'name address');
     await maintenance.populate('unitId', 'unitNumber');
@@ -115,13 +129,24 @@ router.put('/:id', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const maintenance = await Maintenance.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('propertyId', 'name address')
-     .populate('unitId', 'unitNumber')
-     .populate('assignedTo', 'name email');
+    let maintenance;
+    if (req.user.role === 'admin') {
+      maintenance = await Maintenance.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('propertyId', 'name address')
+       .populate('unitId', 'unitNumber')
+       .populate('assignedTo', 'name email');
+    } else {
+      maintenance = await Maintenance.findOneAndUpdate(
+        { _id: req.params.id, ownerId: req.user.userId },
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('propertyId', 'name address')
+       .populate('unitId', 'unitNumber')
+       .populate('assignedTo', 'name email');
+    }
 
     if (!maintenance) {
       return res.status(404).json({ error: 'Maintenance request not found' });
@@ -140,7 +165,12 @@ router.put('/:id', [
 // DELETE /api/maintenance/:id - Delete a maintenance request
 router.delete('/:id', async (req, res) => {
   try {
-    const maintenance = await Maintenance.findByIdAndDelete(req.params.id);
+    let maintenance;
+    if (req.user.role === 'admin') {
+      maintenance = await Maintenance.findByIdAndDelete(req.params.id);
+    } else {
+      maintenance = await Maintenance.findOneAndDelete({ _id: req.params.id, ownerId: req.user.userId });
+    }
     if (!maintenance) {
       return res.status(404).json({ error: 'Maintenance request not found' });
     }

@@ -2,13 +2,18 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { authorizeRoles } from '../middleware/roles.js';
 import Unit from '../models/Unit.js';
+import Property from '../models/Property.js';
 
 const router = express.Router();
 
 // GET /api/units - Get all units
 router.get('/', async (req, res) => {
   try {
-    const units = await Unit.find()
+    let query = {};
+    if (req.user.role !== 'admin') {
+      query.ownerId = req.user.userId;
+    }
+    const units = await Unit.find(query)
       .populate('propertyId', 'name address')
       .sort({ createdAt: -1 });
     res.json(units);
@@ -39,6 +44,13 @@ router.get('/:id', async (req, res) => {
 // GET /api/units/property/:propertyId - Get units for a specific property
 router.get('/property/:propertyId', async (req, res) => {
   try {
+    // Check if user has access to this property
+    if (req.user.role !== 'admin') {
+      const property = await Property.findOne({ _id: req.params.propertyId, ownerId: req.user.userId });
+      if (!property) {
+        return res.status(403).json({ error: 'Access denied to this property' });
+      }
+    }
     const units = await Unit.find({ propertyId: req.params.propertyId })
       .sort({ unitNumber: 1 });
     res.json(units);
@@ -61,7 +73,18 @@ router.post('/', authorizeRoles('admin','owner','customer','property_manager'), 
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const unit = new Unit(req.body);
+    // Verify ownership
+    if (req.user.role !== 'admin') {
+      const ownsProperty = await Property.exists({ _id: req.body.propertyId, ownerId: req.user.userId });
+      if (!ownsProperty) {
+        return res.status(403).json({ error: 'Access denied: You do not own this property' });
+      }
+    }
+
+    const unit = new Unit({
+      ...req.body,
+      ownerId: req.user.userId
+    });
     await unit.save();
     await unit.populate('propertyId', 'name address');
     res.status(201).json(unit);

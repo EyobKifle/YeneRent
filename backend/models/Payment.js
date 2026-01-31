@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const paymentSchema = new mongoose.Schema({
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   leaseId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Lease',

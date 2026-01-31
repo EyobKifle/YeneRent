@@ -24,14 +24,26 @@ router.get('/', async (req, res) => {
     let query = {};
 
     // Filter based on user role
+    // Filter based on user role
     if (req.user.role === 'tenant') {
       // Tenants can only see properties they have leases for
       // For now, allow all - this could be enhanced to filter by leased properties
     } else if (req.user.role === 'property_manager') {
       // Property managers can see properties they manage
-      // For now, allow all - this could be enhanced to filter by managed properties
+      // TODO: Implement managed properties relationship
+      // For now, restrict to avoid leaking all data
+      query.ownerId = req.user.userId; // Temporary: treat as owner/empty
+    } else if (req.user.role === 'owner' || req.user.role === 'customer') {
+      // Owners and Customers can only see their own properties
+      query.ownerId = req.user.userId;
     }
-    // Admins, owners, and customers can see all properties
+    // Admins can see all properties
+    // If none of the above matched (and not admin), query remains {} which implies ALL? 
+    // We should safeguard non-admin roles.
+    if (req.user.role !== 'admin' && !query.ownerId && req.user.role !== 'tenant') {
+         // Fallback for unhandled roles to see nothing or only own
+         query.ownerId = req.user.userId;
+    }
 
     // Search functionality
     if (search) {
@@ -92,7 +104,14 @@ router.get('/', async (req, res) => {
 // GET /api/properties/:id - Get a specific property
 router.get('/:id', async (req, res) => {
   try {
-    const property = await Property.findById(req.params.id);
+    let property;
+    if (req.user.role === 'admin') {
+      property = await Property.findById(req.params.id);
+    } else {
+      // For owners, customers, and others, restrict access
+      property = await Property.findOne({ _id: req.params.id, ownerId: req.user.userId });
+    }
+    
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }
@@ -123,6 +142,7 @@ router.post('/', [
 
     const { units, ...propertyData } = req.body;
     propertyData.units = units.length; // Set units count
+    propertyData.ownerId = req.user.userId; // Set owner
 
     const property = new Property(propertyData);
     await property.save();
@@ -132,7 +152,8 @@ router.post('/', [
     for (const unitData of units) {
       const unit = new Unit({
         ...unitData,
-        propertyId: property._id
+        propertyId: property._id,
+        ownerId: req.user.userId
       });
       await unit.save();
       createdUnits.push(unit);
@@ -158,7 +179,11 @@ router.put('/:id', [
   body('type').optional().isIn(['Apartment', 'Villa', 'Office', 'Commercial', 'House']).withMessage('Invalid property type'),
   body('taxType').optional().isIn(['property-only', 'withholding-annual', 'withholding-property', 'all-taxes']).withMessage('Invalid tax type'),
   body('rent').optional().isNumeric().withMessage('Rent must be a number'),
-  body('units').optional().isNumeric().withMessage('Units must be a number')
+  body('units').optional().custom((value) => {
+    if (typeof value === 'number') return true;
+    if (Array.isArray(value)) return true;
+    throw new Error('Units must be a number or an array');
+  })
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -166,11 +191,43 @@ router.put('/:id', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const property = await Property.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    let property;
+    
+    const { units, ...updateData } = req.body;
+    const updateWrapped = { $set: updateData };
+    
+    // Handle units if provided
+    if (Array.isArray(units) && units.length > 0) {
+      updateWrapped.$inc = { units: units.length };
+      
+      // Determine ownerId for new units
+      // Ideally matches the property owner, but for now using current user
+      // (assuming owner is editing their own property)
+      for (const unitData of units) {
+        const unit = new Unit({
+          ...unitData,
+          propertyId: req.params.id,
+          ownerId: req.user.userId
+        });
+        await unit.save();
+      }
+    } else if (typeof units === 'number') {
+      updateWrapped.$set.units = units;
+    }
+
+    if (req.user.role === 'admin') {
+      property = await Property.findByIdAndUpdate(
+        req.params.id,
+        updateWrapped,
+        { new: true, runValidators: true }
+      );
+    } else {
+      property = await Property.findOneAndUpdate(
+        { _id: req.params.id, ownerId: req.user.userId },
+        updateWrapped,
+        { new: true, runValidators: true }
+      );
+    }
 
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
@@ -192,7 +249,12 @@ router.put('/:id', [
 // DELETE /api/properties/:id - Delete a property
 router.delete('/:id', async (req, res) => {
   try {
-    const property = await Property.findByIdAndDelete(req.params.id);
+    let property;
+    if (req.user.role === 'admin') {
+      property = await Property.findByIdAndDelete(req.params.id);
+    } else {
+      property = await Property.findOneAndDelete({ _id: req.params.id, ownerId: req.user.userId });
+    }
     if (!property) {
       return res.status(404).json({ error: 'Property not found' });
     }

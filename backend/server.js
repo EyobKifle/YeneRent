@@ -50,7 +50,9 @@ app.use(cors({
 }));
 
 // Helmet for security headers
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -80,7 +82,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(sanitizeData);
 
 // Serve static files from the 'uploads' directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files from the 'uploads' directory
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Public routes
 app.get('/', (req, res) => res.json({ message: 'Welcome to YeneRent API' }));
@@ -147,15 +150,15 @@ app.use('/api/v1/analytics', authenticateToken, analyticsRouter);
 app.use('/api/v1/user-requests', authenticateToken, userRequestRouter);
 
 
-// Error handling middleware
-app.use(errorHandler);
-
 // 404 Not Found Middleware
 app.use((req, res, next) => {
     const error = new Error(`Not Found - ${req.originalUrl}`);
     res.status(404);
     next(error);
 });
+
+// Error handling middleware
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

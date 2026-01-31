@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Payment from '../models/Payment.js';
 import Lease from '../models/Lease.js';
+import Property from '../models/Property.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -16,11 +17,11 @@ router.get('/', async (req, res) => {
     if (req.user.role === 'tenant') {
       // Tenants can only see their own payments
       query.tenantId = req.user.userId;
-    } else if (req.user.role === 'property_manager') {
-      // Property managers can see payments for properties they manage
-      // For now, allow all - this could be enhanced to filter by managed properties
+    } else if (req.user.role === 'owner' || req.user.role === 'customer' || req.user.role === 'property_manager') {
+      // Owners/Customers/PMs can only see payments they own
+      query.ownerId = req.user.userId;
     }
-    // Admins, owners, and customers can see all payments
+    // Admins can see all payments
 
     if (status) query.status = status;
     if (tenantId && req.user.role !== 'tenant') query.tenantId = tenantId; // Allow filtering by tenantId for non-tenants
@@ -57,7 +58,7 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching payment:', error);
     if (error.name === 'CastError') {
-      return res.status(400).json({ error: 'Invalid payment ID' });
+      return res.status(400).json({ error: `Invalid ${error.path}: ${error.value}` });
     }
     res.status(500).json({ error: 'Failed to fetch payment' });
   }
@@ -95,7 +96,11 @@ router.post('/', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const payment = new Payment(req.body);
+
+    const payment = new Payment({
+      ...req.body,
+      ownerId: req.user.userId
+    });
     await payment.save();
     await payment.populate('leaseId', 'startDate endDate');
     await payment.populate('tenantId', 'name email');
@@ -122,13 +127,24 @@ router.put('/:id', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const payment = await Payment.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    ).populate('leaseId', 'startDate endDate')
-     .populate('tenantId', 'name email')
-     .populate('propertyId', 'name address');
+    let payment;
+    if (req.user.role === 'admin') {
+      payment = await Payment.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('leaseId', 'startDate endDate')
+       .populate('tenantId', 'name email')
+       .populate('propertyId', 'name address');
+    } else {
+      payment = await Payment.findOneAndUpdate(
+        { _id: req.params.id, ownerId: req.user.userId },
+        req.body,
+        { new: true, runValidators: true }
+      ).populate('leaseId', 'startDate endDate')
+       .populate('tenantId', 'name email')
+       .populate('propertyId', 'name address');
+    }
 
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
@@ -138,7 +154,7 @@ router.put('/:id', [
   } catch (error) {
     console.error('Error updating payment:', error);
     if (error.name === 'CastError') {
-      return res.status(400).json({ error: 'Invalid payment ID' });
+      return res.status(400).json({ error: `Invalid ${error.path}: ${error.value}` });
     }
     res.status(500).json({ error: 'Failed to update payment' });
   }
@@ -147,7 +163,12 @@ router.put('/:id', [
 // DELETE /api/payments/:id - Delete a payment
 router.delete('/:id', async (req, res) => {
   try {
-    const payment = await Payment.findByIdAndDelete(req.params.id);
+    let payment;
+    if (req.user.role === 'admin') {
+      payment = await Payment.findByIdAndDelete(req.params.id);
+    } else {
+      payment = await Payment.findOneAndDelete({ _id: req.params.id, ownerId: req.user.userId });
+    }
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
     }
@@ -155,7 +176,7 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting payment:', error);
     if (error.name === 'CastError') {
-      return res.status(400).json({ error: 'Invalid payment ID' });
+      return res.status(400).json({ error: `Invalid ${error.path}: ${error.value}` });
     }
     res.status(500).json({ error: 'Failed to delete payment' });
   }
@@ -171,9 +192,17 @@ router.get('/overdue/list', async (req, res) => {
     const thresholdDate = new Date();
     thresholdDate.setDate(currentDate.getDate() - parseInt(days));
 
+    let ownerQuery = {};
+    if (req.user.role !== 'admin') {
+      // For any non-admin (owner, customer, pm), restrict to their properties
+      const properties = await Property.find({ ownerId: req.user.userId }).distinct('_id');
+      ownerQuery = { propertyId: { $in: properties } };
+    }
+
     const overduePayments = await Payment.find({
       dueDate: { $lt: currentDate },
-      status: { $in: ['Pending', 'Overdue'] }
+      status: { $in: ['Pending', 'Overdue'] },
+      ...ownerQuery
     })
     .populate('leaseId', 'startDate endDate rentAmount')
     .populate('tenantId', 'name email phone')
@@ -218,6 +247,11 @@ router.get('/analytics/summary', async (req, res) => {
     let matchQuery = {
       date: { $gte: start, $lte: end }
     };
+    
+    if (req.user.role !== 'admin') {
+      const properties = await Property.find({ ownerId: req.user.userId }).distinct('_id');
+      matchQuery.propertyId = { $in: properties };
+    }
 
     if (propertyId) {
       matchQuery.propertyId = propertyId;
@@ -361,6 +395,7 @@ router.post('/generate/monthly', authorizeRoles('admin','property_manager'), asy
         leaseId: lease._id,
         tenantId: lease.tenantId._id,
         propertyId: lease.propertyId._id,
+        ownerId: lease.ownerId,
         amount: lease.rentAmount,
         dueDate: dueDate,
         type: 'Rent'
