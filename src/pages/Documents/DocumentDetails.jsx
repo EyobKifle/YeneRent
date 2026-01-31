@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { get } from '../../utils/api'; // Assuming 'get' is exported from api.js
+import api, { getImageUrl } from '../../utils/api';
 import { formatDate, formatFileSize } from '../../utils/utils';
-import './DocumentDetails.css'; // Import the specific CSS for this component
+import Button from '../../components/ui/Button';
+import SharePrintModal from '../../components/ui/SharePrintModal';
+import './DocumentDetails.css';
 
 const DocumentDetails = () => {
     const { documentId } = useParams();
@@ -12,33 +14,37 @@ const DocumentDetails = () => {
     const [tenants, setTenants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    const DOC_KEY = 'documents';
-    const PROPERTY_KEY = 'properties';
-    const TENANT_KEY = 'tenants';
+    
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [printModalOpen, setPrintModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchDocumentDetails = async () => {
             if (!documentId) {
-                alert('Document ID not found in URL.'); // Placeholder for notification
+                alert('Document ID not found in URL.');
                 navigate('/documents');
                 return;
             }
 
             try {
-                const [fetchedProperties, fetchedTenants, documents] = await Promise.all([
-                    get(PROPERTY_KEY),
-                    get(TENANT_KEY),
-                    get(DOC_KEY)
+                const [fetchedProperties, fetchedTenants, documentsData] = await Promise.all([
+                    api.get('properties'),
+                    api.get('tenants'),
+                    api.get('documents')
                 ]);
 
-                setProperties(fetchedProperties);
-                setTenants(fetchedTenants);
-
-                const foundDocument = documents.find(doc => doc.id === documentId);
+                setProperties(fetchedProperties.properties || fetchedProperties || []);
+                setTenants(fetchedTenants || []);
+                
+                // Ensure documents is an array
+                const documentsArray = Array.isArray(documentsData) ? documentsData : [];
+                const foundDocument = documentsArray.find(doc => {
+                    const docId = (doc._id || doc.id)?.toString();
+                    return docId === documentId.toString();
+                });
 
                 if (!foundDocument) {
-                    alert('Document not found.'); // Placeholder for notification
+                    alert('Document not found.');
                     navigate('/documents');
                     return;
                 }
@@ -46,7 +52,6 @@ const DocumentDetails = () => {
             } catch (err) {
                 console.error('Failed to fetch document details:', err);
                 setError('Failed to load document details.');
-                alert('Failed to load document details.'); // Placeholder for notification
             } finally {
                 setLoading(false);
             }
@@ -55,89 +60,75 @@ const DocumentDetails = () => {
         fetchDocumentDetails();
     }, [documentId, navigate]);
 
+    const attachments = useMemo(() => {
+        if (!currentDocument?.url) return [];
+        const type = currentDocument.type?.startsWith('image/') ? 'image' : 'document';
+        return [{
+            type,
+            name: currentDocument.name,
+            url: getImageUrl(currentDocument.url)
+        }];
+    }, [currentDocument]);
+
+    const handleAction = (mode, selection) => {
+        const item = selection === 'all' ? null : attachments[selection];
+        
+        if (mode === 'print') {
+            if (selection === 'all') {
+                window.print();
+            } else if (item) {
+                // For PDFs, try to print the iframe content
+                if (currentDocument.type === 'application/pdf') {
+                    const iframe = document.querySelector('.document-preview-content iframe');
+                    if (iframe) {
+                        try {
+                            iframe.contentWindow.print();
+                        } catch (e) {
+                            window.print();
+                        }
+                    }
+                } else {
+                    const w = window.open(item.url);
+                    if (w) w.onload = () => w.print();
+                }
+            }
+        } else if (mode === 'share') {
+            const shareData = selection === 'all' 
+                ? { title: currentDocument.name, url: window.location.href }
+                : { title: item.name, url: item.url };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(console.error);
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareData.url).then(() => alert('Link copied'));
+            }
+        }
+        setShareModalOpen(false);
+        setPrintModalOpen(false);
+    };
+
     const getFileIcon = (fileType) => {
-        if (fileType.startsWith('image/')) return { icon: 'fa-solid fa-file-image', class: 'icon-image' };
+        if (fileType?.startsWith('image/')) return { icon: 'fa-solid fa-file-image', class: 'icon-image' };
         if (fileType === 'application/pdf') return { icon: 'fa-solid fa-file-pdf', class: 'icon-pdf' };
-        if (fileType && fileType.includes('wordprocessingml')) return { icon: 'fa-solid fa-file-word', class: 'icon-doc' };
+        if (fileType?.includes('wordprocessingml')) return { icon: 'fa-solid fa-file-word', class: 'icon-doc' };
         return { icon: 'fa-solid fa-file', class: 'icon-other' };
     };
 
-    const handleBack = () => {
-        navigate('/documents'); // Assuming /documents is the list page
-    };
-
-    const handleEdit = () => {
-        navigate(`/documents?editId=${currentDocument.id}`); // Redirect to documents list with editId
-    };
+    const handleBack = () => navigate('/documents');
+    
+    const handleEdit = () => navigate(`/documents/${documentId}/edit`);
 
     const handleDelete = async () => {
-        if (window.confirm(`Are you sure you want to delete "${currentDocument.name}"?`)) { // Placeholder for confirmation
+        if (window.confirm(`Are you sure you want to delete "${currentDocument.name}"?`)) {
             try {
-                await get(DOC_KEY, currentDocument.id, 'DELETE'); // Assuming 'get' can handle DELETE with a third arg
-                alert('Document deleted successfully!'); // Placeholder for notification
+                await api.delete(`documents/${currentDocument._id || currentDocument.id}`);
+                alert('Document deleted successfully!');
                 navigate('/documents');
             } catch (err) {
                 console.error('Failed to delete document:', err);
-                alert('Failed to delete document.'); // Placeholder for notification
+                alert('Failed to delete document.');
             }
         }
-    };
-
-    const handleShare = async () => {
-        if (!currentDocument || !currentDocument.url) {
-            alert('No document to share.');
-            return;
-        }
-
-        const shareData = {
-            title: currentDocument.name,
-            text: `Check out this document: ${currentDocument.name}`,
-            url: window.location.href
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-                console.log('Document shared successfully');
-            } catch (err) {
-                console.error('Share failed:', err.message);
-            }
-        } else {
-            try {
-                await navigator.clipboard.writeText(window.location.href);
-                alert('Link copied to clipboard!');
-            } catch (err) {
-                alert('Could not copy link.');
-                console.error('Failed to copy: ', err);
-            }
-        }
-    };
-
-    const handlePrint = () => {
-        if (!currentDocument || !currentDocument.url) {
-            alert('No document file to print.');
-            return;
-        }
-
-        // For PDFs, print the content of the iframe directly for a clean print.
-        const iframe = document.querySelector('.document-preview-content iframe');
-        if (iframe && currentDocument.type === 'application/pdf') {
-            try {
-                iframe.contentWindow.print();
-            } catch (error) {
-                console.error('Could not access iframe content for printing. Falling back to window.print().', error);
-                window.print(); // Fallback for cross-origin issues
-            }
-            return;
-        }
-
-        // For images, use the @media print styles for a clean image print
-        if (currentDocument.type && currentDocument.type.startsWith('image/')) {
-            window.print();
-            return;
-        }
-
-        alert('Printing is not supported for this file type. Please download the file to print it.');
     };
 
     if (loading) {
@@ -154,10 +145,12 @@ const DocumentDetails = () => {
 
     let linkedToText = 'General';
     if (currentDocument.propertyId) {
-        const property = properties.find(p => p.id === currentDocument.propertyId);
+        const propId = typeof currentDocument.propertyId === 'object' ? currentDocument.propertyId._id : currentDocument.propertyId;
+        const property = properties.find(p => (p._id || p.id) === propId);
         linkedToText = property ? `Property: ${property.name}` : 'N/A Property';
     } else if (currentDocument.tenantId) {
-        const tenant = tenants.find(t => t.id === currentDocument.tenantId);
+        const tenantId = typeof currentDocument.tenantId === 'object' ? currentDocument.tenantId._id : currentDocument.tenantId;
+        const tenant = tenants.find(t => (t._id || t.id) === tenantId);
         linkedToText = tenant ? `Tenant: ${tenant.name}` : 'N/A Tenant';
     }
 
@@ -171,10 +164,12 @@ const DocumentDetails = () => {
             );
         }
 
-        if (currentDocument.type && currentDocument.type.startsWith('image/')) {
-            return <img src={currentDocument.url} alt={currentDocument.name} />;
+        const fullUrl = getImageUrl(currentDocument.url);
+        
+        if (currentDocument.type?.startsWith('image/')) {
+            return <img src={fullUrl} alt={currentDocument.name} />;
         } else if (currentDocument.type === 'application/pdf') {
-            return <iframe src={currentDocument.url} title={currentDocument.name}></iframe>;
+            return <iframe src={fullUrl} title={currentDocument.name}></iframe>;
         } else {
             const { icon, class: iconClass } = getFileIcon(currentDocument.type);
             return (
@@ -192,22 +187,25 @@ const DocumentDetails = () => {
             <div id="document-details-view">
                 <div className="page-header">
                     <div>
-                        <button id="back-btn" onClick={handleBack} className="btn-secondary">
+                        <Button variant="secondary" onClick={handleBack}>
                             <i className="fa-solid fa-arrow-left"></i> Back to Documents
-                        </button>
+                        </Button>
                         <h1 id="document-title">Document Details</h1>
                         <p id="document-subtitle">View comprehensive information and preview for this document.</p>
                     </div>
                     <div className="page-actions">
-                        <button id="print-document-btn" onClick={handlePrint} className="btn-secondary">
+                        <Button variant="secondary" onClick={() => setShareModalOpen(true)}>
+                            <i className="fa-solid fa-share"></i> Share
+                        </Button>
+                        <Button variant="secondary" onClick={() => setPrintModalOpen(true)}>
                             <i className="fa-solid fa-print"></i> Print
-                        </button>
-                        <button id="edit-document-btn" onClick={handleEdit} className="btn-primary">
-                            <i className="fa-solid fa-pencil"></i> Edit Document
-                        </button>
-                        <button id="delete-document-btn" onClick={handleDelete} className="btn-danger">
-                            <i className="fa-solid fa-trash-can"></i> Delete Document
-                        </button>
+                        </Button>
+                        <Button variant="primary" onClick={handleEdit}>
+                            <i className="fa-solid fa-pencil"></i> Edit
+                        </Button>
+                        <Button variant="danger" onClick={handleDelete}>
+                            <i className="fa-solid fa-trash-can"></i> Delete
+                        </Button>
                     </div>
                 </div>
 
@@ -229,7 +227,7 @@ const DocumentDetails = () => {
                             <div className="preview-actions">
                                 <a
                                     id="download-document-btn"
-                                    href={currentDocument.url || '#'}
+                                    href={currentDocument.url ? getImageUrl(currentDocument.url) : '#'}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     download={currentDocument.name}
@@ -237,14 +235,27 @@ const DocumentDetails = () => {
                                 >
                                     <i className="fa-solid fa-download"></i> Download File
                                 </a>
-                                <button onClick={handleShare} id="share-document-btn" className={`btn-secondary ${!currentDocument.url ? 'hidden' : ''}`}>
-                                    <i className="fa-solid fa-share-alt"></i> Share
-                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <SharePrintModal 
+                isOpen={shareModalOpen} 
+                onClose={() => setShareModalOpen(false)} 
+                mode="share"
+                items={attachments}
+                onAction={(sel) => handleAction('share', sel)}
+            />
+            
+            <SharePrintModal 
+                isOpen={printModalOpen} 
+                onClose={() => setPrintModalOpen(false)} 
+                mode="print"
+                items={attachments}
+                onAction={(sel) => handleAction('print', sel)}
+            />
         </main>
     );
 };

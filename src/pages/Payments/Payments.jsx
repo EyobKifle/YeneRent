@@ -76,10 +76,18 @@ const Payments = () => {
 
     const enrichedPayments = useMemo(() => {
         return payments.map(payment => {
-            const lease = leases.find(l => l.id === payment.leaseId);
-            const tenant = lease ? tenants.find(t => t.id === lease.tenantId) : null;
-            const property = lease ? properties.find(p => p.id === lease.propertyId) : null;
-            const unit = lease ? units.find(u => u.id === lease.unitId) : null;
+            const paymentLeaseId = payment.leaseId?._id || payment.leaseId;
+            const lease = leases.find(l => (l._id || l.id) === paymentLeaseId);
+            
+            const leaseTenantId = lease?.tenantId?._id || lease?.tenantId;
+            const tenant = leaseTenantId ? tenants.find(t => (t._id || t.id) === leaseTenantId) : null;
+            
+            const leasePropertyId = lease?.propertyId?._id || lease?.propertyId;
+            const property = leasePropertyId ? properties.find(p => (p._id || p.id) === leasePropertyId) : null;
+            
+            const leaseUnitId = lease?.unitId?._id || lease?.unitId;
+            const unit = leaseUnitId ? units.find(u => (u._id || u.id) === leaseUnitId) : null;
+            
             const status = getPaymentStatus(payment);
             return { ...payment, tenant, property, unit, status };
         }).sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
@@ -171,34 +179,37 @@ const Payments = () => {
                     <SimpleTable
                         headers={[t('Tenant'), t('Property / Unit'), t('Due Date'), t('Amount'), t('Status'), t('Actions')]}
                         data={filteredPayments}
-                        renderRow={(payment) => (
-                            <tr key={payment.id}>
-                                <td>{payment.tenant?.name || 'N/A'}</td>
-                                <td>{`${payment.property?.name || 'N/A'} ${payment.unit ? `(Unit ${payment.unit.unitNumber})` : ''}`}</td>
-                                <td>{formatDate(payment.dueDate)}</td>
-                                <td>{formatCurrency(payment.amount)}</td>
-                                <td><span className={`status-badge ${payment.status.class}`}>{payment.status.text}</span></td>
-                                <td>
-                                    <div className="action-dropdown">
-                                        <button
-                                            className="action-dropdown-btn"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setOpenActionId(openActionId === payment.id ? null : payment.id);
-                                            }}
-                                        >
-                                            <i className="fa-solid fa-ellipsis-vertical"></i>
-                                        </button>
-                                        {openActionId === payment.id && (
-                                        <div className="dropdown-menu align-right show">
-                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(payment); }}><i className="fa-solid fa-eye"></i>{t('View Details')}</a>
-                                            <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download receipt'); }}><i className="fa-solid fa-download"></i>{t('Receipt')}</a>
+                        renderRow={(payment) => {
+                            const paymentId = payment._id || payment.id;
+                            return (
+                                <tr key={paymentId}>
+                                    <td>{payment.tenant?.name || 'N/A'}</td>
+                                    <td>{`${payment.property?.name || 'N/A'} ${payment.unit ? `(Unit ${payment.unit.unitNumber})` : ''}`}</td>
+                                    <td>{formatDate(payment.dueDate)}</td>
+                                    <td>{formatCurrency(payment.amount)}</td>
+                                    <td><span className={`status-badge ${payment.status.class}`}>{payment.status.text}</span></td>
+                                    <td>
+                                        <div className="action-dropdown">
+                                            <button
+                                                className="action-dropdown-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setOpenActionId(openActionId === paymentId ? null : paymentId);
+                                                }}
+                                            >
+                                                <i className="fa-solid fa-ellipsis-vertical"></i>
+                                            </button>
+                                            {openActionId === paymentId && (
+                                            <div className="dropdown-menu align-right show">
+                                                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(payment); }}><i className="fa-solid fa-eye"></i>{t('View Details')}</a>
+                                                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download receipt'); }}><i className="fa-solid fa-download"></i>{t('Receipt')}</a>
+                                            </div>
+                                            )}
                                         </div>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
+                                    </td>
+                                </tr>
+                            );
+                        }}
                     />
                 ) : (
                     <div className="empty-state">

@@ -18,6 +18,8 @@ export default function TenantsPage() {
   const [leases, setLeases] = useState([])
   const [openActionId, setOpenActionId] = useState(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [selectedTenant, setSelectedTenant] = useState(null)
 
 
   // Close dropdown when clicking outside
@@ -67,18 +69,18 @@ export default function TenantsPage() {
 
 
   const handleViewDetails = (tenant) => {
-    navigate(`/tenants/${tenant.id}`)
+    navigate(`/tenants/${tenant._id || tenant.id}`)
   }
 
   const handleEditTenant = (tenant) => {
-    navigate(`/tenants/${tenant.id}/edit`)
+    navigate(`/tenants/${tenant._id}/edit`)
   }
 
   const handleDeleteTenant = async (tenant) => {
     if (window.confirm(t('Are you sure you want to delete this tenant?'))) {
       try {
-        await api.delete(`tenants/${tenant.id}`)
-        setTenants(prev => prev.filter(t => t.id !== tenant.id))
+        await api.delete(`tenants/${tenant._id}`)
+        setTenants(prev => prev.filter(t => t._id !== tenant._id))
         alert(t('Tenant deleted successfully'))
       } catch (error) {
         console.error('Failed to delete tenant:', error)
@@ -120,15 +122,18 @@ export default function TenantsPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={7} className="text-center p-4">{t('No Tenants Found')}</td></tr>
               ) : filtered.map(tenant => {
-                const unit = units.find(u=>u.id===tenant.unitId)
-                const prop = unit ? properties.find(p=>p.id===unit.propertyId) : null
-                const lease = leases.find(l=>l.tenantId===tenant.id) || null
+                const tenantId = tenant._id || tenant.id
+                const unit = units.find(u=>u._id===tenantId) // Note: unit mapping might need unitId check, but let's stick to dropdown fix
+                // Wait, tenant.unitId is the foreign key.
+                const linkedUnit = units.find(u=>u._id===tenant.unitId)
+                const prop = linkedUnit ? properties.find(p=>p._id===linkedUnit.propertyId) : null
+                const lease = leases.find(l=>l.tenantId===tenantId) || null
                 const status = getLeaseStatus(lease)
                 return (
-                  <tr key={tenant.id}>
+                  <tr key={tenantId}>
                     <td>{tenant.name}</td>
                     <td>{tenant.email}<br/><span className="text-sm text-gray-500">{tenant.phone}</span></td>
-                    <td>{prop?.name || t('N/A')} <span className="lease-property-unit">{t('Unit')} {unit?.unitNumber || t('N/A')}</span></td>
+                    <td>{prop?.name || t('N/A')} <span className="lease-property-unit">{t('Unit')} {linkedUnit?.unitNumber || t('N/A')}</span></td>
                     <td>{lease ? `${new Date(lease.startDate).toLocaleDateString()} - ${new Date(lease.endDate).toLocaleDateString()}` : t('N/A')}</td>
                     <td>{tenant.tinNumber || t('N/A')}</td>
                     <td><span className={`status-badge ${status.class}`}>{t(status.text)}</span></td>
@@ -136,11 +141,11 @@ export default function TenantsPage() {
                       <div className="action-dropdown">
                         <button className="action-dropdown-btn" onClick={(e) => {
                           e.stopPropagation();
-                          setOpenActionId(openActionId === tenant.id ? null : tenant.id);
+                          setOpenActionId(openActionId === tenantId ? null : tenantId);
                         }}>
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
-                        {openActionId === tenant.id && (
+                        {openActionId === tenantId && (
                         <div className="dropdown-menu align-right show">
                           <a key="view" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(tenant); }}>
                             <i className="fa-solid fa-eye"></i>{t('View Details')}
@@ -170,7 +175,6 @@ export default function TenantsPage() {
           setTenants(prev => [newTenant, ...prev])
         }}
       />
-
     </div>
   )
 }

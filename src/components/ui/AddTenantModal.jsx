@@ -9,8 +9,6 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
     email: '',
     phone: '',
     unitId: '',
-    moveInDate: '',
-    moveOutDate: '',
     tinNumber: '',
     emergencyContact: {
       name: '',
@@ -35,8 +33,6 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
           email: tenant.email || '',
           phone: tenant.phone || '',
           unitId: tenant.unitId || '',
-          moveInDate: tenant.moveInDate || '',
-          moveOutDate: tenant.moveOutDate || '',
           tinNumber: tenant.tinNumber || '',
           emergencyContact: tenant.emergencyContact || {
             name: '',
@@ -54,8 +50,6 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
           email: '',
           phone: '',
           unitId: '',
-          moveInDate: '',
-          moveOutDate: '',
           tinNumber: '',
           emergencyContact: {
             name: '',
@@ -165,8 +159,6 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
       const tenantData = {
         ...formData,
         unitId: formData.unitId || null,
-        moveInDate: formData.moveInDate || null,
-        moveOutDate: formData.moveOutDate || null,
         tinNumber: formData.tinNumber || undefined,
         emergencyContact: formData.emergencyContact.name || formData.emergencyContact.phone || formData.emergencyContact.relationship
           ? formData.emergencyContact
@@ -205,8 +197,6 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
       email: '',
       phone: '',
       unitId: '',
-      moveInDate: '',
-      moveOutDate: '',
       tinNumber: '',
       emergencyContact: {
         name: '',
@@ -279,33 +269,11 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
           >
             <option value="">Select Unit (Optional)</option>
             {units.map(unit => (
-              <option key={unit.id} value={unit.id}>
+              <option key={unit._id} value={unit._id}>
                 Unit {unit.unitNumber} - {unit.propertyId?.name || 'Unknown Property'}
               </option>
             ))}
           </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="moveInDate">Move-in Date</label>
-          <input
-            type="date"
-            id="moveInDate"
-            name="moveInDate"
-            value={formData.moveInDate}
-            onChange={handleInputChange}
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="moveOutDate">Move-out Date</label>
-          <input
-            type="date"
-            id="moveOutDate"
-            name="moveOutDate"
-            value={formData.moveOutDate}
-            onChange={handleInputChange}
-          />
         </div>
 
         <div className="form-group">

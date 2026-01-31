@@ -75,8 +75,17 @@
     border-bottom-color: var(--primary-color);
 }
 
+.documents-page .data-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    height: auto;
+}
+
 .table-container {
     overflow-x: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .data-table {

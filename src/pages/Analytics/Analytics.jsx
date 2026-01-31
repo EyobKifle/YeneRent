@@ -518,7 +518,7 @@ const Analytics = () => {
                         <h4>Income Sources</h4>
                         <div id="summary-income-sources">
                             {reportData && Object.values(reportData.charts.incomeByProperty).map(prop => (
-                                <div className="summary-item" key={prop.name}>
+                                <div className="summary-item" key={prop.id}>
                                     <span>{prop.name}</span>
                                     <span>{formatCurrency(prop.totalIncome)}</span>
                                 </div>

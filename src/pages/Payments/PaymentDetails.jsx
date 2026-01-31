@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { get } from '../../utils/api'; // Assuming 'get' is exported from api.js
+import api, { getImageUrl } from '../../utils/api';
 import { formatDate, formatCurrency } from '../../utils/utils';
-import './PaymentDetails.css'; // Import the specific CSS for this component
+import Button from '../../components/ui/Button';
+import SharePrintModal from '../../components/ui/SharePrintModal';
+import './PaymentDetails.css';
 
 const PaymentDetails = () => {
     const { id } = useParams();
@@ -13,36 +15,39 @@ const PaymentDetails = () => {
     const [tenants, setTenants] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    const PAYMENT_KEY = 'payments';
-    const PROPERTY_KEY = 'properties';
-    const UNIT_KEY = 'units';
-    const TENANT_KEY = 'tenants';
+    
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [printModalOpen, setPrintModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchPaymentDetails = async () => {
             if (!id) {
-                alert('Payment ID not found in URL.'); // Placeholder for notification
+                alert('Payment ID not found in URL.');
                 navigate('/payments');
                 return;
             }
 
             try {
-                const [fetchedProperties, fetchedUnits, fetchedTenants, payments] = await Promise.all([
-                    get(PROPERTY_KEY),
-                    get(UNIT_KEY),
-                    get(TENANT_KEY),
-                    get(PAYMENT_KEY)
+                const [fetchedProperties, fetchedUnits, fetchedTenants, paymentsData] = await Promise.all([
+                    api.get('properties'),
+                    api.get('units'),
+                    api.get('tenants'),
+                    api.get('payments')
                 ]);
 
-                setProperties(fetchedProperties);
-                setUnits(fetchedUnits);
-                setTenants(fetchedTenants);
-
-                const foundPayment = payments.find(p => p.id === id);
+                setProperties(fetchedProperties.properties || fetchedProperties || []);
+                setUnits(fetchedUnits || []);
+                setTenants(fetchedTenants || []);
+                
+                // Ensure payments is an array
+                const paymentsArray = Array.isArray(paymentsData) ? paymentsData : [];
+                const foundPayment = paymentsArray.find(p => {
+                    const pId = (p._id || p.id)?.toString();
+                    return pId === id.toString();
+                });
 
                 if (!foundPayment) {
-                    alert('Payment not found.'); // Placeholder for notification
+                    alert('Payment not found.');
                     navigate('/payments');
                     return;
                 }
@@ -50,7 +55,6 @@ const PaymentDetails = () => {
             } catch (err) {
                 console.error('Failed to fetch payment details:', err);
                 setError('Failed to load payment details.');
-                alert('Failed to load payment details.'); // Placeholder for notification
             } finally {
                 setLoading(false);
             }
@@ -59,29 +63,55 @@ const PaymentDetails = () => {
         fetchPaymentDetails();
     }, [id, navigate]);
 
-    const handleBack = () => {
-        navigate('/payments'); // Assuming /payments is the list page
+    const attachments = useMemo(() => {
+        if (!currentPayment?.receiptImage) return [];
+        return [{
+            type: 'image',
+            name: 'Receipt',
+            url: getImageUrl(currentPayment.receiptImage)
+        }];
+    }, [currentPayment]);
+
+    const handleAction = (mode, selection) => {
+        const item = selection === 'all' ? null : attachments[selection];
+        
+        if (mode === 'print') {
+            if (selection === 'all') {
+                window.print();
+            } else if (item) {
+                const w = window.open(item.url);
+                if (w) w.onload = () => w.print();
+            }
+        } else if (mode === 'share') {
+            const shareData = selection === 'all' 
+                ? { title: `Payment Receipt`, url: window.location.href }
+                : { title: item.name, url: item.url };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(console.error);
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareData.url).then(() => alert('Link copied'));
+            }
+        }
+        setShareModalOpen(false);
+        setPrintModalOpen(false);
     };
 
-    const handleEdit = () => {
-        navigate(`/payments?editId=${currentPayment.id}`); // Redirect to payments list with editId
-    };
+    const handleBack = () => navigate('/payments');
+
+    const handleEdit = () => navigate(`/payments?editId=${currentPayment._id || currentPayment.id}`);
 
     const handleDelete = async () => {
-        if (window.confirm(`Are you sure you want to delete this payment?`)) { // Placeholder for confirmation
+        if (window.confirm(`Are you sure you want to delete this payment?`)) {
             try {
-                await get(PAYMENT_KEY, currentPayment.id, 'DELETE'); // Assuming 'get' can handle DELETE with a third arg
-                alert('Payment deleted successfully!'); // Placeholder for notification
+                await api.delete(`payments/${currentPayment._id || currentPayment.id}`);
+                alert('Payment deleted successfully!');
                 navigate('/payments');
             } catch (err) {
                 console.error('Failed to delete payment:', err);
-                alert('Failed to delete payment.'); // Placeholder for notification
+                alert('Failed to delete payment.');
             }
         }
-    };
-
-    const handlePrint = () => {
-        window.print();
     };
 
     if (loading) {
@@ -96,9 +126,13 @@ const PaymentDetails = () => {
         return <div className="no-payment">Payment not found.</div>;
     }
 
-    const tenant = tenants.find(t => t.id === currentPayment.tenantId);
-    const property = properties.find(p => p.id === currentPayment.propertyId);
-    const unit = units.find(u => u.id === currentPayment.unitId);
+    const tenantId = typeof currentPayment.tenantId === 'object' ? currentPayment.tenantId._id : currentPayment.tenantId;
+    const propertyId = typeof currentPayment.propertyId === 'object' ? currentPayment.propertyId._id : currentPayment.propertyId;
+    const unitId = typeof currentPayment.unitId === 'object' ? currentPayment.unitId._id : currentPayment.unitId;
+
+    const tenant = tenants.find(t => (t._id || t.id) === tenantId);
+    const property = properties.find(p => (p._id || p.id) === propertyId);
+    const unit = units.find(u => (u._id || u.id) === unitId);
 
     const propertyUnitText = property && unit ? `${property.name} / ${unit.name}` : property ? property.name : unit ? unit.name : 'N/A';
 
@@ -113,8 +147,8 @@ const PaymentDetails = () => {
         }
 
         return (
-            <a href={currentPayment.receiptImage} target="_blank" rel="noopener noreferrer" className="detail-image-wrapper">
-                <img src={currentPayment.receiptImage} alt="Receipt" />
+            <a href={getImageUrl(currentPayment.receiptImage)} target="_blank" rel="noopener noreferrer" className="detail-image-wrapper">
+                <img src={getImageUrl(currentPayment.receiptImage)} alt="Receipt" />
             </a>
         );
     };
@@ -124,22 +158,25 @@ const PaymentDetails = () => {
             <div id="payment-details-view">
                 <div className="page-header">
                     <div>
-                        <button id="back-btn" onClick={handleBack} className="btn-secondary">
+                        <Button variant="secondary" onClick={handleBack}>
                             <i className="fa-solid fa-arrow-left"></i> Back to Payments
-                        </button>
+                        </Button>
                         <h1 id="payment-title">Payment Details</h1>
                         <p id="payment-subtitle">View comprehensive information and receipt for this payment.</p>
                     </div>
                     <div className="page-actions">
-                        <button id="print-btn" onClick={handlePrint} className="btn-secondary">
+                        <Button variant="secondary" onClick={() => setShareModalOpen(true)}>
+                            <i className="fa-solid fa-share"></i> Share
+                        </Button>
+                        <Button variant="secondary" onClick={() => setPrintModalOpen(true)}>
                             <i className="fa-solid fa-print"></i> Print
-                        </button>
-                        <button id="edit-btn" onClick={handleEdit} className="btn-primary">
-                            <i className="fa-solid fa-pencil"></i> Edit Payment
-                        </button>
-                        <button id="delete-btn" onClick={handleDelete} className="btn-danger">
-                            <i className="fa-solid fa-trash-can"></i> Delete Payment
-                        </button>
+                        </Button>
+                        <Button variant="primary" onClick={handleEdit}>
+                            <i className="fa-solid fa-pencil"></i> Edit
+                        </Button>
+                        <Button variant="danger" onClick={handleDelete}>
+                            <i className="fa-solid fa-trash-can"></i> Delete
+                        </Button>
                     </div>
                 </div>
 
@@ -165,6 +202,22 @@ const PaymentDetails = () => {
                     </div>
                 </div>
             </div>
+
+            <SharePrintModal 
+                isOpen={shareModalOpen} 
+                onClose={() => setShareModalOpen(false)} 
+                mode="share"
+                items={attachments}
+                onAction={(sel) => handleAction('share', sel)}
+            />
+            
+            <SharePrintModal 
+                isOpen={printModalOpen} 
+                onClose={() => setPrintModalOpen(false)} 
+                mode="print"
+                items={attachments}
+                onAction={(sel) => handleAction('print', sel)}
+            />
         </main>
     );
 };

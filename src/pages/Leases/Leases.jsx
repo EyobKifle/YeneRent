@@ -1,7 +1,11 @@
+/* eslint-disable no-unused-vars */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { formatDate, formatCurrency, debounce, generateId, readFileAsDataURL } from '../../utils/utils';
+import TaxCalculator from '../../utils/taxCalculator';
+import { settingsService } from '../../utils/settingsService';
+import { useAuth } from '../../contexts/AuthContext';
 import Button from '../../components/ui/Button';
 import NumberInput from '../../components/ui/NumberInput';
 import './Leases.css';
@@ -27,6 +31,7 @@ const Modal = ({ title, children, onClose, isOpen, maxWidth = '500px' }) => {
 
 const Leases = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [leases, setLeases] = useState([]);
     const [tenants, setTenants] = useState([]);
     const [properties, setProperties] = useState([]);
@@ -80,6 +85,33 @@ const Leases = () => {
         }
     }, []);
 
+    const fetchTenants = useCallback(async () => {
+        try {
+            const fetchedTenants = await api.get(TENANT_KEY);
+            setTenants(fetchedTenants || []);
+        } catch (err) {
+            console.error('Failed to fetch tenants:', err);
+        }
+    }, []);
+
+    const fetchProperties = useCallback(async () => {
+        try {
+            const fetchedProperties = await api.get(PROPERTY_KEY);
+            setProperties(fetchedProperties.properties || []);
+        } catch (err) {
+            console.error('Failed to fetch properties:', err);
+        }
+    }, []);
+
+    const fetchUnits = useCallback(async () => {
+        try {
+            const fetchedUnits = await api.get(UNIT_KEY);
+            setUnits(fetchedUnits || []);
+        } catch (err) {
+            console.error('Failed to fetch units:', err);
+        }
+    }, []);
+
     useEffect(() => {
         fetchAllData();
     }, [fetchAllData]);
@@ -98,10 +130,20 @@ const Leases = () => {
         return { text: 'Upcoming', class: 'status-upcoming' };
     }, []);
 
+    // Helper to Get ID from populated object or string ID
+    const getMongoId = (field) => {
+        if (!field) return null;
+        return typeof field === 'object' ? field._id : field;
+    };
+
     const filteredLeases = leases.filter(lease => {
-        const tenant = tenants.find(t => t.id === lease.tenantId);
-        const unit = units.find(u => u.id === lease.unitId);
-        const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
+        const tenantId = getMongoId(lease.tenantId);
+        const unitId = getMongoId(lease.unitId);
+        
+        const tenant = tenants.find(t => t._id === tenantId);
+        const unit = units.find(u => u._id === unitId);
+        const property = unit ? properties.find(p => p._id === getMongoId(unit.propertyId)) : null;
+        
         const searchLower = searchTerm.toLowerCase();
         return (tenant && tenant.name.toLowerCase().includes(searchLower)) ||
                (property && property.name.toLowerCase().includes(searchLower)) ||
@@ -117,33 +159,68 @@ const Leases = () => {
     const [formEndDate, setFormEndDate] = useState('');
     const [formRentAmount, setFormRentAmount] = useState('');
     const [formWithholdingAmount, setFormWithholdingAmount] = useState('');
+    const [isWithholdingApplied, setIsWithholdingApplied] = useState(false);
     const [leaseAgreementFile, setLeaseAgreementFile] = useState(null);
     const [withholdingReceiptFile, setWithholdingReceiptFile] = useState(null);
     const [leaseAgreementFileName, setLeaseAgreementFileName] = useState('');
     const [withholdingReceiptFileName, setWithholdingReceiptFileName] = useState('');
     const [availableUnitsForProperty, setAvailableUnitsForProperty] = useState([]);
 
-    const openLeaseModal = useCallback((lease = null, renewal = false) => {
+    // Auto-calculate withholding amount when rent changes or withholding checkbox toggles
+    useEffect(() => {
+        if (isWithholdingApplied && formRentAmount) {
+            const taxCalculator = new TaxCalculator();
+            // For lease withholding, use the withholding tax rate (15%)
+            const withholdingAmount = parseFloat(formRentAmount) * taxCalculator.settings.withholdingTaxRate;
+            setFormWithholdingAmount(withholdingAmount.toFixed(2));
+        } else if (!isWithholdingApplied) {
+            setFormWithholdingAmount('');
+        }
+    }, [formRentAmount, isWithholdingApplied]);
+
+    const openLeaseModal = useCallback(async (lease = null, renewal = false) => {
+        // Refresh data when opening the modal to ensure newly added tenants, properties, and units are included
+        await Promise.all([fetchTenants(), fetchProperties(), fetchUnits()]);
         setCurrentLease(lease);
         setIsRenewal(renewal);
-        setFormTenantId(lease?.tenantId || '');
-        setFormPropertyId(lease?.unitId ? units.find(u => u.id === lease.unitId)?.propertyId || '' : '');
-        setFormUnitId(lease?.unitId || '');
+        
+        const leaseTenantId = getMongoId(lease?.tenantId);
+        const leaseUnitId = getMongoId(lease?.unitId);
+        
+        // Find property ID from the unit if available
+        let leasePropertyId = '';
+        if (leaseUnitId) {
+            const unit = units.find(u => u._id === leaseUnitId);
+            if (unit) {
+                leasePropertyId = getMongoId(unit.propertyId);
+            }
+        }
+
+        setFormTenantId(leaseTenantId || '');
+        setFormPropertyId(leasePropertyId || '');
+        setFormUnitId(leaseUnitId || '');
         setFormStartDate(renewal ? (new Date(new Date(lease.endDate).setDate(new Date(lease.endDate).getDate() + 1))).toISOString().split('T')[0] : lease?.startDate || '');
         setFormEndDate(renewal ? (new Date(new Date(lease.endDate).setFullYear(new Date(lease.endDate).getFullYear() + 1))).toISOString().split('T')[0] : lease?.endDate || '');
         setFormRentAmount(lease?.rentAmount || '');
         setFormWithholdingAmount(lease?.withholdingAmount || '');
+        setIsWithholdingApplied(!!lease?.withholdingAmount);
         setLeaseAgreementFile(null);
         setWithholdingReceiptFile(null);
         setLeaseAgreementFileName(lease?.leaseAgreementName || '');
         setWithholdingReceiptFileName(lease?.withholdingReceiptName || '');
         setIsLeaseModalOpen(true);
-    }, [units]);
+    }, [units, fetchTenants, fetchProperties, fetchUnits]);
 
     useEffect(() => {
         if (formPropertyId) {
-            const activeLeaseUnitIds = leases.filter(l => getLeaseStatus(l).text === 'Active' && l.id !== currentLease?.id).map(l => l.unitId);
-            const unitsForProperty = units.filter(u => u.propertyId === formPropertyId && !activeLeaseUnitIds.includes(u.id));
+            const activeLeaseUnitIds = leases
+                .filter(l => getLeaseStatus(l).text === 'Active' && l._id !== currentLease?._id)
+                .map(l => getMongoId(l.unitId));
+            
+            const unitsForProperty = units.filter(u => {
+                const uPropId = getMongoId(u.propertyId);
+                return uPropId === formPropertyId && u.status === 'Available' && !activeLeaseUnitIds.includes(u._id);
+            });
             setAvailableUnitsForProperty(unitsForProperty);
         } else {
             setAvailableUnitsForProperty([]);
@@ -154,7 +231,7 @@ const Leases = () => {
         e.preventDefault();
 
         // Basic form validation
-        if (!formTenantId || !formPropertyId || !formUnitId || !formStartDate || !formEndDate || !formRentAmount) {
+        if (formTenantId === '' || formPropertyId === '' || formUnitId === '' || !formStartDate || !formEndDate || !formRentAmount) {
             alert('Please fill in all required fields.');
             return;
         }
@@ -174,7 +251,7 @@ const Leases = () => {
         }
 
         const leaseData = {
-            id: currentLease && !isRenewal ? currentLease.id : generateId(),
+            id: currentLease && !isRenewal ? currentLease._id : undefined,
             tenantId: formTenantId,
             propertyId: formPropertyId,
             unitId: formUnitId,
@@ -190,8 +267,9 @@ const Leases = () => {
 
         try {
             if (currentLease && !isRenewal) {
-                await api.put(`${LEASE_KEY}/${leaseData.id}`, leaseData);
-                setLeases(leases.map(l => l.id === leaseData.id ? leaseData : l));
+                await api.put(`${LEASE_KEY}/${currentLease._id}`, leaseData);
+                // Optimistic update: use the string IDs in leaseData, the UI will handle safely via getMongoId
+                setLeases(leases.map(l => l._id === currentLease._id ? { ...l, ...leaseData } : l));
                 alert('Lease updated successfully!');
             } else {
                 const newLease = await api.post(LEASE_KEY, leaseData);
@@ -199,27 +277,36 @@ const Leases = () => {
                 alert('Lease created successfully!');
             }
 
-            // Update tenant and unit records (simplified for now, actual logic might be more complex)
-            const tenantToUpdate = tenants.find(t => t.id === leaseData.tenantId);
-            if (tenantToUpdate) await api.put(`${TENANT_KEY}/${tenantToUpdate.id}`, { ...tenantToUpdate, unitId: leaseData.unitId });
+            // Update tenant and unit records
+            try {
+                const tenantToUpdate = tenants.find(t => t._id === leaseData.tenantId);
+                if (tenantToUpdate) {
+                    await api.put(`${TENANT_KEY}/${tenantToUpdate._id}`, { unitId: leaseData.unitId });
+                }
 
-            const unitToUpdate = units.find(u => u.id === leaseData.unitId);
-            if (unitToUpdate) await api.put(`${UNIT_KEY}/${unitToUpdate.id}`, { ...unitToUpdate, tenantId: leaseData.tenantId });
-
-            // TODO: Generate or update payment schedule for this lease
-            // This would involve creating/updating payment records based on leaseData
+                const unitToUpdate = units.find(u => u._id === leaseData.unitId);
+                if (unitToUpdate) {
+                    await api.put(`${UNIT_KEY}/${unitToUpdate._id}`, { tenantId: leaseData.tenantId, status: 'Occupied' });
+                }
+            } catch (updateErr) {
+                console.error('Failed to update tenant/unit status:', updateErr);
+            }
 
             setIsLeaseModalOpen(false);
-            fetchAllData(); // Re-fetch all data to ensure consistency
+            fetchAllData(); // Re-fetch all data to ensure consistency and proper population
         } catch (err) {
             console.error('Failed to save lease:', err);
-            alert('Failed to save lease.');
+            // Log the full error object for debugging
+            console.log(JSON.stringify(err, null, 2)); 
+            alert(`Failed to save lease: ${err.message || 'Unknown error'}`);
         }
     };
 
     // --- Lease Details Modal Logic ---
     const openLeaseDetailsModal = useCallback((lease) => {
-        navigate(`/leases/${lease.id}`);
+        // Ensure we navigate using the ID
+        const leaseId = getMongoId(lease); 
+        if(leaseId) navigate(`/leases/${leaseId}`);
     }, [navigate]);
 
     const renderDocPreview = (url, name) => {
@@ -240,20 +327,21 @@ const Leases = () => {
     };
 
     const handleRenewLease = (leaseId) => {
-        const leaseToRenew = leases.find(l => l.id === leaseId);
+        const leaseToRenew = leases.find(l => l._id === leaseId);
         if (leaseToRenew) openLeaseModal(leaseToRenew, true);
     };
 
     const handleDeleteLease = async (leaseId) => {
         if (window.confirm('Are you sure you want to delete this lease?')) {
             try {
+                console.log('Deleting lease with ID:', leaseId);
                 await api.delete(LEASE_KEY, leaseId);
-                setLeases(leases.filter(l => l.id !== leaseId));
+                setLeases(leases.filter(l => l._id !== leaseId));
                 alert('Lease deleted successfully!');
-                fetchAllData(); // Re-fetch all data to ensure consistency
+                fetchAllData(); 
             } catch (err) {
                 console.error('Failed to delete lease:', err);
-                alert('Failed to delete lease.');
+                alert(`Failed to delete lease: ${err.message || 'Unknown error'}`);
             }
         }
     };
@@ -276,10 +364,12 @@ const Leases = () => {
                         <h1>Lease Agreements</h1>
                         <p>Manage all active, expired, and upcoming leases.</p>
                     </div>
-                    <Button variant="secondary" onClick={handleAddLease}>
-                        <i className="fa-solid fa-plus"></i>
-                        <span>Add Lease</span>
-                    </Button>
+                    {(user?.role === 'admin' || user?.role === 'property_manager' || user?.role === 'tenant' || user?.role === 'customer' || user?.role === 'owner') && (
+                        <Button variant="secondary" onClick={handleAddLease}>
+                            <i className="fa-solid fa-plus"></i>
+                            <span>Add Lease</span>
+                        </Button>
+                    )}
                 </div>
 
                 <div className="data-card">
@@ -308,12 +398,17 @@ const Leases = () => {
                                 </thead>
                                 <tbody id="leases-table-body">
                                     {filteredLeases.map(lease => {
-                                        const tenant = tenants.find(t => t.id === lease.tenantId);
-                                        const unit = units.find(u => u.id === lease.unitId);
-                                        const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
+                                        const leaseId = lease._id || lease.id; // Robust ID extraction
+                                        const tenantId = getMongoId(lease.tenantId);
+                                        const unitId = getMongoId(lease.unitId);
+                                        
+                                        const tenant = tenants.find(t => t._id === tenantId);
+                                        const unit = units.find(u => u._id === unitId);
+                                        const property = unit ? properties.find(p => p._id === getMongoId(unit.propertyId)) : null;
+                                        
                                         const status = getLeaseStatus(lease);
                                         return (
-                                            <tr key={lease.id}>
+                                            <tr key={`lease-${leaseId}`}>
                                                 <td>{tenant?.name || 'N/A'}</td>
                                                 <td>
                                                     {property?.name || 'N/A'}
@@ -327,24 +422,20 @@ const Leases = () => {
                                                     <div className="action-dropdown">
                                                         <button type="button" className="action-dropdown-btn" onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setOpenActionId(openActionId === lease.id ? null : lease.id);
+                                                            setOpenActionId(openActionId === leaseId ? null : leaseId);
                                                         }}>
                                                             <i className="fa-solid fa-ellipsis-vertical"></i>
                                                         </button>
-                                                        {openActionId === lease.id && (
+                                                        {openActionId === leaseId && (
                                                         <div className="dropdown-menu align-right show">
                                                             <a key="view" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); openLeaseDetailsModal(lease); }}>
                                                                 <i className="fa-solid fa-eye"></i>View Details
                                                             </a>
-                                                            <a key="edit" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditLease(lease.id); }}>
-                                                                <i className="fa-solid fa-pencil"></i>Edit
-                                                            </a>
-                                                            <a key="renew" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleRenewLease(lease.id); }}>
-                                                                <i className="fa-solid fa-rotate"></i>Renew
-                                                            </a>
-                                                            <a key="delete" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteLease(lease.id); }}>
-                                                                <i className="fa-solid fa-trash-can"></i>Delete
-                                                            </a>
+                                                            {(user?.role === 'admin' || user?.role === 'property_manager' || user?.role === 'tenant') && (
+                                                                <a key="delete" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteLease(leaseId); }}>
+                                                                    <i className="fa-solid fa-trash-can"></i>Delete
+                                                                </a>
+                                                            )}
                                                         </div>
                                                         )}
                                                     </div>
@@ -373,7 +464,7 @@ const Leases = () => {
                 maxWidth="700px"
             >
                 <form ref={leaseFormRef} onSubmit={handleLeaseFormSubmit}>
-                    <input type="hidden" id="lease-id" value={currentLease?.id || ''} />
+                    <input type="hidden" id="lease-id" value={currentLease?._id || ''} />
                     <div className="form-group">
                         <div className="form-label-group">
                             <label htmlFor="lease-tenant" className="form-label">Tenant</label>
@@ -386,12 +477,14 @@ const Leases = () => {
                             onChange={(e) => setFormTenantId(e.target.value)}
                             required
                         >
-                            <option value="">Select a tenant</option>
+                            <option key="default-tenant" value="">Select a tenant</option>
                             {tenants.filter(t => {
-                                const activeLeaseTenantIds = leases.filter(l => getLeaseStatus(l).text === 'Active' && l.id !== currentLease?.id).map(l => l.tenantId);
-                                return !activeLeaseTenantIds.includes(t.id) || t.id === currentLease?.tenantId;
+                                const activeLeaseTenantIds = leases
+                                    .filter(l => getLeaseStatus(l).text === 'Active' && l._id !== currentLease?._id)
+                                    .map(l => getMongoId(l.tenantId));
+                                return !activeLeaseTenantIds.includes(t._id) || t._id === getMongoId(currentLease?.tenantId);
                             }).map(t => (
-                                <option key={t.id} value={t.id}>{t.name}</option>
+                                <option key={t._id} value={t._id}>{t.name}</option>
                             ))}
                         </select>
                     </div>
@@ -408,9 +501,9 @@ const Leases = () => {
                                 }}
                                 required
                             >
-                                <option value="">Select a property</option>
+                                <option key="default-property" value="">Select a property</option>
                                 {properties.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                    <option key={`property-${p._id}`} value={p._id}>{p.name}</option>
                                 ))}
                             </select>
                         </div>
@@ -423,13 +516,14 @@ const Leases = () => {
                                 onChange={(e) => setFormUnitId(e.target.value)}
                                 required
                             >
-                                <option value="">Select a unit</option>
+                                <option key="default-unit" value="">Select a unit</option>
                                 {availableUnitsForProperty.map(u => (
-                                    <option key={u.id} value={u.id}>Unit {u.unitNumber}</option>
+                                    <option key={`unit-${u._id}`} value={u._id}>Unit {u.unitNumber}</option>
                                 ))}
                             </select>
                         </div>
                     </div>
+                    {/* ... Rest of form inputs ... */}
                     <div className="form-row-columns">
                         <div className="form-group">
                             <label htmlFor="lease-start-date" className="form-label">Start Date</label>
@@ -457,23 +551,35 @@ const Leases = () => {
                     <div className="form-row-columns">
                         <div className="form-group">
                             <label htmlFor="lease-rent" className="form-label">Monthly Rent (ETB)</label>
-                            <NumberInput
-                                value={formRentAmount}
-                                onChange={(value) => setFormRentAmount(value)}
-                                placeholder="Enter rent amount"
-                                className="form-input"
-                                min={0}
-                                required
-                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <NumberInput
+                                    value={formRentAmount}
+                                    onChange={(value) => setFormRentAmount(value)}
+                                    placeholder="Enter rent amount"
+                                    className="form-input"
+                                    min={0}
+                                    required
+                                />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.875rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={isWithholdingApplied}
+                                        onChange={(e) => setIsWithholdingApplied(e.target.checked)}
+                                    />
+                                    Withholding Tax Applied
+                                </label>
+                            </div>
                         </div>
                         <div className="form-group">
                             <label htmlFor="lease-withholding" className="form-label">Withholding Amount (Optional)</label>
                             <NumberInput
                                 value={formWithholdingAmount}
                                 onChange={(value) => setFormWithholdingAmount(value)}
-                                placeholder="Enter withholding amount"
+                                placeholder="Auto-calculated if withholding applied"
                                 className="form-input"
                                 min={0}
+                                readOnly={isWithholdingApplied}
+                                disabled={isWithholdingApplied}
                             />
                         </div>
                     </div>
@@ -514,7 +620,7 @@ const Leases = () => {
 
             {/* Lease Details Modal */}
             <Modal
-                title={`Lease Details: ${tenants.find(t => t.id === currentLease?.tenantId)?.name || 'N/A'}`}
+                title={`Lease Details: ${tenants.find(t => t._id === getMongoId(currentLease?.tenantId))?.name || 'N/A'}`}
                 isOpen={isDetailsModalOpen}
                 onClose={() => setIsDetailsModalOpen(false)}
                 maxWidth="800px"
@@ -523,9 +629,12 @@ const Leases = () => {
                     <div className="lease-details-grid">
                         <div className="detail-section">
                             <h4>Lease & Property</h4>
-                            <div className="detail-item"><span>Tenant</span><span>{tenants.find(t => t.id === currentLease.tenantId)?.name || 'N/A'}</span></div>
-                            <div className="detail-item"><span>Property</span><span>{properties.find(p => p.id === units.find(u => u.id === currentLease.unitId)?.propertyId)?.name || 'N/A'}</span></div>
-                            <div className="detail-item"><span>Unit</span><span>{units.find(u => u.id === currentLease.unitId)?.unitNumber || 'N/A'}</span></div>
+                            <div className="detail-item"><span>Tenant</span><span>{tenants.find(t => t._id === getMongoId(currentLease.tenantId))?.name || 'N/A'}</span></div>
+                            <div className="detail-item">
+                                <span>Property</span>
+                                <span>{properties.find(p => p._id === units.find(u => u._id === getMongoId(currentLease.unitId))?.propertyId._id || units.find(u => u._id === getMongoId(currentLease.unitId))?.propertyId)?.name || 'N/A'}</span>
+                            </div>
+                            <div className="detail-item"><span>Unit</span><span>{units.find(u => u._id === getMongoId(currentLease.unitId))?.unitNumber || 'N/A'}</span></div>
                             <div className="detail-item"><span>Period</span><span>{formatDate(currentLease.startDate)} to {formatDate(currentLease.endDate)}</span></div>
                             <div className="detail-item"><span>Status</span><span><span className={`status-badge ${getLeaseStatus(currentLease).class}`}>{getLeaseStatus(currentLease).text}</span></span></div>
                         </div>

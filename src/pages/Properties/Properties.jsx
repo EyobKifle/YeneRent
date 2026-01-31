@@ -5,7 +5,7 @@ import '../../styles/pages/Properties.css';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import NumberInput from '../../components/ui/NumberInput';
-import api from '../../utils/api';
+import api, { getImageUrl } from '../../utils/api';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -235,7 +235,7 @@ const Properties = () => {
           <div key={prop._id} className="property-card" onClick={() => navigate(`/units?propertyId=${prop._id}`)}>
             <div className="property-image-container">
               {prop.imageUrl ? (
-                <img src={prop.imageUrl} alt={prop.name} className="property-image" />
+                <img src={getImageUrl(prop.imageUrl)} alt={prop.name} className="property-image" />
               ) : (
                 <div className="property-placeholder">
                   <i className="fa-solid fa-building"></i>

@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { get } from '../../utils/api'; // Assuming 'get' is exported from api.js
+import api, { getImageUrl } from '../../utils/api';
 import { formatDate, formatCurrency } from '../../utils/utils';
-import './MaintenanceDetails.css'; // Import the specific CSS for this component
+import Button from '../../components/ui/Button';
+import SharePrintModal from '../../components/ui/SharePrintModal';
+import './MaintenanceDetails.css';
 
 const MaintenanceDetails = () => {
     const { id } = useParams();
@@ -10,37 +12,39 @@ const MaintenanceDetails = () => {
     const [currentMaintenance, setCurrentMaintenance] = useState(null);
     const [properties, setProperties] = useState([]);
     const [units, setUnits] = useState([]);
-
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-
-    const MAINTENANCE_KEY = 'maintenance';
-    const PROPERTY_KEY = 'properties';
-    const UNIT_KEY = 'units';
-
+    
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [printModalOpen, setPrintModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchMaintenanceDetails = async () => {
             if (!id) {
-                alert('Maintenance ID not found in URL.'); // Placeholder for notification
+                alert('Maintenance ID not found in URL.');
                 navigate('/maintenance');
                 return;
             }
 
             try {
-                const [fetchedProperties, fetchedUnits, maintenance] = await Promise.all([
-                    get(PROPERTY_KEY),
-                    get(UNIT_KEY),
-                    get(MAINTENANCE_KEY)
+                const [fetchedProperties, fetchedUnits, maintenanceData] = await Promise.all([
+                    api.get('properties'),
+                    api.get('units'),
+                    api.get('maintenance')
                 ]);
 
-                setProperties(fetchedProperties);
-                setUnits(fetchedUnits);
-
-                const foundMaintenance = maintenance.find(m => m.id === id);
+                setProperties(fetchedProperties.properties || fetchedProperties || []);
+                setUnits(fetchedUnits || []);
+                
+                // Ensure maintenance is an array
+                const maintenanceArray = Array.isArray(maintenanceData) ? maintenanceData : [];
+                const foundMaintenance = maintenanceArray.find(m => {
+                    const mId = (m._id || m.id)?.toString();
+                    return mId === id.toString();
+                });
 
                 if (!foundMaintenance) {
-                    alert('Maintenance request not found.'); // Placeholder for notification
+                    alert('Maintenance request not found.');
                     navigate('/maintenance');
                     return;
                 }
@@ -48,7 +52,6 @@ const MaintenanceDetails = () => {
             } catch (err) {
                 console.error('Failed to fetch maintenance details:', err);
                 setError('Failed to load maintenance details.');
-                alert('Failed to load maintenance details.'); // Placeholder for notification
             } finally {
                 setLoading(false);
             }
@@ -57,29 +60,63 @@ const MaintenanceDetails = () => {
         fetchMaintenanceDetails();
     }, [id, navigate]);
 
-    const handleBack = () => {
-        navigate('/maintenance'); // Assuming /maintenance is the list page
+    const attachments = useMemo(() => {
+        const items = [];
+        if (currentMaintenance?.receiptImage) {
+            items.push({ type: 'image', name: 'Receipt', url: getImageUrl(currentMaintenance.receiptImage) });
+        }
+        if (currentMaintenance?.images && Array.isArray(currentMaintenance.images)) {
+            currentMaintenance.images.forEach((img, idx) => {
+                items.push({
+                    type: 'image',
+                    name: img.caption || `Image ${idx + 1}`,
+                    url: getImageUrl(img.url)
+                });
+            });
+        }
+        return items;
+    }, [currentMaintenance]);
+
+    const handleAction = (mode, selection) => {
+        const item = selection === 'all' ? null : attachments[selection];
+        
+        if (mode === 'print') {
+            if (selection === 'all') {
+                window.print();
+            } else if (item) {
+                const w = window.open(item.url);
+                if (w) w.onload = () => w.print();
+            }
+        } else if (mode === 'share') {
+            const shareData = selection === 'all' 
+                ? { title: `Maintenance: ${currentMaintenance.title}`, url: window.location.href }
+                : { title: item.name, url: item.url };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(console.error);
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareData.url).then(() => alert('Link copied'));
+            }
+        }
+        setShareModalOpen(false);
+        setPrintModalOpen(false);
     };
 
-    const handleEdit = () => {
-        navigate(`/maintenance?editId=${currentMaintenance.id}`); // Redirect to maintenance list with editId
-    };
+    const handleBack = () => navigate('/maintenance');
+
+    const handleEdit = () => navigate(`/maintenance/${id}/edit`);
 
     const handleDelete = async () => {
-        if (window.confirm(`Are you sure you want to delete "${currentMaintenance.title}"?`)) { // Placeholder for confirmation
+        if (window.confirm(`Are you sure you want to delete "${currentMaintenance.title}"?`)) {
             try {
-                await get(MAINTENANCE_KEY, currentMaintenance.id, 'DELETE'); // Assuming 'get' can handle DELETE with a third arg
-                alert('Maintenance request deleted successfully!'); // Placeholder for notification
+                await api.delete(`maintenance/${currentMaintenance._id || currentMaintenance.id}`);
+                alert('Maintenance request deleted successfully!');
                 navigate('/maintenance');
             } catch (err) {
                 console.error('Failed to delete maintenance request:', err);
-                alert('Failed to delete maintenance request.'); // Placeholder for notification
+                alert('Failed to delete maintenance request.');
             }
         }
-    };
-
-    const handlePrint = () => {
-        window.print();
     };
 
     if (loading) {
@@ -94,8 +131,11 @@ const MaintenanceDetails = () => {
         return <div className="no-maintenance">Maintenance request not found.</div>;
     }
 
-    const property = properties.find(p => p.id === currentMaintenance.propertyId);
-    const unit = units.find(u => u.id === currentMaintenance.unitId);
+    const propId = typeof currentMaintenance.propertyId === 'object' ? currentMaintenance.propertyId._id : currentMaintenance.propertyId;
+    const unitId = typeof currentMaintenance.unitId === 'object' ? currentMaintenance.unitId._id : currentMaintenance.unitId;
+    
+    const property = properties.find(p => (p._id || p.id) === propId);
+    const unit = units.find(u => (u._id || u.id) === unitId);
 
     const renderImageGallery = () => {
         if (!currentMaintenance.images || currentMaintenance.images.length === 0) {
@@ -109,7 +149,7 @@ const MaintenanceDetails = () => {
 
         return currentMaintenance.images.map((image, index) => (
             <div key={index} className="detail-image-preview">
-                <img src={image.url} alt={image.caption || `Image ${index + 1}`} />
+                <img src={getImageUrl(image.url)} alt={image.caption || `Image ${index + 1}`} />
                 <span>{image.caption || `Image ${index + 1}`}</span>
             </div>
         ));
@@ -126,8 +166,8 @@ const MaintenanceDetails = () => {
         }
 
         return (
-            <a href={currentMaintenance.receiptImage} target="_blank" rel="noopener noreferrer" className="detail-image-wrapper">
-                <img src={currentMaintenance.receiptImage} alt="Receipt" />
+            <a href={getImageUrl(currentMaintenance.receiptImage)} target="_blank" rel="noopener noreferrer" className="detail-image-wrapper">
+                <img src={getImageUrl(currentMaintenance.receiptImage)} alt="Receipt" />
             </a>
         );
     };
@@ -137,22 +177,25 @@ const MaintenanceDetails = () => {
             <div id="maintenance-details-view">
                 <div className="page-header">
                     <div>
-                        <button id="back-btn" onClick={handleBack} className="btn-secondary">
+                        <Button variant="secondary" onClick={handleBack}>
                             <i className="fa-solid fa-arrow-left"></i> Back to Requests
-                        </button>
+                        </Button>
                         <h1 id="request-title">Maintenance Request Details</h1>
                         <p id="request-subtitle">View comprehensive information for this maintenance task.</p>
                     </div>
                     <div className="page-actions">
-                        <button id="print-request-btn" onClick={handlePrint} className="btn-secondary">
+                        <Button variant="secondary" onClick={() => setShareModalOpen(true)}>
+                            <i className="fa-solid fa-share"></i> Share
+                        </Button>
+                        <Button variant="secondary" onClick={() => setPrintModalOpen(true)}>
                             <i className="fa-solid fa-print"></i> Print
-                        </button>
-                        <button id="edit-request-btn" onClick={handleEdit} className="btn-primary">
-                            <i className="fa-solid fa-pencil"></i> Edit Request
-                        </button>
-                        <button id="delete-request-btn" onClick={handleDelete} className="btn-danger">
-                            <i className="fa-solid fa-trash-can"></i> Delete Request
-                        </button>
+                        </Button>
+                        <Button variant="primary" onClick={handleEdit}>
+                            <i className="fa-solid fa-pencil"></i> Edit
+                        </Button>
+                        <Button variant="danger" onClick={handleDelete}>
+                            <i className="fa-solid fa-trash-can"></i> Delete
+                        </Button>
                     </div>
                 </div>
 
@@ -184,6 +227,22 @@ const MaintenanceDetails = () => {
                     </div>
                 </div>
             </div>
+
+            <SharePrintModal 
+                isOpen={shareModalOpen} 
+                onClose={() => setShareModalOpen(false)} 
+                mode="share"
+                items={attachments}
+                onAction={(sel) => handleAction('share', sel)}
+            />
+            
+            <SharePrintModal 
+                isOpen={printModalOpen} 
+                onClose={() => setPrintModalOpen(false)} 
+                mode="print"
+                items={attachments}
+                onAction={(sel) => handleAction('print', sel)}
+            />
         </main>
     );
 };

@@ -194,7 +194,7 @@ export default function DocumentsPage() {
             { key: 'Tax Document', label: 'Tax Documents' },
             { key: 'Other', label: 'Others' },
           ].map(f => (
-            <button key={f.key} className={`filter-btn ${category===f.key ? 'active' : ''}`} onClick={() => setCategory(f.key)}>
+            <button key={f.key} className={`filter-btn ${category === f.key ? 'active' : ''}`} onClick={() => setCategory(f.key)}>
               {f.label}
             </button>
           ))}
@@ -213,11 +213,12 @@ export default function DocumentsPage() {
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} className="text-center p-4">No Documents Found</td></tr>
+                <tr key="no-documents"><td colSpan={6} className="text-center p-4">No Documents Found</td></tr>
               ) : filtered.map(doc => {
                 const { icon, className } = getFileIcon(doc.type)
+                const docId = doc._id || doc.id;
                 return (
-                  <tr key={doc.id}>
+                  <tr key={docId}>
                     <td>
                       <div className="document-name-cell">
                         <i className={`${icon} ${className}`}></i>
@@ -234,23 +235,23 @@ export default function DocumentsPage() {
                           className="action-dropdown-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenActionId(openActionId === doc.id ? null : doc.id);
+                            setOpenActionId(openActionId === docId ? null : docId);
                           }}
                         >
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
-                        {openActionId === doc.id && (
+                        {openActionId === docId && (
                           <div className="dropdown-menu align-right show">
-                            <a key="view" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDocument(doc); }}>
+                            <a key={`view-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDocument(doc); }}>
                               <i className="fa-solid fa-eye"></i>View Details
                             </a>
-                            <a key="edit" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate(`/documents/${doc.id}/edit`); }}>
+                            <a key={`edit-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate(`/documents/${docId}/edit`); }}>
                               <i className="fa-solid fa-pencil"></i>Edit
                             </a>
-                            <a key="download" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDownloadDocument(doc); }}>
+                            <a key={`download-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDownloadDocument(doc); }}>
                               <i className="fa-solid fa-download"></i>Download
                             </a>
-                            <a key="delete" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteDocument(doc); }}>
+                            <a key={`delete-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteDocument(doc); }}>
                               <i className="fa-solid fa-trash-can"></i>Delete
                             </a>
                           </div>

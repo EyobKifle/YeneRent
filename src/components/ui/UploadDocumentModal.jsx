@@ -28,7 +28,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
         api.get('properties'),
         api.get('tenants')
       ]);
-      setProperties(propertiesData || []);
+      setProperties(propertiesData?.properties || []);
       setTenants(tenantsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -69,28 +69,14 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
 
     setLoading(true);
     try {
-      // Upload file first
+      // Create FormData with file and metadata
       const formDataUpload = new FormData();
       formDataUpload.append('file', formData.file);
+      formDataUpload.append('category', formData.category);
+      if (formData.propertyId) formDataUpload.append('propertyId', formData.propertyId);
+      if (formData.tenantId) formDataUpload.append('tenantId', formData.tenantId);
 
-      const uploadResponse = await api.post('uploads/document', formDataUpload, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      // Create document record
-      const documentData = {
-        name: formData.name,
-        category: formData.category,
-        propertyId: formData.propertyId || undefined,
-        tenantId: formData.tenantId || undefined,
-        url: uploadResponse.url,
-        size: formData.file.size,
-        type: formData.file.type
-      };
-
-      const newDocument = await api.post('documents', documentData);
+      const newDocument = await api.post('documents', formDataUpload);
       onDocumentUploaded(newDocument);
       handleClose();
     } catch (error) {
@@ -123,8 +109,10 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
     'Lease Agreement',
     'Payment Receipt',
     'Tax Document',
-    'Insurance Document',
-    'Maintenance Record',
+    'Tenant ID',
+    'Property Deed',
+    'Insurance Policy',
+    'Maintenance Report',
     'Other'
   ];
 
@@ -180,7 +168,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
           >
             <option value="">Select Property</option>
             {properties.map(property => (
-              <option key={property.id} value={property.id}>
+              <option key={property._id} value={property._id}>
                 {property.name}
               </option>
             ))}
@@ -197,7 +185,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
           >
             <option value="">Select Tenant</option>
             {tenants.map(tenant => (
-              <option key={tenant.id} value={tenant.id}>
+              <option key={tenant._id} value={tenant._id}>
                 {tenant.name}
               </option>
             ))}

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import Modal from './Modal';
 import Button from './Button';
+import { getImageUrl } from '../../utils/api';
 
 // fields: [{ label, value }]
 // attachments: [{ url, type, name }]
@@ -30,18 +31,20 @@ export default function DetailsModal({ isOpen, title, onClose, fields = [], atta
 
   const renderPreview = (att) => {
     if (!att || !att.url) return null;
+    const fullUrl = getImageUrl(att.url);
     const type = (att.type || '').toLowerCase();
+    
     if (type.startsWith('image/')) {
       return (
         <div className="details-preview">
-          <img src={att.url} alt={att.name || 'Attachment'} style={{ maxWidth: '100%', borderRadius: 6 }} />
+          <img src={fullUrl} alt={att.name || 'Attachment'} style={{ maxWidth: '100%', borderRadius: 6 }} />
         </div>
       );
     }
     if (type === 'application/pdf') {
       return (
         <div className="details-preview" style={{ height: 400 }}>
-          <iframe title="PDF Preview" src={att.url} style={{ width: '100%', height: '100%', border: 'none' }} />
+          <iframe title="PDF Preview" src={fullUrl} style={{ width: '100%', height: '100%', border: 'none' }} />
         </div>
       );
     }

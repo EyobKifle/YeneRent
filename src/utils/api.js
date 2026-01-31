@@ -371,9 +371,15 @@ const api = {
   },
 
   async delete(resource, id) {
+    if (!id) {
+      return apiClient.delete(resource.startsWith('/') ? resource : `/${resource}`);
+    }
     const singular = resource.endsWith('s') ? resource.slice(0, -1) : resource;
     const methodName = `delete${singular.charAt(0).toUpperCase() + singular.slice(1)}`;
-    return this[methodName](id);
+    if (typeof this[methodName] === 'function') {
+      return this[methodName](id);
+    }
+    return apiClient.delete(`/${resource}/${id}`);
   },
 
   async post(endpoint, data) {
@@ -396,5 +402,13 @@ export const get = api.get.bind(api);
 export const create = api.create.bind(api);
 export const update = api.update.bind(api);
 export const remove = api.delete.bind(api); // Alias for delete
+
+// Helper to get full image URL
+export const getImageUrl = (path) => {
+  if (!path) return null;
+  if (path.startsWith('http') || path.startsWith('data:') || path.startsWith('blob:')) return path;
+  const serverUrl = API_BASE_URL.replace(/\/api\/?$/, '');
+  return `${serverUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 export default api;

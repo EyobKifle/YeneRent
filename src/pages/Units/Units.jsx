@@ -16,6 +16,7 @@ export default function UnitsPage() {
   const [properties, setProperties] = useState([])
   const [units, setUnits] = useState([])
   const [tenants, setTenants] = useState([])
+  const [isRefreshing, setIsRefreshing] = useState(false)
   // const [isModalOpen, setIsModalOpen] = useState(false)
   // const [editingUnit, setEditingUnit] = useState(null)
   // const [formData, setFormData] = useState({
@@ -53,6 +54,18 @@ export default function UnitsPage() {
     setPropertyId(newPropertyId)
     const us = await api.get(`units/property/${newPropertyId}`)
     setUnits(us || [])
+  }
+
+  const refreshProperties = async () => {
+    setIsRefreshing(true)
+    try {
+      const ps = await api.get('properties')
+      setProperties(ps.properties || [])
+    } catch (error) {
+      console.error('Error refreshing properties:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
   }
 
   // const handleAddUnit = () => {
@@ -144,6 +157,10 @@ export default function UnitsPage() {
         </div>
         <div className="header-actions">
           <a href="/properties" className="btn-secondary"><i className="fa-solid fa-arrow-left"></i><span>Back to Properties</span></a>
+          <Button variant="secondary" onClick={refreshProperties} disabled={isRefreshing}>
+            <i className={`fa-solid ${isRefreshing ? 'fa-spinner fa-spin' : 'fa-refresh'}`}></i>
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh Properties'}</span>
+          </Button>
           {/* <Button variant="primary" onClick={handleAddUnit}><i className="fa-solid fa-plus"></i><span>Add Unit</span></Button> */}
         </div>
       </div>

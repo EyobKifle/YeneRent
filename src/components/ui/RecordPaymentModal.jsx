@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
-import NumberInput from './NumberInput';
 import api from '../../utils/api';
 
 const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
@@ -9,12 +8,12 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
     leaseId: '',
     amount: '',
     type: 'Rent',
+    includeWithholding: false,
     withholdingAmount: '',
     date: new Date().toISOString().split('T')[0], // Today's date
     dueDate: '',
     method: '',
     status: 'Paid',
-    transactionNumber: '',
     receiptNumber: '',
     invoiceNumber: '',
     notes: '',
@@ -30,14 +29,40 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
     }
   }, [isOpen]);
 
+  // Auto-populate fields when lease is selected
   useEffect(() => {
-    if (formData.amount && formData.type === 'Rent') {
+    if (formData.leaseId && leases.length > 0) {
+      const selectedLease = leases.find(lease => (lease._id || lease.id) === formData.leaseId);
+      if (selectedLease) {
+        const rentAmount = selectedLease.rentAmount || 0;
+        const withholdingAmount = selectedLease.withholdingAmount || (rentAmount * 0.15);
+        
+        // Calculate next due date based on lease start date
+        const startDate = new Date(selectedLease.startDate);
+        const today = new Date();
+        const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth());
+        const nextDueDate = new Date(startDate);
+        nextDueDate.setMonth(startDate.getMonth() + monthsDiff + 1);
+        
+        setFormData(prev => ({
+          ...prev,
+          amount: rentAmount.toString(),
+          withholdingAmount: withholdingAmount.toFixed(2),
+          dueDate: nextDueDate.toISOString().split('T')[0]
+        }));
+      }
+    }
+  }, [formData.leaseId, leases]);
+
+  // Update withholding when amount or type changes (only if includeWithholding is checked)
+  useEffect(() => {
+    if (formData.includeWithholding && formData.amount && formData.type === 'Rent') {
       const withholding = parseFloat(formData.amount) * 0.15;
       setFormData(prev => ({ ...prev, withholdingAmount: withholding.toFixed(2) }));
-    } else {
-      setFormData(prev => ({ ...prev, withholdingAmount: '' }));
+    } else if (!formData.includeWithholding) {
+      setFormData(prev => ({ ...prev, withholdingAmount: '0' }));
     }
-  }, [formData.amount, formData.type]);
+  }, [formData.amount, formData.type, formData.includeWithholding]);
 
   const fetchLeases = async () => {
     try {
@@ -49,11 +74,16 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
   };
 
   const handleInputChange = (e) => {
-    const { name, value, type, files } = e.target;
+    const { name, value, type, files, checked } = e.target;
     if (type === 'file') {
       setFormData(prev => ({
         ...prev,
         [name]: files[0] || null
+      }));
+    } else if (type === 'checkbox') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: checked
       }));
     } else {
       setFormData(prev => ({
@@ -86,7 +116,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
 
     setLoading(true);
     try {
-      const selectedLease = leases.find(lease => lease.id === formData.leaseId);
+      const selectedLease = leases.find(lease => (lease._id || lease.id) === formData.leaseId);
       if (!selectedLease) {
         throw new Error('Selected lease not found');
       }
@@ -111,16 +141,15 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
 
       const paymentData = {
         leaseId: formData.leaseId,
-        tenantId: selectedLease.tenantId,
-        propertyId: selectedLease.propertyId,
+        tenantId: selectedLease.tenantId?._id || selectedLease.tenantId,
+        propertyId: selectedLease.propertyId?._id || selectedLease.propertyId,
         amount: parseFloat(formData.amount),
         type: formData.type,
-        withholdingAmount: parseFloat(formData.withholdingAmount) || 0,
+        withholdingAmount: formData.includeWithholding ? parseFloat(formData.withholdingAmount) || 0 : 0,
         date: formData.date,
         dueDate: formData.dueDate,
         method: formData.method,
         status: formData.status,
-        transactionNumber: formData.transactionNumber || undefined,
         receiptNumber: formData.receiptNumber || undefined,
         invoiceNumber: formData.invoiceNumber || undefined,
         receiptUrl,
@@ -129,16 +158,19 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
       };
 
       const newPayment = await api.post('payments', paymentData);
+      alert('Payment recorded successfully!');
       onPaymentRecorded(newPayment);
       handleClose();
     } catch (error) {
       console.error('Error recording payment:', error);
+      const errorMessage = error.message || error.error || 'Failed to record payment';
+      alert(`Error: ${errorMessage}`);
       if (error.errors) {
         setErrors(error.errors.reduce((acc, err) => ({ ...acc, [err.path]: err.msg }), {}));
       } else if (error.error) {
         setErrors({ general: error.error });
       } else {
-        setErrors({ general: 'Failed to record payment' });
+        setErrors({ general: errorMessage });
       }
     } finally {
       setLoading(false);
@@ -150,12 +182,12 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
       leaseId: '',
       amount: '',
       type: 'Rent',
+      includeWithholding: false,
       withholdingAmount: '',
       date: new Date().toISOString().split('T')[0],
       dueDate: '',
       method: '',
       status: 'Paid',
-      transactionNumber: '',
       receiptNumber: '',
       invoiceNumber: '',
       notes: '',
@@ -166,16 +198,19 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
   };
 
   const paymentMethods = [
-    { value: 'CBE Bank', label: 'CBE Bank', icon: 'fa-solid fa-building-columns' },
+    { value: 'Bank Transfer', label: 'Bank Transfer', icon: 'fa-solid fa-building-columns' },
     { value: 'Cash', label: 'Cash', icon: 'fa-solid fa-money-bill-wave' },
-    { value: 'TeleBirr', label: 'TeleBirr', icon: 'fa-solid fa-mobile-screen-button' }
+    { value: 'CBE Birr', label: 'CBE Birr', icon: 'fa-solid fa-mobile-screen-button' },
+    { value: 'Dashen Bank', label: 'Dashen Bank', icon: 'fa-solid fa-building-columns' },
+    { value: 'Awash International Bank', label: 'Awash International Bank', icon: 'fa-solid fa-building-columns' },
+    { value: 'Other', label: 'Other', icon: 'fa-solid fa-ellipsis' }
   ];
 
   return (
     <Modal title="Record Payment" isOpen={isOpen} onClose={handleClose}>
       <form onSubmit={handleSubmit} className="modal-form">
         {errors.general && (
-          <div className="error-message" style={{ color: 'red', marginBottom: '1rem' }}>
+          <div className="error-message" style={{ color: 'red', marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#fee', borderRadius: '4px' }}>
             {errors.general}
           </div>
         )}
@@ -188,15 +223,16 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
             value={formData.leaseId}
             onChange={handleInputChange}
             className={errors.leaseId ? 'error' : ''}
+            style={errors.leaseId ? { borderColor: 'red' } : {}}
           >
             <option value="">Select Lease</option>
             {leases.map(lease => (
-              <option key={lease.id} value={lease.id}>
+              <option key={lease._id || lease.id} value={lease._id || lease.id}>
                 {lease.tenantId?.name || 'Unknown Tenant'} - {lease.propertyId?.name || 'Unknown Property'} (Unit {lease.unitId?.unitNumber || 'N/A'})
               </option>
             ))}
           </select>
-          {errors.leaseId && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.leaseId}</span>}
+          {errors.leaseId && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>{errors.leaseId}</span>}
         </div>
 
         <div className="form-group">
@@ -210,8 +246,9 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
             step="0.01"
             min="0"
             className={errors.amount ? 'error' : ''}
+            style={errors.amount ? { borderColor: 'red' } : {}}
           />
-          {errors.amount && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.amount}</span>}
+          {errors.amount && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>{errors.amount}</span>}
         </div>
 
         <div className="form-group">
@@ -231,19 +268,41 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
           </select>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="withholdingAmount">Withholding Amount</label>
-          <input
-            type="number"
-            id="withholdingAmount"
-            name="withholdingAmount"
-            value={formData.withholdingAmount}
-            onChange={handleInputChange}
-            step="0.01"
-            min="0"
-            readOnly
-          />
-        </div>
+        {formData.type === 'Rent' && (
+          <div className="form-group">
+            <label className="checkbox-container">
+              <input
+                type="checkbox"
+                id="includeWithholding"
+                name="includeWithholding"
+                checked={formData.includeWithholding}
+                onChange={handleInputChange}
+                className="checkbox-input"
+              />
+              <span className="checkbox-custom"></span>
+              <span className="checkbox-label">
+                Include Withholding Tax (15%)
+              </span>
+            </label>
+          </div>
+        )}
+
+
+        {formData.includeWithholding && formData.type === 'Rent' && (
+          <div className="form-group">
+            <label htmlFor="withholdingAmount">Withholding Amount (Read-only)</label>
+            <input
+              type="number"
+              id="withholdingAmount"
+              name="withholdingAmount"
+              value={formData.withholdingAmount}
+              step="0.01"
+              min="0"
+              readOnly
+              style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+            />
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="date">Payment Date *</label>
@@ -254,8 +313,9 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
             value={formData.date}
             onChange={handleInputChange}
             className={errors.date ? 'error' : ''}
+            style={errors.date ? { borderColor: 'red' } : {}}
           />
-          {errors.date && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.date}</span>}
+          {errors.date && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>{errors.date}</span>}
         </div>
 
         <div className="form-group">
@@ -267,8 +327,9 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
             value={formData.dueDate}
             onChange={handleInputChange}
             className={errors.dueDate ? 'error' : ''}
+            style={errors.dueDate ? { borderColor: 'red' } : {}}
           />
-          {errors.dueDate && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.dueDate}</span>}
+          {errors.dueDate && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>{errors.dueDate}</span>}
         </div>
 
         <div className="form-group">
@@ -279,6 +340,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
             value={formData.method}
             onChange={handleInputChange}
             className={errors.method ? 'error' : ''}
+            style={errors.method ? { borderColor: 'red' } : {}}
           >
             <option value="">Select Payment Method</option>
             {paymentMethods.map(method => (
@@ -287,7 +349,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
               </option>
             ))}
           </select>
-          {errors.method && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.method}</span>}
+          {errors.method && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem', display: 'block', marginTop: '0.25rem' }}>{errors.method}</span>}
         </div>
 
         <div className="form-group">
@@ -306,18 +368,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="transactionNumber">Transaction Number</label>
-          <input
-            type="text"
-            id="transactionNumber"
-            name="transactionNumber"
-            value={formData.transactionNumber}
-            onChange={handleInputChange}
-          />
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="receiptNumber">Receipt Number</label>
+          <label htmlFor="receiptNumber">Receipt Number (Optional)</label>
           <input
             type="text"
             id="receiptNumber"
@@ -328,7 +379,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="invoiceNumber">Invoice Number</label>
+          <label htmlFor="invoiceNumber">Invoice Number (Optional)</label>
           <input
             type="text"
             id="invoiceNumber"
@@ -339,7 +390,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="receiptImage">Receipt Image</label>
+          <label htmlFor="receiptImage">Receipt Image (Optional)</label>
           <input
             type="file"
             id="receiptImage"
@@ -355,7 +406,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="notes">Notes</label>
+          <label htmlFor="notes">Notes (Optional)</label>
           <textarea
             id="notes"
             name="notes"

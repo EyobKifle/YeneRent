@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
+import DetailsModal from '../../components/ui/DetailsModal';
 import NumberInput from '../../components/ui/NumberInput';
 import api from '../../utils/api';
 import './Utilities.css';
@@ -9,6 +10,7 @@ const Utilities = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false); // Added state
   const [utilities, setUtilities] = useState([]);
   const [properties, setProperties] = useState([]);
   const [selectedUtility, setSelectedUtility] = useState(null);
@@ -58,7 +60,20 @@ const Utilities = () => {
   }, [searchTerm, utilities, properties]);
 
   const handleAddUtility = () => {
+    setSelectedUtility(null); // Clear selection for add
+    setFormData({
+        type: '',
+        propertyId: '',
+        amount: '',
+        dueDate: '',
+        status: 'Unpaid',
+        billImage: null
+    });
     setIsModalOpen(true);
+  };
+
+  const handleViewDetails = (utility) => {
+    navigate(`/utilities/${utility._id || utility.id}`);
   };
 
   const handleFormSubmit = async (e) => {
@@ -88,14 +103,15 @@ const Utilities = () => {
         amount: parseFloat(formData.amount),
         dueDate: formData.dueDate,
         status: formData.status,
-        billUrl,
-        billName
+        receiptUrl: billUrl,
+        receiptName: billName
       };
 
       if (selectedUtility) {
         // Update existing utility
-        await api.put(`utilities/${selectedUtility.id}`, utilityData);
-        setUtilities(prev => prev.map(u => u.id === selectedUtility.id ? { ...u, ...utilityData } : u));
+        const utilId = selectedUtility._id || selectedUtility.id;
+        await api.put(`utilities/${utilId}`, utilityData);
+        setUtilities(prev => prev.map(u => (u._id || u.id) === utilId ? { ...u, ...utilityData } : u));
         alert('Utility bill updated successfully');
       } else {
         // Create new utility
@@ -122,11 +138,17 @@ const Utilities = () => {
   };
 
   const handleEditUtility = (utility) => {
+    let formattedDate = '';
+    if (utility.dueDate) {
+      const date = new Date(utility.dueDate);
+      formattedDate = date.toISOString().split('T')[0];
+    }
+
     setFormData({
       type: utility.type || '',
-      propertyId: utility.propertyId || '',
+      propertyId: utility.propertyId?._id || utility.propertyId?.id || utility.propertyId || '',
       amount: utility.amount || '',
-      dueDate: utility.dueDate || '',
+      dueDate: formattedDate,
       status: utility.status || 'Unpaid',
       billImage: null
     });
@@ -137,8 +159,9 @@ const Utilities = () => {
   const handleDeleteUtility = async (utility) => {
     if (window.confirm('Are you sure you want to delete this utility bill?')) {
       try {
-        await api.delete(`utilities/${utility.id}`);
-        setUtilities(prev => prev.filter(u => u.id !== utility.id));
+        const utilId = utility._id || utility.id;
+        await api.delete(`utilities/${utilId}`);
+        setUtilities(prev => prev.filter(u => (u._id || u.id) !== utilId));
         alert('Utility bill deleted successfully');
       } catch (error) {
         console.error('Failed to delete utility bill:', error);
@@ -204,9 +227,10 @@ const Utilities = () => {
           </thead>
           <tbody id="utilities-table-body">
             {filteredUtilities.map(util => {
+              const utilId = util._id || util.id;
               const property = properties.find(p => p.id === util.propertyId);
               return (
-                <tr key={util.id}>
+                <tr key={utilId}>
                   <td>{util.type}</td>
                   <td>{property?.name || 'N/A'}</td>
                   <td>${util.amount ? util.amount.toFixed(2) : '0.00'}</td>
@@ -222,13 +246,16 @@ const Utilities = () => {
                       className="action-dropdown-btn" 
                       onClick={(e) => {
                         e.stopPropagation();
-                        setOpenActionId(openActionId === util.id ? null : util.id);
+                        setOpenActionId(openActionId === utilId ? null : utilId);
                       }}
                     >
                       <i className="fa-solid fa-ellipsis-vertical"></i>
                     </button>
-                    {openActionId === util.id && (
+                    {openActionId === utilId && (
                     <div className="dropdown-menu align-right show">
+                      <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate(`/utilities/${utilId}`); }}>
+                        <i className="fa-solid fa-eye"></i>View Details
+                      </a>
                       <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditUtility(util); }}>
                         <i className="fa-solid fa-pencil"></i>Edit
                       </a>
@@ -289,9 +316,10 @@ const Utilities = () => {
               required
             >
               <option value="">Select Property</option>
-              {properties.map(property => (
-                <option key={property.id} value={property.id}>{property.name}</option>
-              ))}
+              {properties.map(property => {
+                const propId = property._id || property.id;
+                return <option key={propId} value={propId}>{property.name}</option>;
+              })}
             </select>
           </div>
 
@@ -361,6 +389,7 @@ const Utilities = () => {
           </div>
         </form>
       </Modal>
+
     </div>
   );
 };

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import api, { getImageUrl } from '../../utils/api';
 import { formatCurrency, formatDate } from '../../utils/utils';
 import Button from '../../components/ui/Button';
+import SharePrintModal from '../../components/ui/SharePrintModal';
 import './LeaseDetails.css';
 
 export default function LeaseDetails() {
@@ -15,6 +16,9 @@ export default function LeaseDetails() {
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [printModalOpen, setPrintModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchLease = async () => {
@@ -43,6 +47,38 @@ export default function LeaseDetails() {
     }
   }, [id]);
 
+  const attachments = useMemo(() => {
+      const items = [];
+      if (lease?.leaseAgreementUrl) items.push({ type: 'document', name: lease.leaseAgreementName || 'Lease Agreement', url: getImageUrl(lease.leaseAgreementUrl) });
+      if (lease?.withholdingReceiptUrl) items.push({ type: 'document', name: lease.withholdingReceiptName || 'Withholding Receipt', url: getImageUrl(lease.withholdingReceiptUrl) });
+      return items;
+  }, [lease]);
+
+  const handleAction = (mode, selection) => {
+    const item = selection === 'all' ? null : attachments[selection];
+    
+    if (mode === 'print') {
+        if (selection === 'all') {
+            window.print();
+        } else if (item) {
+            const w = window.open(item.url);
+            if (w) w.onload = () => w.print();
+        }
+    } else if (mode === 'share') {
+        const shareData = selection === 'all' 
+            ? { title: `Lease Details`, url: window.location.href }
+            : { title: item.name, url: item.url };
+
+        if (navigator.share) {
+            navigator.share(shareData).catch(console.error);
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareData.url).then(() => alert('Link copied'));
+        }
+    }
+    setShareModalOpen(false);
+    setPrintModalOpen(false);
+  };
+
   const handleBack = () => {
     navigate('/leases');
   };
@@ -62,25 +98,6 @@ export default function LeaseDetails() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `Lease Details: ${tenants.find(t => t.id === lease?.tenantId)?.name || 'N/A'}`, url: window.location.href });
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(window.location.href);
-        alert('Link copied to clipboard');
-      } else {
-        alert('Sharing is not supported on this device.');
-      }
-    } catch (e) {
-      console.error('Share failed', e);
-    }
-  };
-
   const getLeaseStatus = (lease) => {
     const today = new Date().setHours(0, 0, 0, 0);
     const startDate = new Date(lease.startDate).setHours(0, 0, 0, 0);
@@ -97,8 +114,9 @@ export default function LeaseDetails() {
 
   const renderDocPreview = (url, name) => {
     if (!url) return <p className="text-sm text-gray-500">Not provided</p>;
+    const fullUrl = getImageUrl(url);
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" className="document-preview-sm">
+      <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="document-preview-sm">
         <i className="fa-solid fa-file-lines fa-2x"></i>
         <p className="text-sm">{name || 'View File'}</p>
       </a>
@@ -117,9 +135,9 @@ export default function LeaseDetails() {
     return <div className="no-lease">Lease not found.</div>;
   }
 
-  const tenant = tenants.find(t => t.id === lease.tenantId);
-  const unit = units.find(u => u.id === lease.unitId);
-  const property = unit ? properties.find(p => p.id === unit.propertyId) : null;
+  const tenant = tenants.find(t => t.id === lease.tenantId || t._id === lease.tenantId);
+  const unit = units.find(u => u.id === lease.unitId || u._id === lease.unitId);
+  const property = unit ? properties.find(p => p.id === unit.propertyId || p._id === unit.propertyId) : null;
   const status = getLeaseStatus(lease);
 
   const fields = [
@@ -143,10 +161,10 @@ export default function LeaseDetails() {
           <p>View comprehensive information for this lease.</p>
         </div>
         <div className="page-actions">
-          <Button variant="secondary" onClick={handleShare}>
+          <Button variant="secondary" onClick={() => setShareModalOpen(true)}>
             <i className="fa-solid fa-share" /> Share
           </Button>
-          <Button variant="secondary" onClick={handlePrint}>
+          <Button variant="secondary" onClick={() => setPrintModalOpen(true)}>
             <i className="fa-solid fa-print" /> Print
           </Button>
           <Button variant="primary" onClick={handleEdit}>
@@ -191,6 +209,22 @@ export default function LeaseDetails() {
           </div>
         </div>
       </div>
+
+      <SharePrintModal 
+        isOpen={shareModalOpen} 
+        onClose={() => setShareModalOpen(false)} 
+        mode="share"
+        items={attachments}
+        onAction={(sel) => handleAction('share', sel)}
+      />
+      
+      <SharePrintModal 
+        isOpen={printModalOpen} 
+        onClose={() => setPrintModalOpen(false)} 
+        mode="print"
+        items={attachments}
+        onAction={(sel) => handleAction('print', sel)}
+      />
     </div>
   );
 }

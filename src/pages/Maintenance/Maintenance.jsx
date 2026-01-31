@@ -201,8 +201,10 @@ const Maintenance = () => {
                 </tr>
               </thead>
               <tbody id="maintenance-list">
-                {filteredRequests.map(request => (
-                  <tr key={request.id}>
+                {filteredRequests.map(request => {
+                  const requestId = request._id || request.id;
+                  return (
+                  <tr key={requestId}>
                     <td>{request.title}</td>
                     <td>{request.property}</td>
                     <td>
@@ -218,12 +220,12 @@ const Maintenance = () => {
                           className="action-dropdown-btn"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenActionId(openActionId === request.id ? null : request.id);
+                            setOpenActionId(openActionId === requestId ? null : requestId);
                           }}
                         >
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
-                        {openActionId === request.id && (
+                        {openActionId === requestId && (
                         <div className="dropdown-menu align-right show">
                           <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(request); }}>
                             <i className="fa-solid fa-eye"></i>View Details
@@ -239,7 +241,7 @@ const Maintenance = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
@@ -286,6 +288,40 @@ const Maintenance = () => {
               {properties.map(prop => (
                 <option key={prop._id} value={prop._id}>{prop.name}</option>
               ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="category">Category</label>
+            <select
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+            >
+              <option value="Other">Other</option>
+              <option value="Plumbing">Plumbing</option>
+              <option value="Electrical">Electrical</option>
+              <option value="HVAC">HVAC</option>
+              <option value="Structural">Structural</option>
+              <option value="Appliance">Appliance</option>
+              <option value="Cleaning">Cleaning</option>
+              <option value="Security">Security</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="priority">Priority</label>
+            <select
+              id="priority"
+              name="priority"
+              value={formData.priority}
+              onChange={handleInputChange}
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
             </select>
           </div>
 

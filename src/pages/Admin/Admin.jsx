@@ -14,26 +14,30 @@ import api from '../../utils/api';
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [data, setData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTitle, setDrawerTitle] = useState('');
   const [drawerContent, setDrawerContent] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [fetchError, setFetchError] = useState(null); // ← new: show error per tab
 
   const fetchData = async (tab, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     setFetchError(null);
+    setLoading(true);
 
     try {
       const endpoint = tab === 'user-requests'
         ? 'user-requests'
         : `admin/${tab}`;
 
-      console.log(`→ Fetching /api/${endpoint}`);
-      const payload = await api.get(endpoint);
-      console.log(`← Data for ${tab}:`, payload);
+      console.log(`Fetching /api/${endpoint}`);
+      const response = await api.get(endpoint);
+      // api.get already returns the data directly, not wrapped in .data
+      const payload = response || {};
 
-      // Normalize data shape
+      console.log(`Data for ${tab}:`, payload);
+
       if (['users', 'subscriptions', 'audit-logs', 'user-requests'].includes(tab)) {
         setData(Array.isArray(payload) ? payload : []);
       } else if (tab === 'storage') {
@@ -42,13 +46,16 @@ const Admin = () => {
           perUser: payload.perUser || []
         });
       } else {
-        setData(payload ?? {});
+        setData(payload);
       }
     } catch (error) {
       console.error(`Fetch error [${tab}]:`, error);
-      const msg = error.message || 'Failed to load data';
-
+      const msg =
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to load data';
       setFetchError(msg);
+
       // Reset to safe empty state
       if (['users', 'subscriptions', 'audit-logs', 'user-requests'].includes(tab)) {
         setData([]);
@@ -58,16 +65,13 @@ const Admin = () => {
         setData({});
       }
     } finally {
+      setLoading(false);
       if (isRefresh) setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    // Fetch data based on active tab
-    const loadData = async () => {
-      await fetchData(activeTab);
-    };
-    loadData();
+    fetchData(activeTab);
   }, [activeTab]);
 
   const tabs = [
@@ -105,55 +109,69 @@ const Admin = () => {
           </div>
         )}
 
-        {activeTab === 'overview' && <OverviewTab data={data} />}
-        {activeTab === 'users' && (
-          <UsersTab
-            data={data}
-            onDrawerOpen={(title, content) => {
-              setDrawerTitle(title);
-              setDrawerContent(content);
-              setDrawerOpen(true);
-            }}
-            onRefreshData={(isRefresh) => fetchData('users', isRefresh)}
-            refreshing={refreshing}
-          />
-        )}
-        {activeTab === 'subscriptions' && <SubscriptionsTab data={data} onRefreshData={() => fetchData('subscriptions')} />}
-        {activeTab === 'storage' && <StorageTab data={data} onRefreshData={() => fetchData('storage')} />}
-        {activeTab === 'audit-logs' && <ReportsTab data={data} />}
-        {activeTab === 'user-requests' && (
-          <UserRequestsTab
-            data={data}
-            onDrawerOpen={(title, content) => {
-              setDrawerTitle(title);
-              setDrawerContent(content);
-              setDrawerOpen(true);
-            }}
-            onRefreshData={() => fetchData('user-requests')}
-          />
-        )}
-        {activeTab === 'messaging' && (
-          <MessagingTab
-            onRefreshData={() => fetchData('messaging')}
-          />
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '4rem 0', color: '#666' }}>
+            Loading {activeTab} data...
+          </div>
+        ) : (
+          <>
+            {activeTab === 'overview' && <OverviewTab data={data} />}
+            {activeTab === 'users' && (
+              <UsersTab
+                data={data}
+                onDrawerOpen={(title, content) => {
+                  setDrawerTitle(title);
+                  setDrawerContent(content);
+                  setDrawerOpen(true);
+                }}
+                onRefreshData={(isRefresh) => fetchData('users', isRefresh)}
+                refreshing={refreshing}
+              />
+            )}
+            {activeTab === 'subscriptions' && (
+              <SubscriptionsTab data={data} onRefreshData={() => fetchData('subscriptions')} />
+            )}
+            {activeTab === 'storage' && (
+              <StorageTab data={data} onRefreshData={() => fetchData('storage')} />
+            )}
+            {activeTab === 'audit-logs' && <ReportsTab data={data} />}
+            {activeTab === 'user-requests' && (
+              <UserRequestsTab
+                data={data}
+                onDrawerOpen={(title, content) => {
+                  setDrawerTitle(title);
+                  setDrawerContent(content);
+                  setDrawerOpen(true);
+                }}
+                onRefreshData={() => fetchData('user-requests')}
+              />
+            )}
+            {activeTab === 'messaging' && (
+              <MessagingTab onRefreshData={() => fetchData('messaging')} />
+            )}
+          </>
         )}
       </div>
 
-  {drawerOpen && (
-  <SideDrawer
-    isOpen={drawerOpen}
-    onClose={() => setDrawerOpen(false)}
-    title={drawerTitle}
-  >
-    {drawerContent}
-  </SideDrawer>
-)}
-
+      {drawerOpen && (
+        <SideDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          title={drawerTitle}
+        >
+          {drawerContent}
+        </SideDrawer>
+      )}
     </div>
   );
 };
 
 const OverviewTab = ({ data = {} }) => {
+  const bytesToGB = (bytes) => {
+    if (!bytes) return '0.00';
+    return (bytes / (1024 ** 3)).toFixed(2);
+  };
+
   const mrrHistory = data.mrrHistory || [];
   const userGrowth = data.userGrowth || [];
   const storageGrowth = data.storageGrowth || [];
@@ -170,18 +188,20 @@ const OverviewTab = ({ data = {} }) => {
 
   const storageGrowthData = storageGrowth.map(item => ({
     label: item._id || 'Unknown',
-    value: item.totalStorage || 0
+    value: bytesToGB(item.totalStorage)
   }));
+
+  const hasCharts = mrrChartData.length > 0 || userGrowthData.length > 0 || storageGrowthData.length > 0;
 
   return (
     <div>
       <div className="metrics-grid">
-        <MetricCard title="Total Users"          value={data.totalUsers ?? 0}         trend={5.2} />
-        <MetricCard title="Active Subscribers"   value={data.activeSubscribers ?? 0}  trend={12.8} />
-        <MetricCard title="Trial Users"          value={data.trialUsers ?? 0}         trend={-3.1} />
-        <MetricCard title="Monthly Revenue"      value={`$${data.mrr ?? 0}`}          trend={8.5} />
-        <MetricCard title="Failed Payments"      value={data.failedPayments ?? 0}     trend={-15.3} />
-        <MetricCard title="Total Storage Used"   value={`${(data.totalStorage ?? 0).toFixed(2)} GB`} trend={22.1} />
+        <MetricCard title="Total Users" value={data.totalUsers ?? 0} trend={5.2} />
+        <MetricCard title="Active Subscribers" value={data.activeSubscribers ?? 0} trend={12.8} />
+        <MetricCard title="Trial Users" value={data.trialUsers ?? 0} trend={-3.1} />
+        <MetricCard title="Monthly Revenue" value={`$${Number(data.mrr ?? 0).toFixed(2)}`} trend={8.5} />
+        <MetricCard title="Failed Payments" value={data.failedPayments ?? 0} trend={-15.3} />
+        <MetricCard title="Total Storage Used" value={`${bytesToGB(data.totalStorage)} GB`} trend={22.1} />
       </div>
 
       <div className="alerts-section">
@@ -197,13 +217,16 @@ const OverviewTab = ({ data = {} }) => {
       </div>
 
       <div className="charts-container">
-        {mrrChartData.length > 0 && <Chart type="line" data={mrrChartData} title="MRR (Last 6 Months)" />}
-        {userGrowthData.length > 0 && <Chart type="bar" data={userGrowthData} title="New Users" />}
-        {storageGrowthData.length > 0 && <Chart type="area" data={storageGrowthData} title="Storage Growth" />}
+        {mrrChartData.length > 0 && <Chart type="line" data={mrrChartData} title="MRR (Last Months)" />}
+        {userGrowthData.length > 0 && <Chart type="bar" data={userGrowthData} title="New Users Growth" />}
+        {storageGrowthData.length > 0 && <Chart type="area" data={storageGrowthData} title="Storage Growth (GB)" />}
       </div>
 
-      {mrrChartData.length === 0 && userGrowthData.length === 0 && storageGrowthData.length === 0 && (
-        <EmptyState title="No overview data yet" description="Metrics will appear once platform activity begins." />
+      {!hasCharts && (
+        <EmptyState
+          title="No historical data yet"
+          description="Charts will appear once more monthly data is available."
+        />
       )}
     </div>
   );
@@ -245,7 +268,7 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
     { key: 'email', label: 'Email' },
     { key: 'role', label: 'Role' },
     { key: 'subscriptionStatus', label: 'Subscription' },
-    { key: 'storageUsage', label: 'Storage Used', render: (value) => `${(value / 1024 / 1024 / 1024).toFixed(2)} GB` },
+    { key: 'storageUsage', label: 'Storage Used', render: (value) => `${(value / 1024 ** 3).toFixed(2)} GB` },
     { key: 'lastLogin', label: 'Last Active', render: (value) => value ? new Date(value).toLocaleDateString() : 'Never' },
     { key: 'isActive', label: 'Status', render: (value) => <Badge variant={value ? 'success' : 'danger'}>{value ? 'Active' : 'Suspended'}</Badge> },
     {
@@ -262,30 +285,15 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
   const handleAction = async (action, user) => {
     switch (action) {
       case 'view': {
-        // Open side drawer with user details
         const content = (
           <div className="user-details">
-            <div className="detail-row">
-              <strong>Name:</strong> {user.name}
-            </div>
-            <div className="detail-row">
-              <strong>Email:</strong> {user.email}
-            </div>
-            <div className="detail-row">
-              <strong>Role:</strong> {user.role}
-            </div>
-            <div className="detail-row">
-              <strong>Subscription:</strong> {user.subscriptionStatus}
-            </div>
-            <div className="detail-row">
-              <strong>Storage Used:</strong> {(user.storageUsage / 1024 / 1024 / 1024).toFixed(2)} GB
-            </div>
-            <div className="detail-row">
-              <strong>Last Login:</strong> {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}
-            </div>
-            <div className="detail-row">
-              <strong>Status:</strong> {user.isActive ? 'Active' : 'Suspended'}
-            </div>
+            <div className="detail-row"><strong>Name:</strong> {user.name}</div>
+            <div className="detail-row"><strong>Email:</strong> {user.email}</div>
+            <div className="detail-row"><strong>Role:</strong> {user.role}</div>
+            <div className="detail-row"><strong>Subscription:</strong> {user.subscriptionStatus}</div>
+            <div className="detail-row"><strong>Storage Used:</strong> {(user.storageUsage / 1024 ** 3).toFixed(2)} GB</div>
+            <div className="detail-row"><strong>Last Login:</strong> {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</div>
+            <div className="detail-row"><strong>Status:</strong> {user.isActive ? 'Active' : 'Suspended'}</div>
           </div>
         );
         onDrawerOpen(`User Details: ${user.name}`, content);
@@ -293,13 +301,12 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
       }
       case 'changeRole': {
         const validRoles = ['tenant', 'property_manager', 'admin', 'owner'];
-        const newRole = prompt(`Change role for ${user.name} (current: ${user.role}). Enter new role:`, user.role);
+        const newRole = prompt(`Change role for ${user.name} (current: ${user.role})`, user.role);
         if (newRole && newRole !== user.role) {
           if (!validRoles.includes(newRole)) {
-            alert('Invalid role. Valid roles are: tenant, property_manager, admin, owner');
+            alert('Invalid role. Valid roles: tenant, property_manager, admin, owner');
             break;
           }
-          // Prevent self-demotion for owners
           if (user.role === 'owner' && newRole !== 'owner') {
             alert('Cannot change role of owner users');
             break;
@@ -307,7 +314,7 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
           try {
             await api.put(`admin/users/${user._id}/role`, { role: newRole });
             alert('Role updated successfully');
-            onRefreshData();
+            onRefreshData(true);
           } catch {
             alert('Error updating role');
           }
@@ -320,7 +327,7 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
           try {
             await api.put(`admin/users/${user._id}/status`, { isActive: !user.isActive });
             alert(`User ${actionText}d successfully`);
-            onRefreshData();
+            onRefreshData(true);
           } catch {
             alert(`Error ${actionText}ing user`);
           }
@@ -341,7 +348,7 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
         user.email,
         user.role,
         user.subscriptionStatus,
-        (user.storageUsage / 1024 / 1024 / 1024).toFixed(2),
+        (user.storageUsage / 1024 ** 3).toFixed(2),
         user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
         user.isActive ? 'Active' : 'Suspended'
       ].map(field => `"${field}"`).join(','))
@@ -366,7 +373,7 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
         alert('Users activated successfully');
         setSelectedUsers([]);
         setSelectAll(false);
-        onRefreshData();
+        onRefreshData(true);
       } catch {
         alert('Error activating users');
       }
@@ -381,7 +388,7 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
         alert('Users suspended successfully');
         setSelectedUsers([]);
         setSelectAll(false);
-        onRefreshData();
+        onRefreshData(true);
       } catch {
         alert('Error suspending users');
       }
@@ -411,6 +418,10 @@ const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
   );
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Remaining tabs (unchanged from your version – just included for completeness)
+// ─────────────────────────────────────────────────────────────────────────────
+
 const SubscriptionsTab = ({ data, onRefreshData }) => {
   const columns = [
     { key: 'user', label: 'User', render: (user) => user?.name || 'N/A' },
@@ -418,12 +429,7 @@ const SubscriptionsTab = ({ data, onRefreshData }) => {
     { key: 'billingCycle', label: 'Cycle' },
     { key: 'amount', label: 'Amount', render: (amount) => `$${amount}` },
     { key: 'status', label: 'Status', render: (status) => {
-      const variants = {
-        active: 'success',
-        trial: 'warning',
-        past_due: 'danger',
-        canceled: 'default'
-      };
+      const variants = { active: 'success', trial: 'warning', past_due: 'danger', canceled: 'default' };
       return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
     }},
     { key: 'nextBillingDate', label: 'Next Billing', render: (date) => new Date(date).toLocaleDateString() },
@@ -441,12 +447,10 @@ const SubscriptionsTab = ({ data, onRefreshData }) => {
 
   const handleAction = async (action, subscription) => {
     switch (action) {
-      case 'viewInvoices': {
-        // Open invoices view - placeholder
+      case 'viewInvoices':
         alert('Invoice viewing not implemented yet');
         break;
-      }
-      case 'retryPayment': {
+      case 'retryPayment':
         if (window.confirm('Retry payment for this subscription?')) {
           try {
             await api.put(`admin/subscriptions/${subscription._id}/retry`);
@@ -456,12 +460,11 @@ const SubscriptionsTab = ({ data, onRefreshData }) => {
           }
         }
         break;
-      }
       case 'upgrade': {
         const newPlan = prompt('Enter new plan (basic/professional/enterprise):', subscription.plan);
         const newAmount = prompt('Enter new amount:', subscription.amount);
         if (newPlan && newPlan !== subscription.plan && newAmount && !isNaN(newAmount)) {
-          if (window.confirm(`Are you sure you want to upgrade this subscription to ${newPlan} for $${newAmount}?`)) {
+          if (window.confirm(`Upgrade to ${newPlan} for $${newAmount}?`)) {
             try {
               await api.put(`admin/subscriptions/${subscription._id}/upgrade`, { newPlan, newAmount: parseFloat(newAmount) });
               alert('Subscription upgraded successfully');
@@ -473,8 +476,8 @@ const SubscriptionsTab = ({ data, onRefreshData }) => {
         }
         break;
       }
-      case 'cancel': {
-        if (window.confirm('Cancel this subscription? This action cannot be undone.')) {
+      case 'cancel':
+        if (window.confirm('Cancel this subscription? This cannot be undone.')) {
           try {
             await api.put(`admin/subscriptions/${subscription._id}/cancel`);
             alert('Subscription cancelled successfully');
@@ -484,7 +487,6 @@ const SubscriptionsTab = ({ data, onRefreshData }) => {
           }
         }
         break;
-      }
       default:
         break;
     }
@@ -492,11 +494,7 @@ const SubscriptionsTab = ({ data, onRefreshData }) => {
 
   return (
     <div>
-      <DataTable
-        data={data}
-        columns={columns}
-        onAction={handleAction}
-      />
+      <DataTable data={data} columns={columns} onAction={handleAction} />
     </div>
   );
 };
@@ -507,8 +505,8 @@ const StorageTab = ({ data, onRefreshData }) => {
 
   const columns = [
     { key: 'user', label: 'User', render: (user) => user?.name || 'N/A' },
-    { key: 'usedStorage', label: 'Used Storage', render: (value) => `${(value / 1024 / 1024 / 1024).toFixed(2)} GB` },
-    { key: 'storageLimit', label: 'Storage Limit', render: (value) => `${(value / 1024 / 1024 / 1024).toFixed(2)} GB` },
+    { key: 'usedStorage', label: 'Used Storage', render: (value) => `${(value / 1024 ** 3).toFixed(2)} GB` },
+    { key: 'storageLimit', label: 'Storage Limit', render: (value) => `${(value / 1024 ** 3).toFixed(2)} GB` },
     {
       key: 'usagePercent',
       label: '% Used',
@@ -531,14 +529,15 @@ const StorageTab = ({ data, onRefreshData }) => {
   const handleAction = async (action, storage) => {
     switch (action) {
       case 'increaseLimit': {
-        const newLimitGB = prompt('Enter new storage limit in GB:', (storage.storageLimit / 1024 / 1024 / 1024).toFixed(2));
+        const currentGB = (storage.storageLimit / 1024 ** 3).toFixed(2);
+        const newLimitGB = prompt('Enter new storage limit in GB:', currentGB);
         if (newLimitGB && !isNaN(newLimitGB)) {
-          const newLimitBytes = parseFloat(newLimitGB) * 1024 * 1024 * 1024;
-          if (window.confirm(`Are you sure you want to increase storage limit to ${newLimitGB} GB?`)) {
+          const newLimitBytes = parseFloat(newLimitGB) * 1024 ** 3;
+          if (window.confirm(`Increase limit to ${newLimitGB} GB?`)) {
             try {
               await api.put(`admin/storage/${storage._id}/limit`, { storageLimit: newLimitBytes });
               alert('Storage limit updated successfully');
-              window.location.reload(); // Refresh data
+              onRefreshData();
             } catch {
               alert('Error updating storage limit');
             }
@@ -546,12 +545,10 @@ const StorageTab = ({ data, onRefreshData }) => {
         }
         break;
       }
-      case 'viewFiles': {
-        // Open file browser - placeholder
+      case 'viewFiles':
         alert('File viewing not implemented yet');
         break;
-      }
-      case 'lockUploads': {
+      case 'lockUploads':
         if (window.confirm('Lock uploads for this user?')) {
           try {
             await api.put(`admin/storage/${storage._id}/lock`);
@@ -562,7 +559,6 @@ const StorageTab = ({ data, onRefreshData }) => {
           }
         }
         break;
-      }
       default:
         break;
     }
@@ -578,12 +574,7 @@ const StorageTab = ({ data, onRefreshData }) => {
           <MetricCard title="Near Limit" value={globalOverview.nearLimit?.length || 0} />
         </div>
       </div>
-
-      <DataTable
-        data={perUser}
-        columns={columns}
-        onAction={handleAction}
-      />
+      <DataTable data={perUser} columns={columns} onAction={handleAction} />
     </div>
   );
 };
@@ -613,7 +604,7 @@ const ReportsTab = ({ data }) => {
         log.actor?.name || 'N/A',
         log.action,
         log.target?.name || 'N/A',
-        JSON.stringify(log.details).replace(/"/g, '""'), // Escape quotes
+        JSON.stringify(log.details).replace(/"/g, '""'),
         new Date(log.createdAt).toLocaleString()
       ].map(field => `"${field}"`).join(','))
     ].join('\n');
@@ -641,45 +632,18 @@ const ReportsTab = ({ data }) => {
     <div>
       <div className="reports-filters">
         <div className="filter-row">
-          <input
-            type="text"
-            placeholder="Filter by action..."
-            value={filters.action}
-            onChange={(e) => setFilters(prev => ({ ...prev, action: e.target.value }))}
-          />
-          <input
-            type="text"
-            placeholder="Filter by actor..."
-            value={filters.actor}
-            onChange={(e) => setFilters(prev => ({ ...prev, actor: e.target.value }))}
-          />
-          <input
-            type="date"
-            placeholder="From date..."
-            value={filters.dateFrom}
-            onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-          />
-          <input
-            type="date"
-            placeholder="To date..."
-            value={filters.dateTo}
-            onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-          />
+          <input type="text" placeholder="Filter by action..." value={filters.action} onChange={e => setFilters(prev => ({ ...prev, action: e.target.value }))} />
+          <input type="text" placeholder="Filter by actor..." value={filters.actor} onChange={e => setFilters(prev => ({ ...prev, actor: e.target.value }))} />
+          <input type="date" value={filters.dateFrom} onChange={e => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))} />
+          <input type="date" value={filters.dateTo} onChange={e => setFilters(prev => ({ ...prev, dateTo: e.target.value }))} />
           <button onClick={exportToCSV} className="export-btn">Export CSV</button>
         </div>
       </div>
 
       {filteredData.length === 0 ? (
-        <EmptyState
-          icon="📋"
-          title="No audit logs found"
-          description="There are no audit logs matching your filters. Try adjusting your search criteria."
-        />
+        <EmptyState icon="📋" title="No audit logs found" description="No logs match your filters." />
       ) : (
-        <DataTable
-          data={filteredData}
-          columns={columns}
-        />
+        <DataTable data={filteredData} columns={columns} />
       )}
     </div>
   );
@@ -707,9 +671,8 @@ const UserRequestsTab = ({ data, onDrawerOpen, onRefreshData }) => {
           type="checkbox"
           checked={selectedRequests.includes(item._id)}
           onChange={(e) => {
-            if (e.target.checked) {
-              setSelectedRequests([...selectedRequests, item._id]);
-            } else {
+            if (e.target.checked) setSelectedRequests([...selectedRequests, item._id]);
+            else {
               setSelectedRequests(selectedRequests.filter(id => id !== item._id));
               setSelectAll(false);
             }
@@ -721,11 +684,7 @@ const UserRequestsTab = ({ data, onDrawerOpen, onRefreshData }) => {
     { key: 'type', label: 'Type', render: (type) => <Badge variant="info">{type}</Badge> },
     { key: 'title', label: 'Title' },
     { key: 'status', label: 'Status', render: (status) => {
-      const variants = {
-        pending: 'warning',
-        approved: 'success',
-        rejected: 'danger'
-      };
+      const variants = { pending: 'warning', approved: 'success', rejected: 'danger' };
       return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
     }},
     { key: 'createdAt', label: 'Created', render: (date) => new Date(date).toLocaleDateString() },
@@ -745,29 +704,13 @@ const UserRequestsTab = ({ data, onDrawerOpen, onRefreshData }) => {
       case 'view': {
         const content = (
           <div className="request-details">
-            <div className="detail-row">
-              <strong>User:</strong> {request.user?.name}
-            </div>
-            <div className="detail-row">
-              <strong>Type:</strong> {request.type}
-            </div>
-            <div className="detail-row">
-              <strong>Title:</strong> {request.title}
-            </div>
-            <div className="detail-row">
-              <strong>Description:</strong> {request.description}
-            </div>
-            <div className="detail-row">
-              <strong>Status:</strong> {request.status}
-            </div>
-            <div className="detail-row">
-              <strong>Created:</strong> {new Date(request.createdAt).toLocaleString()}
-            </div>
-            {request.adminResponse && (
-              <div className="detail-row">
-                <strong>Admin Response:</strong> {request.adminResponse}
-              </div>
-            )}
+            <div className="detail-row"><strong>User:</strong> {request.user?.name}</div>
+            <div className="detail-row"><strong>Type:</strong> {request.type}</div>
+            <div className="detail-row"><strong>Title:</strong> {request.title}</div>
+            <div className="detail-row"><strong>Description:</strong> {request.description}</div>
+            <div className="detail-row"><strong>Status:</strong> {request.status}</div>
+            <div className="detail-row"><strong>Created:</strong> {new Date(request.createdAt).toLocaleString()}</div>
+            {request.adminResponse && <div className="detail-row"><strong>Admin Response:</strong> {request.adminResponse}</div>}
           </div>
         );
         onDrawerOpen(`Request Details: ${request.title}`, content);
@@ -775,17 +718,16 @@ const UserRequestsTab = ({ data, onDrawerOpen, onRefreshData }) => {
       }
       case 'approve': {
         const response = prompt('Enter approval message (optional):');
-        if (window.confirm('Are you sure you want to approve this request?')) {
+        if (window.confirm('Approve this request?')) {
           try {
             await api.patch(`user-requests/${request._id}`, { status: 'approved', adminResponse: response });
-            // Send notification to user
             await api.post('notifications/send', {
               toUser: request.user._id,
               title: 'Request Approved',
               message: `Your request "${request.title}" has been approved.${response ? ` Message: ${response}` : ''}`,
               type: 'admin'
             });
-            alert('Request approved successfully and notification sent');
+            alert('Request approved and notification sent');
             onRefreshData();
           } catch (error) {
             alert('Error approving request: ' + error.message);
@@ -795,17 +737,16 @@ const UserRequestsTab = ({ data, onDrawerOpen, onRefreshData }) => {
       }
       case 'reject': {
         const response = prompt('Enter rejection reason:');
-        if (response && window.confirm('Are you sure you want to reject this request?')) {
+        if (response && window.confirm('Reject this request?')) {
           try {
             await api.patch(`user-requests/${request._id}`, { status: 'rejected', adminResponse: response });
-            // Send notification to user
             await api.post('notifications/send', {
               toUser: request.user._id,
               title: 'Request Rejected',
               message: `Your request "${request.title}" has been rejected. Reason: ${response}`,
               type: 'admin'
             });
-            alert('Request rejected successfully and notification sent');
+            alert('Request rejected and notification sent');
             onRefreshData();
           } catch (error) {
             alert('Error rejecting request: ' + error.message);
@@ -820,11 +761,7 @@ const UserRequestsTab = ({ data, onDrawerOpen, onRefreshData }) => {
 
   return (
     <div>
-      <DataTable
-        data={data}
-        columns={columns}
-        onAction={handleAction}
-      />
+      <DataTable data={data} columns={columns} onAction={handleAction} />
     </div>
   );
 };
@@ -837,11 +774,10 @@ const MessagingTab = ({ onRefreshData }) => {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    // Fetch users for the dropdown
     const fetchUsers = async () => {
       try {
         const response = await api.get('admin/users');
-        setUsers(response.data || []);
+        setUsers(response || []);
       } catch (error) {
         console.error('Error fetching users:', error);
       }
@@ -881,11 +817,7 @@ const MessagingTab = ({ onRefreshData }) => {
       <div className="message-form">
         <div className="form-group">
           <label htmlFor="user-select">Select User:</label>
-          <select
-            id="user-select"
-            value={selectedUser}
-            onChange={(e) => setSelectedUser(e.target.value)}
-          >
+          <select id="user-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
             <option value="">Choose a user...</option>
             {users.map(user => (
               <option key={user._id} value={user._id}>
@@ -900,7 +832,7 @@ const MessagingTab = ({ onRefreshData }) => {
             id="message-title"
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={e => setTitle(e.target.value)}
             placeholder="Enter message title"
             maxLength="200"
           />
@@ -910,15 +842,12 @@ const MessagingTab = ({ onRefreshData }) => {
           <textarea
             id="message-content"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={e => setMessage(e.target.value)}
             placeholder="Enter your message"
             rows="5"
           />
         </div>
-        <Button
-          onClick={handleSendMessage}
-          disabled={sending}
-        >
+        <Button onClick={handleSendMessage} disabled={sending}>
           {sending ? 'Sending...' : 'Send Message'}
         </Button>
       </div>
