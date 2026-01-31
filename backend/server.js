@@ -51,7 +51,15 @@ app.use(cors({
 
 // Helmet for security headers
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "frame-ancestors": ["'self'", "http://localhost:*", "http://127.0.0.1:*"],
+      "img-src": ["'self'", "data:", "blob:", "http://localhost:*"],
+      "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // For dev needs
+    },
+  },
 }));
 
 // Rate limiting

@@ -3,6 +3,8 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import Lease from '../models/Lease.js';
 import Property from '../models/Property.js';
+import Tenant from '../models/Tenant.js';
+import Unit from '../models/Unit.js';
 import { authorizeRoles } from '../middleware/roles.js';
 
 const router = express.Router();
@@ -119,6 +121,18 @@ router.post('/', authorizeRoles('admin','customer','owner','property_manager'), 
       ownerId: req.user.userId
     });
     await lease.save();
+    
+    // Auto-assign: Update Tenant with unitId and set status to active
+    await Tenant.findByIdAndUpdate(req.body.tenantId, {
+      unitId: req.body.unitId,
+      status: 'active'
+    });
+
+    // Auto-assign: Update Unit status to occupied
+    await Unit.findByIdAndUpdate(req.body.unitId, {
+      status: 'Occupied'
+    });
+
     await lease.populate('tenantId', 'name email phone');
     await lease.populate('unitId', 'unitNumber');
     await lease.populate('propertyId', 'name address');

@@ -179,6 +179,12 @@ router.put('/:id',
       if (req.body.leaseId !== undefined) updateData.leaseId = req.body.leaseId;
       if (req.body.notes !== undefined) updateData.notes = req.body.notes;
       if (req.body.tags !== undefined) updateData.tags = req.body.tags;
+      if (req.body.name !== undefined) updateData.name = req.body.name;
+      if (req.body.url !== undefined) updateData.url = req.body.url;
+      if (req.body.type !== undefined) updateData.type = req.body.type;
+      if (req.body.size !== undefined) updateData.size = req.body.size;
+      if (req.body.originalName !== undefined) updateData.originalName = req.body.originalName;
+      if (req.body.fileName !== undefined) updateData.originalName = req.body.fileName; // Handle fileName alias
 
       const doc = await Document.findByIdAndUpdate(req.params.id, updateData, { new: true });
       if (!doc) return res.status(404).json({ error: 'Document not found' });

@@ -119,7 +119,9 @@ router.put('/:id', [
   body('leaseId').optional().isMongoId().withMessage('Invalid lease ID'),
   body('tenantId').optional().isMongoId().withMessage('Invalid tenant ID'),
   body('propertyId').optional().isMongoId().withMessage('Invalid property ID'),
-  body('type').optional().isIn(['Rent', 'Deposit', 'Late Fee', 'Maintenance', 'Utility', 'Other']).withMessage('Invalid payment type')
+  body('type').optional().isIn(['Rent', 'Deposit', 'Late Fee', 'Maintenance', 'Utility', 'Other']).withMessage('Invalid payment type'),
+  body('status').optional().isIn(['Paid', 'Pending', 'Overdue', 'Failed']).withMessage('Invalid status'),
+  body('method').optional().isIn(['Bank Transfer', 'Cash', 'CBE Birr', 'Dashen Bank', 'Awash International Bank', 'Other']).withMessage('Invalid payment method')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
