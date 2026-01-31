@@ -24,14 +24,14 @@ router.get('/', async (req, res) => {
     if (propertyId) query.propertyId = propertyId;
     if (type) query.type = type;
     if (startDate || endDate) {
-      query.billingDate = {};
-      if (startDate) query.billingDate.$gte = new Date(startDate);
-      if (endDate) query.billingDate.$lte = new Date(endDate);
+      query.dueDate = {};
+      if (startDate) query.dueDate.$gte = new Date(startDate);
+      if (endDate) query.dueDate.$lte = new Date(endDate);
     }
 
     const items = await Utility.find(query)
       .populate('propertyId', 'name address')
-      .sort({ billingDate: -1 });
+      .sort({ dueDate: -1 });
     res.json(items);
   } catch (err) {
     console.error('Error fetching utilities:', err);
@@ -53,15 +53,19 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/utilities - create utility
-router.post('/', authorizeRoles('admin','property_manager'), [
+router.post('/', authorizeRoles('admin','property_manager','customer','tenant'), [
   body('propertyId').isMongoId().withMessage('Valid property ID is required'),
   body('type').isIn(['Electricity', 'Water', 'Internet', 'Gas', 'Trash', 'Other']).withMessage('Invalid utility type'),
   body('amount').isNumeric().withMessage('Amount must be a number'),
-  body('billingDate').isISO8601().withMessage('Valid billing date is required')
+  body('dueDate').isISO8601().withMessage('Valid due date is required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!errors.isEmpty()) {
+      console.error('Validation errors:', errors.array());
+      console.error('Received body:', req.body);
+      return res.status(400).json({ errors: errors.array() });
+    }
 
     const item = new Utility(req.body);
     await item.save();
@@ -74,15 +78,18 @@ router.post('/', authorizeRoles('admin','property_manager'), [
 });
 
 // PUT /api/utilities/:id - update utility
-router.put('/:id', authorizeRoles('admin','property_manager'), [
+router.put('/:id', authorizeRoles('admin','property_manager','customer','tenant'), [
   body('propertyId').optional().isMongoId(),
   body('type').optional().isIn(['Electricity', 'Water', 'Internet', 'Gas', 'Trash', 'Other']),
   body('amount').optional().isNumeric(),
-  body('billingDate').optional().isISO8601()
+  body('dueDate').optional().isISO8601()
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!errors.isEmpty()) {
+      console.error('Validation errors:', errors.array());
+      return res.status(400).json({ errors: errors.array() });
+    }
 
     const item = await Utility.findByIdAndUpdate(
       req.params.id,
@@ -101,7 +108,7 @@ router.put('/:id', authorizeRoles('admin','property_manager'), [
 });
 
 // DELETE /api/utilities/:id - delete utility
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', authorizeRoles('admin','property_manager','customer','tenant'), async (req, res) => {
   try {
     const item = await Utility.findByIdAndDelete(req.params.id);
     if (!item) return res.status(404).json({ error: 'Utility not found' });

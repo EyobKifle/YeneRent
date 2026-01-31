@@ -58,7 +58,7 @@ router.get('/property/:propertyId', async (req, res) => {
 });
 
 // POST /api/expenses - Create a new expense
-router.post('/', authorizeRoles('admin','property_manager'), [
+router.post('/', authorizeRoles('admin','property_manager','customer'), [
   body('propertyId').isMongoId().withMessage('Valid property ID is required'),
   body('date').isISO8601().withMessage('Valid date is required'),
   body('amount').isNumeric().withMessage('Amount must be a number'),
@@ -82,7 +82,7 @@ router.post('/', authorizeRoles('admin','property_manager'), [
 });
 
 // PUT /api/expenses/:id - Update an expense
-router.put('/:id', authorizeRoles('admin','property_manager'), [
+router.put('/:id', authorizeRoles('admin','property_manager','customer','tenant'), [
   body('propertyId').optional().isMongoId().withMessage('Valid property ID is required'),
   body('date').optional().isISO8601().withMessage('Valid date is required'),
   body('amount').optional().isNumeric().withMessage('Amount must be a number'),
@@ -116,7 +116,7 @@ router.put('/:id', authorizeRoles('admin','property_manager'), [
 });
 
 // DELETE /api/expenses/:id - Delete an expense
-router.delete('/:id', authorizeRoles('admin','property_manager'), async (req, res) => {
+router.delete('/:id', authorizeRoles('admin','property_manager','customer','tenant'), async (req, res) => {
   try {
     const expense = await Expense.findByIdAndDelete(req.params.id);
     if (!expense) {

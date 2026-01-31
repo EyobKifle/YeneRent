@@ -72,12 +72,12 @@ router.get('/property/:propertyId', async (req, res) => {
 });
 
 // POST /api/maintenance - Create a new maintenance request
-router.post('/', authorizeRoles('admin','property_manager'), [
+router.post('/', authorizeRoles('admin','property_manager','tenant','owner','customer'), [
   body('propertyId').isMongoId().withMessage('Valid property ID is required'),
   body('title').trim().isLength({ min: 1 }).withMessage('Title is required'),
   body('category').isIn(['Plumbing', 'Electrical', 'HVAC', 'Structural', 'Appliance', 'Cleaning', 'Security', 'Other']).withMessage('Invalid category'),
   body('priority').isIn(['Low', 'Medium', 'High', 'Urgent']).withMessage('Invalid priority'),
-  body('status').isIn(['Pending', 'In Progress', 'Completed', 'Cancelled']).withMessage('Invalid status'),
+  body('status').isIn(['pending', 'in-progress', 'completed', 'cancelled']).withMessage('Invalid status'),
   body('reportedDate').isISO8601().withMessage('Valid reported date is required')
 ], async (req, res) => {
   try {
