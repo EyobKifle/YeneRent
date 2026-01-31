@@ -6,10 +6,10 @@ const Chart = ({ type = 'line', data, title, height = 200 }) => {
     return <div className="chart-placeholder">No data available</div>;
   }
 
-  const values = data.map(item => item.value);
-  const maxValue = Math.max(...values);
-  const minValue = Math.min(...values);
-  const range = maxValue - minValue || 1; // Avoid division by zero
+  const values = data.map(item => Number(item.value) || 0);
+  const maxValue = Math.max(...values, 1);
+  const minValue = Math.min(...values, 0);
+  const range = maxValue - minValue || 1; 
 
   const getPointPosition = (value, index) => {
     const x = data.length > 1 ? (index / (data.length - 1)) * 100 : 50;

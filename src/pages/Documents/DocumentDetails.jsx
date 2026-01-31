@@ -27,28 +27,15 @@ const DocumentDetails = () => {
             }
 
             try {
-                const [fetchedProperties, fetchedTenants, documentsData] = await Promise.all([
+                const [fetchedProperties, fetchedTenants, documentData] = await Promise.all([
                     api.get('properties'),
                     api.get('tenants'),
-                    api.get('documents')
+                    api.get(`documents/${documentId}`)
                 ]);
 
                 setProperties(fetchedProperties.properties || fetchedProperties || []);
                 setTenants(fetchedTenants || []);
-                
-                // Ensure documents is an array
-                const documentsArray = Array.isArray(documentsData) ? documentsData : [];
-                const foundDocument = documentsArray.find(doc => {
-                    const docId = (doc._id || doc.id)?.toString();
-                    return docId === documentId.toString();
-                });
-
-                if (!foundDocument) {
-                    alert('Document not found.');
-                    navigate('/documents');
-                    return;
-                }
-                setCurrentDocument(foundDocument);
+                setCurrentDocument(documentData);
             } catch (err) {
                 console.error('Failed to fetch document details:', err);
                 setError('Failed to load document details.');

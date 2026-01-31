@@ -60,8 +60,10 @@ export default function TenantsPage() {
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
     return tenants.filter(t => {
-      const unit = units.find(u => u.id === t.unitId)
-      const prop = unit ? properties.find(p => p.id === unit.propertyId) : null
+      const tUnitId = t.unitId?._id || t.unitId
+      const unit = units.find(u => (u._id || u.id) === tUnitId)
+      const uPropId = unit?.propertyId?._id || unit?.propertyId
+      const prop = uPropId ? properties.find(p => (p._id || p.id) === uPropId) : null
       return (t.name||'').toLowerCase().includes(s) || (t.email||'').toLowerCase().includes(s) || (prop?.name||'').toLowerCase().includes(s)
     })
   }, [search, tenants, units, properties])

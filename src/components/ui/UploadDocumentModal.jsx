@@ -126,7 +126,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
         )}
 
         <div className="form-group">
-          <label htmlFor="name">Document Name *</label>
+          <label htmlFor="name">Document Name <span style={{color: 'red'}}>*</span></label>
           <input
             type="text"
             id="name"
@@ -140,7 +140,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="category">Category *</label>
+          <label htmlFor="category">Category <span style={{color: 'red'}}>*</span></label>
           <select
             id="category"
             name="category"
@@ -193,7 +193,7 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="file">File *</label>
+          <label htmlFor="file">File <span style={{color: 'red'}}>*</span></label>
           <input
             type="file"
             id="file"

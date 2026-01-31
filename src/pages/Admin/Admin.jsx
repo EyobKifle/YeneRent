@@ -1,72 +1,394 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './Admin.css';
-import MetricCard from '../../components/ui/MetricCard';
-import DataTable from '../../components/ui/DataTable';
-import Badge from '../../components/ui/Badge';
-import ProgressBar from '../../components/ui/ProgressBar';
-import AlertPanel from '../../components/ui/AlertPanel';
+import api from '../../utils/api';
 import Chart from '../../components/ui/Chart';
 import SideDrawer from '../../components/ui/SideDrawer';
-import EmptyState from '../../components/shared/EmptyState';
-import Button from '../../components/ui/Button';
-import api from '../../utils/api';
+
+// --- Shared Components for Admin ---
+
+const StatusBadge = ({ status, variant }) => {
+  let finalVariant = variant;
+  if (!variant) {
+    const s = String(status).toLowerCase();
+    if (['active', 'paid', 'approved', 'completed'].includes(s)) finalVariant = 'success';
+    else if (['pending', 'trial', 'warning', 'in-progress'].includes(s)) finalVariant = 'warning';
+    else if (['suspended', 'overdue', 'failed', 'rejected', 'danger', 'canceled'].includes(s)) finalVariant = 'danger';
+    else finalVariant = 'neutral';
+  }
+  return <span className={`status-badge ${finalVariant}`}>{status}</span>;
+};
+
+const EmptyState = ({ message, action }) => (
+  <div className="empty-state">
+    <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📂</div>
+    <p>{message}</p>
+    {action && <div style={{ marginTop: '1rem' }}>{action}</div>}
+  </div>
+);
+
+// --- Sub-Tabs ---
+
+const OverviewSection = ({ data }) => {
+  const safeData = data || {};
+  const { 
+    totalUsers = 0, 
+    activeSubscribers = 0, 
+    mrr = 0, 
+    totalStorage = 0, 
+    mrrHistory = [], 
+    userGrowth = [], 
+    storageGrowth = [] 
+  } = safeData;
+
+  const cards = [
+    { title: 'Total Users', value: totalUsers, trend: '+5%' },
+    { title: 'Active Subscribers', value: activeSubscribers, trend: '+12%' },
+    { title: 'Monthly Revenue', value: `$${Number(mrr).toFixed(2)}`, trend: '+8%' },
+    { title: 'Storage Used', value: `${(Number(totalStorage) || 0).toFixed(2)} GB`, trend: '+2%' },
+  ];
+
+  const mrrChartData = (Array.isArray(mrrHistory) ? mrrHistory : []).map(item => ({
+    label: item._id, 
+    value: item.total
+  }));
+
+  const userChartData = (Array.isArray(userGrowth) ? userGrowth : []).map(item => ({
+    label: item._id,
+    value: item.newUsers
+  }));
+  
+  const storageChartData = (Array.isArray(storageGrowth) ? storageGrowth : []).map(item => ({
+    label: item._id,
+    value: Number((item.totalStorage / (1024 ** 3)).toFixed(2))
+  }));
+
+  return (
+    <div>
+      <div className="metrics-grid">
+        {cards.map((card, i) => (
+          <div key={i} className="metric-card">
+            <h3>{card.title}</h3>
+            <div className="value">{card.value}</div>
+            <div className="trend positive">{card.trend}</div>
+          </div>
+        ))}
+      </div>
+      
+      <div className="charts-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+           <Chart type="line" data={mrrChartData} title="MRR History (6 Months)" height={250} />
+        </div>
+        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+           <Chart type="bar" data={userChartData} title="New User Growth" height={250} />
+        </div>
+        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+           <Chart type="area" data={storageChartData} title="Storage Usage Growth (GB)" height={250} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GenericTable = ({ data, columns, actions }) => {
+  if (!data || data.length === 0) return <EmptyState message="No records found." />;
+
+  return (
+    <div className="table-container">
+      <table className="admin-table">
+        <thead>
+          <tr>
+            {columns.map(col => <th key={col.key}>{col.label}</th>)}
+            {actions && <th style={{ width: '150px' }}>Actions</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row, idx) => (
+            <tr key={row._id || idx}>
+              {columns.map(col => (
+                <td key={col.key}>
+                  {col.render ? col.render(row[col.key], row) : row[col.key] || '-'}
+                </td>
+              ))}
+              {actions && (
+                <td>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-start' }}>
+                    {actions.map(act => (
+                      <button 
+                        key={act.label} 
+                        onClick={() => act.onClick(row)}
+                        style={{ 
+                          padding: '6px 12px', 
+                          fontSize: '0.75rem', 
+                          cursor: 'pointer',
+                          background: 'white',
+                          border: '1px solid #d1d5db',
+                          borderRadius: '4px',
+                          color: '#374151',
+                          fontWeight: '500',
+                          transition: 'all 0.2s',
+                          ...act.style
+                        }}
+                      >
+                        {act.label}
+                      </button>
+                    ))}
+                  </div>
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// --- Messaging Tab ---
+
+const MessagingTab = () => {
+  const [users, setUsers] = useState([]);
+  const [selectedRecipient, setSelectedRecipient] = useState('');
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    // Fetch users for the dropdown
+    api.get('admin/users').then(res => {
+      const uList = res.data || (Array.isArray(res) ? res : []);
+      setUsers(uList);
+    }).catch(console.error);
+  }, []);
+
+  const handleSend = async () => {
+    if (!selectedRecipient || !title || !message) return alert('Please fill all fields');
+    
+    setSending(true);
+    try {
+      await api.post('notifications/send', {
+        toUser: selectedRecipient,
+        title,
+        message,
+        type: 'admin'
+      });
+      alert('Message sent successfully!');
+      setTitle('');
+      setMessage('');
+      setSelectedRecipient('');
+    } catch (err) {
+      alert('Failed to send message: ' + err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '600px', margin: '0 auto', background: 'white', padding: '2rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+      <h3 style={{ marginBottom: '1.5rem' }}>Send Direct Message</h3>
+      
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Recipient</label>
+        <select 
+          value={selectedRecipient} 
+          onChange={e => setSelectedRecipient(e.target.value)}
+          style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
+        >
+          <option value="">Select a user...</option>
+          {users.map(u => (
+            <option key={u._id} value={u._id}>{u.name} ({u.email})</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Subject</label>
+        <input 
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Message subject"
+          style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px' }}
+        />
+      </div>
+
+      <div style={{ marginBottom: '1.5rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Message</label>
+        <textarea 
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          placeholder="Type your message here..."
+          rows={5}
+          style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '6px', resize: 'vertical' }}
+        />
+      </div>
+
+      <button 
+        onClick={handleSend}
+        disabled={sending}
+        style={{ 
+          width: '100%', 
+          padding: '0.75rem', 
+          background: sending ? '#9ca3af' : '#4f46e5', 
+          color: 'white', 
+          border: 'none', 
+          borderRadius: '6px', 
+          fontWeight: '500', 
+          cursor: sending ? 'not-allowed' : 'pointer' 
+        }}
+      >
+        {sending ? 'Sending...' : 'Send Message'}
+      </button>
+    </div>
+  );
+};
+
+// --- User Details View ---
+
+const UserDetailsView = ({ user, onClose, onRefresh }) => {
+  if (!user) return null;
+
+  const handleAction = async (action, value) => {
+    if (!window.confirm(`Are you sure you want to ${action}?`)) return;
+    try {
+      if (action === 'change_status') {
+        await api.put(`admin/users/${user._id}/status`, { isActive: value });
+      } else if (action === 'change_role') {
+        await api.put(`admin/users/${user._id}/role`, { role: value });
+      }
+      alert('Update successful');
+      onRefresh(); // Refresh parent data
+      onClose();   // Close drawer
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    }
+  };
+
+  const InfoRow = ({ label, value }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid #eee' }}>
+      <span style={{ color: '#666', fontSize: '0.875rem' }}>{label}</span>
+      <span style={{ fontWeight: '500', color: '#111' }}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+        <div style={{ 
+          width: '64px', height: '64px', borderRadius: '50%', 
+          background: '#e0e7ff', color: '#4f46e5', 
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '1.5rem', fontWeight: 'bold'
+        }}>
+          {user.name?.charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>{user.name}</h2>
+          <p style={{ margin: 0, color: '#666' }}>{user.email}</p>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '2rem' }}>
+        <h3 style={{ fontSize: '1rem', borderBottom: '2px solid #f3f4f6', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Profile Information</h3>
+        <InfoRow label="User ID" value={user._id} />
+        <InfoRow label="Role" value={<StatusBadge status={user.role} />} />
+        <InfoRow label="Status" value={<StatusBadge status={user.isActive ? 'Active' : 'Suspended'} variant={user.isActive ? 'success' : 'danger'} />} />
+        <InfoRow label="Joined" value={new Date(user.createdAt).toLocaleDateString()} />
+        <InfoRow label="Last Login" value={user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'} />
+        <InfoRow label="Phone" value={user.phone || 'N/A'} />
+      </div>
+
+      <div style={{ marginBottom: '2rem' }}>
+        <h3 style={{ fontSize: '1rem', borderBottom: '2px solid #f3f4f6', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Usage & Subscription</h3>
+        <InfoRow label="Subscription Status" value={<StatusBadge status={user.subscriptionStatus || 'None'} />} />
+        <InfoRow label="Storage Used" value={`${((user.storageUsage || 0) / (1024**3)).toFixed(2)} GB`} />
+        <InfoRow label="Storage Limit" value={`${((user.storageLimit || 0) / (1024**3)).toFixed(2)} GB`} />
+      </div>
+
+      <div style={{ marginTop: '2rem' }}>
+        <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Actions</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {user.isActive ? (
+             <button 
+               onClick={() => handleAction('change_status', false)}
+               style={{ padding: '10px', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+             >
+               Suspend User
+             </button>
+          ) : (
+             <button 
+               onClick={() => handleAction('change_status', true)}
+               style={{ padding: '10px', background: '#d1fae5', color: '#065f46', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+             >
+               Activate User
+             </button>
+          )}
+
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {['admin', 'property_manager', 'tenant'].map(role => (
+              user.role !== role && (
+                <button
+                  key={role}
+                  onClick={() => handleAction('change_role', role)}
+                  style={{ flex: 1, padding: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                >
+                  Make {role.replace('_', ' ')}
+                </button>
+              )
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- Main Admin Component ---
 
 const Admin = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [data, setData] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Debug drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerTitle, setDrawerTitle] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
   const [drawerContent, setDrawerContent] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async (tab, isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    setFetchError(null);
-    setLoading(true);
-
+  const fetchData = async (tab, silent = false) => {
+    if (!silent) setLoading(true);
+    setError(null);
+    if (!silent) setData(null); // Clear previous data only if generic loading
+    
     try {
-      const endpoint = tab === 'user-requests'
-        ? 'user-requests'
-        : `admin/${tab}`;
-
-      console.log(`Fetching /api/${endpoint}`);
-      const response = await api.get(endpoint);
-      // api.get already returns the data directly, not wrapped in .data
-      const payload = response || {};
-
-      console.log(`Data for ${tab}:`, payload);
-
-      if (['users', 'subscriptions', 'audit-logs', 'user-requests'].includes(tab)) {
-        setData(Array.isArray(payload) ? payload : []);
-      } else if (tab === 'storage') {
-        setData({
-          globalOverview: payload.globalOverview || {},
-          perUser: payload.perUser || []
-        });
-      } else {
-        setData(payload);
+      if (tab === 'messaging') {
+        setLoading(false);
+        return; // Messaging handles its own data
       }
-    } catch (error) {
-      console.error(`Fetch error [${tab}]:`, error);
-      const msg =
-        error.response?.data?.message ||
-        error.message ||
-        'Failed to load data';
-      setFetchError(msg);
 
-      // Reset to safe empty state
-      if (['users', 'subscriptions', 'audit-logs', 'user-requests'].includes(tab)) {
-        setData([]);
-      } else if (tab === 'storage') {
-        setData({ globalOverview: {}, perUser: [] });
+      let endpoint = `admin/${tab}`;
+      const response = await api.get(endpoint);
+      
+      let normalizedData = response;
+      if (response && response.data) {
+        normalizedData = response.data;
+      }
+
+      if (tab === 'users' && !Array.isArray(normalizedData) && normalizedData.data) {
+        normalizedData = normalizedData.data;
+      }
+      
+      setData(normalizedData);
+    } catch (err) {
+      console.error(`[Admin] Error fetching ${tab}:`, err);
+      // For user-requests, it might be a 404 if route doesn't exist, handle gracefully
+      if (tab === 'user-requests' && err.message.includes('404')) {
+         setData([]); // just empty
       } else {
-        setData({});
+         setError(err.message || "Failed to load data");
+         setData(tab === 'overview' ? {} : []); 
       }
     } finally {
-      setLoading(false);
-      if (isRefresh) setRefreshing(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -74,783 +396,169 @@ const Admin = () => {
     fetchData(activeTab);
   }, [activeTab]);
 
+  const openUserDetails = (user) => {
+    setSelectedUser(user);
+    setDrawerOpen(true);
+  };
+
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'users', label: 'Users' },
     { id: 'subscriptions', label: 'Subscriptions' },
     { id: 'storage', label: 'Storage' },
     { id: 'audit-logs', label: 'Audit Logs' },
-    { id: 'user-requests', label: 'User Requests' },
+    { id: 'user-requests', label: 'Requests' },
     { id: 'messaging', label: 'Messaging' },
   ];
 
+  const renderContent = () => {
+    if (loading) return <div className="loading-state">Loading {activeTab}...</div>;
+    if (error) return <div className="error-state">Error: {error}</div>;
+
+    switch (activeTab) {
+      case 'overview':
+        return <OverviewSection data={data} />;
+      
+      case 'users':
+        return (
+          <div className="table-section">
+            <GenericTable 
+              data={Array.isArray(data) ? data : []}
+              columns={[
+                { key: 'name', label: 'Name' },
+                { key: 'email', label: 'Email' },
+                { key: 'role', label: 'Role', render: (val) => <StatusBadge status={val} /> },
+                { key: 'isActive', label: 'Status', render: (val) => <StatusBadge status={val ? 'Active' : 'Suspended'} /> },
+                { key: 'createdAt', label: 'Joined', render: (val) => new Date(val).toLocaleDateString() },
+              ]}
+              actions={[
+                { label: 'View Details', onClick: (u) => openUserDetails(u) }
+              ]}
+            />
+          </div>
+        );
+
+      case 'subscriptions':
+        return (
+          <div className="table-section">
+             <GenericTable 
+              data={Array.isArray(data) ? data : []}
+              columns={[
+                { key: 'user', label: 'User', render: (u) => u?.name || 'Unknown' },
+                { key: 'plan', label: 'Plan' },
+                { key: 'amount', label: 'Amount', render: (v) => `$${v}` },
+                { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
+              ]}
+            />
+          </div>
+        );
+
+      case 'storage':
+        const storageList = data?.perUser || (Array.isArray(data) ? data : []);
+        return (
+          <div className="table-section">
+            <h3 style={{ marginBottom: '1rem' }}>Storage Usage</h3>
+            <GenericTable 
+              data={storageList}
+              columns={[
+                { key: 'user', label: 'User', render: (u) => u?.name || 'Unknown' },
+                { key: 'usedStorage', label: 'Used (GB)', render: (v) => (v / (1024**3)).toFixed(2) },
+                { key: 'storageLimit', label: 'Limit (GB)', render: (v) => (v / (1024**3)).toFixed(2) },
+              ]}
+            />
+          </div>
+        );
+
+      case 'audit-logs':
+        return (
+          <div className="table-section">
+             <GenericTable 
+              data={Array.isArray(data) ? data : []}
+              columns={[
+                { key: 'action', label: 'Action' },
+                { key: 'actor', label: 'Actor', render: (u) => u?.name || 'System' },
+                { key: 'createdAt', label: 'Time', render: (v) => new Date(v).toLocaleString() },
+              ]}
+            />
+          </div>
+        );
+
+      case 'user-requests':
+        return (
+           <div className="table-section">
+            <GenericTable 
+              data={Array.isArray(data) ? data : []}
+              columns={[
+                { key: 'title', label: 'Request' },
+                { key: 'user', label: 'From', render: (u) => u?.name || 'Unknown' },
+                { key: 'type', label: 'Type' },
+                { key: 'status', label: 'Status', render: (v) => <StatusBadge status={v} /> },
+              ]}
+              actions={[
+                { label: 'Details', onClick: (r) => { setDrawerContent(<pre>{JSON.stringify(r, null, 2)}</pre>); setDrawerOpen(true); setSelectedUser(null); } }
+              ]}
+            />
+          </div>
+        );
+
+      case 'messaging':
+        return <MessagingTab />;
+
+      default:
+        return <EmptyState message="Unknown Tab" />;
+    }
+  };
+
   return (
-    <div className="admin-page">
+    <div className="admin-container">
       <div className="admin-header">
-        <h1>Owner/Admin Management</h1>
+        <div>
+          <h1>Admin Dashboard</h1>
+          <p>Manage system, users, and content</p>
+        </div>
+        <button 
+          onClick={() => fetchData(activeTab)} 
+          style={{ padding: '0.5rem 1rem', background: '#fff', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Refresh Data
+        </button>
       </div>
 
-      <div className="tabs">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            className={activeTab === tab.id ? 'active' : ''}
-            onClick={() => setActiveTab(tab.id)}
+      <div className="admin-tabs">
+        {tabs.map(t => (
+          <button 
+            key={t.id} 
+            className={`tab-btn ${activeTab === t.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.id)}
           >
-            {tab.label}
+            {t.label}
           </button>
         ))}
       </div>
 
-      <div className="tab-content">
-        {fetchError && (
-          <div style={{ padding: '1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '8px', marginBottom: '1rem' }}>
-            <strong>Error:</strong> {fetchError}
-          </div>
-        )}
+      <div className="admin-content">
+        <div style={{ padding: '1.5rem' }}>
+          {renderContent()}
+        </div>
+      </div>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '4rem 0', color: '#666' }}>
-            Loading {activeTab} data...
-          </div>
+      <SideDrawer 
+        isOpen={drawerOpen} 
+        onClose={() => setDrawerOpen(false)} 
+        title={selectedUser ? "User Details" : "Details"}
+      >
+        {selectedUser ? (
+          <UserDetailsView 
+            user={selectedUser} 
+            onClose={() => setDrawerOpen(false)}
+            onRefresh={() => fetchData(activeTab, true)}
+          />
         ) : (
-          <>
-            {activeTab === 'overview' && <OverviewTab data={data} />}
-            {activeTab === 'users' && (
-              <UsersTab
-                data={data}
-                onDrawerOpen={(title, content) => {
-                  setDrawerTitle(title);
-                  setDrawerContent(content);
-                  setDrawerOpen(true);
-                }}
-                onRefreshData={(isRefresh) => fetchData('users', isRefresh)}
-                refreshing={refreshing}
-              />
-            )}
-            {activeTab === 'subscriptions' && (
-              <SubscriptionsTab data={data} onRefreshData={() => fetchData('subscriptions')} />
-            )}
-            {activeTab === 'storage' && (
-              <StorageTab data={data} onRefreshData={() => fetchData('storage')} />
-            )}
-            {activeTab === 'audit-logs' && <ReportsTab data={data} />}
-            {activeTab === 'user-requests' && (
-              <UserRequestsTab
-                data={data}
-                onDrawerOpen={(title, content) => {
-                  setDrawerTitle(title);
-                  setDrawerContent(content);
-                  setDrawerOpen(true);
-                }}
-                onRefreshData={() => fetchData('user-requests')}
-              />
-            )}
-            {activeTab === 'messaging' && (
-              <MessagingTab onRefreshData={() => fetchData('messaging')} />
-            )}
-          </>
-        )}
-      </div>
-
-      {drawerOpen && (
-        <SideDrawer
-          isOpen={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          title={drawerTitle}
-        >
-          {drawerContent}
-        </SideDrawer>
-      )}
-    </div>
-  );
-};
-
-const OverviewTab = ({ data = {} }) => {
-  const bytesToGB = (bytes) => {
-    if (!bytes) return '0.00';
-    return (bytes / (1024 ** 3)).toFixed(2);
-  };
-
-  const mrrHistory = data.mrrHistory || [];
-  const userGrowth = data.userGrowth || [];
-  const storageGrowth = data.storageGrowth || [];
-
-  const mrrChartData = mrrHistory.map(item => ({
-    label: item._id || 'Unknown',
-    value: item.total || 0
-  }));
-
-  const userGrowthData = userGrowth.map(item => ({
-    label: item._id || 'Unknown',
-    value: item.newUsers || 0
-  }));
-
-  const storageGrowthData = storageGrowth.map(item => ({
-    label: item._id || 'Unknown',
-    value: bytesToGB(item.totalStorage)
-  }));
-
-  const hasCharts = mrrChartData.length > 0 || userGrowthData.length > 0 || storageGrowthData.length > 0;
-
-  return (
-    <div>
-      <div className="metrics-grid">
-        <MetricCard title="Total Users" value={data.totalUsers ?? 0} trend={5.2} />
-        <MetricCard title="Active Subscribers" value={data.activeSubscribers ?? 0} trend={12.8} />
-        <MetricCard title="Trial Users" value={data.trialUsers ?? 0} trend={-3.1} />
-        <MetricCard title="Monthly Revenue" value={`$${Number(data.mrr ?? 0).toFixed(2)}`} trend={8.5} />
-        <MetricCard title="Failed Payments" value={data.failedPayments ?? 0} trend={-15.3} />
-        <MetricCard title="Total Storage Used" value={`${bytesToGB(data.totalStorage)} GB`} trend={22.1} />
-      </div>
-
-      <div className="alerts-section">
-        {data.alerts?.failedPayments > 0 && (
-          <AlertPanel type="danger" title="Failed Payments" message={`${data.alerts.failedPayments} payments failed recently.`} />
-        )}
-        {data.alerts?.expiringTrials > 0 && (
-          <AlertPanel type="warning" title="Expiring Trials" message={`${data.alerts.expiringTrials} trials expire soon.`} />
-        )}
-        {data.alerts?.nearLimitUsers > 0 && (
-          <AlertPanel type="warning" title="Storage Limits" message={`${data.alerts.nearLimitUsers} users near limit.`} />
-        )}
-      </div>
-
-      <div className="charts-container">
-        {mrrChartData.length > 0 && <Chart type="line" data={mrrChartData} title="MRR (Last Months)" />}
-        {userGrowthData.length > 0 && <Chart type="bar" data={userGrowthData} title="New Users Growth" />}
-        {storageGrowthData.length > 0 && <Chart type="area" data={storageGrowthData} title="Storage Growth (GB)" />}
-      </div>
-
-      {!hasCharts && (
-        <EmptyState
-          title="No historical data yet"
-          description="Charts will appear once more monthly data is available."
-        />
-      )}
-    </div>
-  );
-};
-
-const UsersTab = ({ data, onDrawerOpen, onRefreshData, refreshing }) => {
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [selectAll, setSelectAll] = useState(false);
-
-  const columns = [
-    {
-      key: 'select',
-      label: (
-        <input
-          type="checkbox"
-          checked={selectAll}
-          onChange={(e) => {
-            setSelectAll(e.target.checked);
-            setSelectedUsers(e.target.checked ? data.map(user => user._id) : []);
-          }}
-        />
-      ),
-      render: (value, item) => (
-        <input
-          type="checkbox"
-          checked={selectedUsers.includes(item._id)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setSelectedUsers([...selectedUsers, item._id]);
-            } else {
-              setSelectedUsers(selectedUsers.filter(id => id !== item._id));
-              setSelectAll(false);
-            }
-          }}
-        />
-      )
-    },
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
-    { key: 'role', label: 'Role' },
-    { key: 'subscriptionStatus', label: 'Subscription' },
-    { key: 'storageUsage', label: 'Storage Used', render: (value) => `${(value / 1024 ** 3).toFixed(2)} GB` },
-    { key: 'lastLogin', label: 'Last Active', render: (value) => value ? new Date(value).toLocaleDateString() : 'Never' },
-    { key: 'isActive', label: 'Status', render: (value) => <Badge variant={value ? 'success' : 'danger'}>{value ? 'Active' : 'Suspended'}</Badge> },
-    {
-      key: 'actions',
-      label: 'Actions',
-      actions: [
-        { key: 'view', label: 'View' },
-        { key: 'changeRole', label: 'Change Role' },
-        { key: 'toggleStatus', label: 'Toggle Status' }
-      ]
-    }
-  ];
-
-  const handleAction = async (action, user) => {
-    switch (action) {
-      case 'view': {
-        const content = (
-          <div className="user-details">
-            <div className="detail-row"><strong>Name:</strong> {user.name}</div>
-            <div className="detail-row"><strong>Email:</strong> {user.email}</div>
-            <div className="detail-row"><strong>Role:</strong> {user.role}</div>
-            <div className="detail-row"><strong>Subscription:</strong> {user.subscriptionStatus}</div>
-            <div className="detail-row"><strong>Storage Used:</strong> {(user.storageUsage / 1024 ** 3).toFixed(2)} GB</div>
-            <div className="detail-row"><strong>Last Login:</strong> {user.lastLogin ? new Date(user.lastLogin).toLocaleString() : 'Never'}</div>
-            <div className="detail-row"><strong>Status:</strong> {user.isActive ? 'Active' : 'Suspended'}</div>
+          <div style={{ padding: '1rem', overflowX: 'auto' }}>
+            {drawerContent}
           </div>
-        );
-        onDrawerOpen(`User Details: ${user.name}`, content);
-        break;
-      }
-      case 'changeRole': {
-        const validRoles = ['tenant', 'property_manager', 'admin', 'owner'];
-        const newRole = prompt(`Change role for ${user.name} (current: ${user.role})`, user.role);
-        if (newRole && newRole !== user.role) {
-          if (!validRoles.includes(newRole)) {
-            alert('Invalid role. Valid roles: tenant, property_manager, admin, owner');
-            break;
-          }
-          if (user.role === 'owner' && newRole !== 'owner') {
-            alert('Cannot change role of owner users');
-            break;
-          }
-          try {
-            await api.put(`admin/users/${user._id}/role`, { role: newRole });
-            alert('Role updated successfully');
-            onRefreshData(true);
-          } catch {
-            alert('Error updating role');
-          }
-        }
-        break;
-      }
-      case 'toggleStatus': {
-        const actionText = user.isActive ? 'suspend' : 'activate';
-        if (window.confirm(`Are you sure you want to ${actionText} user ${user.name}?`)) {
-          try {
-            await api.put(`admin/users/${user._id}/status`, { isActive: !user.isActive });
-            alert(`User ${actionText}d successfully`);
-            onRefreshData(true);
-          } catch {
-            alert(`Error ${actionText}ing user`);
-          }
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  };
-
-  const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Role', 'Subscription', 'Storage Used (GB)', 'Last Active', 'Status'];
-    const csvContent = [
-      headers.join(','),
-      ...data.map(user => [
-        user.name,
-        user.email,
-        user.role,
-        user.subscriptionStatus,
-        (user.storageUsage / 1024 ** 3).toFixed(2),
-        user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
-        user.isActive ? 'Active' : 'Suspended'
-      ].map(field => `"${field}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'users.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleBulkActivate = async () => {
-    if (selectedUsers.length === 0) return;
-    if (window.confirm(`Activate ${selectedUsers.length} selected users?`)) {
-      try {
-        await Promise.all(selectedUsers.map(id => api.put(`admin/users/${id}/status`, { isActive: true })));
-        alert('Users activated successfully');
-        setSelectedUsers([]);
-        setSelectAll(false);
-        onRefreshData(true);
-      } catch {
-        alert('Error activating users');
-      }
-    }
-  };
-
-  const handleBulkSuspend = async () => {
-    if (selectedUsers.length === 0) return;
-    if (window.confirm(`Suspend ${selectedUsers.length} selected users?`)) {
-      try {
-        await Promise.all(selectedUsers.map(id => api.put(`admin/users/${id}/status`, { isActive: false })));
-        alert('Users suspended successfully');
-        setSelectedUsers([]);
-        setSelectAll(false);
-        onRefreshData(true);
-      } catch {
-        alert('Error suspending users');
-      }
-    }
-  };
-
-  return (
-    <div>
-      <div className="tab-header">
-        <button onClick={() => onRefreshData(true)} disabled={refreshing}>
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
-        <button onClick={exportToCSV} className="export-btn">Export CSV</button>
-        {selectedUsers.length > 0 && (
-          <>
-            <button onClick={handleBulkActivate} className="bulk-btn activate">Activate Selected ({selectedUsers.length})</button>
-            <button onClick={handleBulkSuspend} className="bulk-btn suspend">Suspend Selected ({selectedUsers.length})</button>
-          </>
         )}
-      </div>
-      <DataTable
-        data={data}
-        columns={columns}
-        onAction={handleAction}
-      />
-    </div>
-  );
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Remaining tabs (unchanged from your version – just included for completeness)
-// ─────────────────────────────────────────────────────────────────────────────
-
-const SubscriptionsTab = ({ data, onRefreshData }) => {
-  const columns = [
-    { key: 'user', label: 'User', render: (user) => user?.name || 'N/A' },
-    { key: 'plan', label: 'Plan', render: (plan) => <Badge variant="info">{plan}</Badge> },
-    { key: 'billingCycle', label: 'Cycle' },
-    { key: 'amount', label: 'Amount', render: (amount) => `$${amount}` },
-    { key: 'status', label: 'Status', render: (status) => {
-      const variants = { active: 'success', trial: 'warning', past_due: 'danger', canceled: 'default' };
-      return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
-    }},
-    { key: 'nextBillingDate', label: 'Next Billing', render: (date) => new Date(date).toLocaleDateString() },
-    {
-      key: 'actions',
-      label: 'Actions',
-      actions: [
-        { key: 'viewInvoices', label: 'View Invoices' },
-        { key: 'retryPayment', label: 'Retry Payment' },
-        { key: 'upgrade', label: 'Upgrade' },
-        { key: 'cancel', label: 'Cancel' }
-      ]
-    }
-  ];
-
-  const handleAction = async (action, subscription) => {
-    switch (action) {
-      case 'viewInvoices':
-        alert('Invoice viewing not implemented yet');
-        break;
-      case 'retryPayment':
-        if (window.confirm('Retry payment for this subscription?')) {
-          try {
-            await api.put(`admin/subscriptions/${subscription._id}/retry`);
-            alert('Payment retry initiated successfully');
-          } catch {
-            alert('Error retrying payment');
-          }
-        }
-        break;
-      case 'upgrade': {
-        const newPlan = prompt('Enter new plan (basic/professional/enterprise):', subscription.plan);
-        const newAmount = prompt('Enter new amount:', subscription.amount);
-        if (newPlan && newPlan !== subscription.plan && newAmount && !isNaN(newAmount)) {
-          if (window.confirm(`Upgrade to ${newPlan} for $${newAmount}?`)) {
-            try {
-              await api.put(`admin/subscriptions/${subscription._id}/upgrade`, { newPlan, newAmount: parseFloat(newAmount) });
-              alert('Subscription upgraded successfully');
-              onRefreshData();
-            } catch {
-              alert('Error upgrading subscription');
-            }
-          }
-        }
-        break;
-      }
-      case 'cancel':
-        if (window.confirm('Cancel this subscription? This cannot be undone.')) {
-          try {
-            await api.put(`admin/subscriptions/${subscription._id}/cancel`);
-            alert('Subscription cancelled successfully');
-            onRefreshData();
-          } catch {
-            alert('Error cancelling subscription');
-          }
-        }
-        break;
-      default:
-        break;
-    }
-  };
-
-  return (
-    <div>
-      <DataTable data={data} columns={columns} onAction={handleAction} />
-    </div>
-  );
-};
-
-const StorageTab = ({ data, onRefreshData }) => {
-  const globalOverview = data.globalOverview || {};
-  const perUser = data.perUser || [];
-
-  const columns = [
-    { key: 'user', label: 'User', render: (user) => user?.name || 'N/A' },
-    { key: 'usedStorage', label: 'Used Storage', render: (value) => `${(value / 1024 ** 3).toFixed(2)} GB` },
-    { key: 'storageLimit', label: 'Storage Limit', render: (value) => `${(value / 1024 ** 3).toFixed(2)} GB` },
-    {
-      key: 'usagePercent',
-      label: '% Used',
-      render: (value, item) => {
-        const percent = ((item.usedStorage / item.storageLimit) * 100).toFixed(1);
-        return <ProgressBar value={percent} showLabel={true} color={percent > 90 ? 'danger' : percent > 70 ? 'warning' : 'success'} />;
-      }
-    },
-    {
-      key: 'actions',
-      label: 'Actions',
-      actions: [
-        { key: 'increaseLimit', label: 'Increase Limit' },
-        { key: 'viewFiles', label: 'View Files' },
-        { key: 'lockUploads', label: 'Lock Uploads' }
-      ]
-    }
-  ];
-
-  const handleAction = async (action, storage) => {
-    switch (action) {
-      case 'increaseLimit': {
-        const currentGB = (storage.storageLimit / 1024 ** 3).toFixed(2);
-        const newLimitGB = prompt('Enter new storage limit in GB:', currentGB);
-        if (newLimitGB && !isNaN(newLimitGB)) {
-          const newLimitBytes = parseFloat(newLimitGB) * 1024 ** 3;
-          if (window.confirm(`Increase limit to ${newLimitGB} GB?`)) {
-            try {
-              await api.put(`admin/storage/${storage._id}/limit`, { storageLimit: newLimitBytes });
-              alert('Storage limit updated successfully');
-              onRefreshData();
-            } catch {
-              alert('Error updating storage limit');
-            }
-          }
-        }
-        break;
-      }
-      case 'viewFiles':
-        alert('File viewing not implemented yet');
-        break;
-      case 'lockUploads':
-        if (window.confirm('Lock uploads for this user?')) {
-          try {
-            await api.put(`admin/storage/${storage._id}/lock`);
-            alert('Uploads locked successfully');
-            onRefreshData();
-          } catch {
-            alert('Error locking uploads');
-          }
-        }
-        break;
-      default:
-        break;
-    }
-  };
-
-  return (
-    <div>
-      <div className="storage-overview">
-        <div className="metrics-grid">
-          <MetricCard title="Total Used" value={`${globalOverview.totalUsed || 0} GB`} />
-          <MetricCard title="Avg Per User" value={`${globalOverview.avgPerUser || 0} GB`} />
-          <MetricCard title="Top Consumers" value={globalOverview.topConsumers?.length || 0} />
-          <MetricCard title="Near Limit" value={globalOverview.nearLimit?.length || 0} />
-        </div>
-      </div>
-      <DataTable data={perUser} columns={columns} onAction={handleAction} />
-    </div>
-  );
-};
-
-const ReportsTab = ({ data }) => {
-  const [filters, setFilters] = useState({
-    action: '',
-    actor: '',
-    dateFrom: '',
-    dateTo: ''
-  });
-
-  const filteredData = (Array.isArray(data) ? data : []).filter(log => {
-    const matchesAction = !filters.action || log.action.includes(filters.action);
-    const matchesActor = !filters.actor || log.actor?.name?.toLowerCase().includes(filters.actor.toLowerCase());
-    const logDate = new Date(log.createdAt);
-    const matchesDateFrom = !filters.dateFrom || logDate >= new Date(filters.dateFrom);
-    const matchesDateTo = !filters.dateTo || logDate <= new Date(filters.dateTo);
-    return matchesAction && matchesActor && matchesDateFrom && matchesDateTo;
-  });
-
-  const exportToCSV = () => {
-    const headers = ['Actor', 'Action', 'Target', 'Details', 'Date'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredData.map(log => [
-        log.actor?.name || 'N/A',
-        log.action,
-        log.target?.name || 'N/A',
-        JSON.stringify(log.details).replace(/"/g, '""'),
-        new Date(log.createdAt).toLocaleString()
-      ].map(field => `"${field}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'audit_logs.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const columns = [
-    { key: 'actor', label: 'Actor', render: (actor) => actor?.name || 'N/A' },
-    { key: 'action', label: 'Action' },
-    { key: 'target', label: 'Target', render: (target) => target?.name || 'N/A' },
-    { key: 'details', label: 'Details', render: (details) => JSON.stringify(details) },
-    { key: 'createdAt', label: 'Date', render: (date) => new Date(date).toLocaleString() }
-  ];
-
-  return (
-    <div>
-      <div className="reports-filters">
-        <div className="filter-row">
-          <input type="text" placeholder="Filter by action..." value={filters.action} onChange={e => setFilters(prev => ({ ...prev, action: e.target.value }))} />
-          <input type="text" placeholder="Filter by actor..." value={filters.actor} onChange={e => setFilters(prev => ({ ...prev, actor: e.target.value }))} />
-          <input type="date" value={filters.dateFrom} onChange={e => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))} />
-          <input type="date" value={filters.dateTo} onChange={e => setFilters(prev => ({ ...prev, dateTo: e.target.value }))} />
-          <button onClick={exportToCSV} className="export-btn">Export CSV</button>
-        </div>
-      </div>
-
-      {filteredData.length === 0 ? (
-        <EmptyState icon="📋" title="No audit logs found" description="No logs match your filters." />
-      ) : (
-        <DataTable data={filteredData} columns={columns} />
-      )}
-    </div>
-  );
-};
-
-const UserRequestsTab = ({ data, onDrawerOpen, onRefreshData }) => {
-  const [selectedRequests, setSelectedRequests] = useState([]);
-  const [selectAll, setSelectAll] = useState(false);
-
-  const columns = [
-    {
-      key: 'select',
-      label: (
-        <input
-          type="checkbox"
-          checked={selectAll}
-          onChange={(e) => {
-            setSelectAll(e.target.checked);
-            setSelectedRequests(e.target.checked ? data.map(req => req._id) : []);
-          }}
-        />
-      ),
-      render: (value, item) => (
-        <input
-          type="checkbox"
-          checked={selectedRequests.includes(item._id)}
-          onChange={(e) => {
-            if (e.target.checked) setSelectedRequests([...selectedRequests, item._id]);
-            else {
-              setSelectedRequests(selectedRequests.filter(id => id !== item._id));
-              setSelectAll(false);
-            }
-          }}
-        />
-      )
-    },
-    { key: 'user', label: 'User', render: (user) => user?.name || 'N/A' },
-    { key: 'type', label: 'Type', render: (type) => <Badge variant="info">{type}</Badge> },
-    { key: 'title', label: 'Title' },
-    { key: 'status', label: 'Status', render: (status) => {
-      const variants = { pending: 'warning', approved: 'success', rejected: 'danger' };
-      return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
-    }},
-    { key: 'createdAt', label: 'Created', render: (date) => new Date(date).toLocaleDateString() },
-    {
-      key: 'actions',
-      label: 'Actions',
-      actions: [
-        { key: 'view', label: 'View Details' },
-        { key: 'approve', label: 'Approve' },
-        { key: 'reject', label: 'Reject' }
-      ]
-    }
-  ];
-
-  const handleAction = async (action, request) => {
-    switch (action) {
-      case 'view': {
-        const content = (
-          <div className="request-details">
-            <div className="detail-row"><strong>User:</strong> {request.user?.name}</div>
-            <div className="detail-row"><strong>Type:</strong> {request.type}</div>
-            <div className="detail-row"><strong>Title:</strong> {request.title}</div>
-            <div className="detail-row"><strong>Description:</strong> {request.description}</div>
-            <div className="detail-row"><strong>Status:</strong> {request.status}</div>
-            <div className="detail-row"><strong>Created:</strong> {new Date(request.createdAt).toLocaleString()}</div>
-            {request.adminResponse && <div className="detail-row"><strong>Admin Response:</strong> {request.adminResponse}</div>}
-          </div>
-        );
-        onDrawerOpen(`Request Details: ${request.title}`, content);
-        break;
-      }
-      case 'approve': {
-        const response = prompt('Enter approval message (optional):');
-        if (window.confirm('Approve this request?')) {
-          try {
-            await api.patch(`user-requests/${request._id}`, { status: 'approved', adminResponse: response });
-            await api.post('notifications/send', {
-              toUser: request.user._id,
-              title: 'Request Approved',
-              message: `Your request "${request.title}" has been approved.${response ? ` Message: ${response}` : ''}`,
-              type: 'admin'
-            });
-            alert('Request approved and notification sent');
-            onRefreshData();
-          } catch (error) {
-            alert('Error approving request: ' + error.message);
-          }
-        }
-        break;
-      }
-      case 'reject': {
-        const response = prompt('Enter rejection reason:');
-        if (response && window.confirm('Reject this request?')) {
-          try {
-            await api.patch(`user-requests/${request._id}`, { status: 'rejected', adminResponse: response });
-            await api.post('notifications/send', {
-              toUser: request.user._id,
-              title: 'Request Rejected',
-              message: `Your request "${request.title}" has been rejected. Reason: ${response}`,
-              type: 'admin'
-            });
-            alert('Request rejected and notification sent');
-            onRefreshData();
-          } catch (error) {
-            alert('Error rejecting request: ' + error.message);
-          }
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  };
-
-  return (
-    <div>
-      <DataTable data={data} columns={columns} onAction={handleAction} />
-    </div>
-  );
-};
-
-const MessagingTab = ({ onRefreshData }) => {
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState('');
-  const [title, setTitle] = useState('');
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await api.get('admin/users');
-        setUsers(response || []);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
-    fetchUsers();
-  }, []);
-
-  const handleSendMessage = async () => {
-    if (!selectedUser || !title.trim() || !message.trim()) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    setSending(true);
-    try {
-      await api.post('notifications/send', {
-        toUser: selectedUser,
-        title: title.trim(),
-        message: message.trim(),
-        type: 'admin'
-      });
-      alert('Message sent successfully');
-      setSelectedUser('');
-      setTitle('');
-      setMessage('');
-      onRefreshData();
-    } catch (error) {
-      alert('Error sending message: ' + error.message);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div>
-      <h3>Send Admin Message</h3>
-      <div className="message-form">
-        <div className="form-group">
-          <label htmlFor="user-select">Select User:</label>
-          <select id="user-select" value={selectedUser} onChange={e => setSelectedUser(e.target.value)}>
-            <option value="">Choose a user...</option>
-            {users.map(user => (
-              <option key={user._id} value={user._id}>
-                {user.name} ({user.email})
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="form-group">
-          <label htmlFor="message-title">Title:</label>
-          <input
-            id="message-title"
-            type="text"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Enter message title"
-            maxLength="200"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="message-content">Message:</label>
-          <textarea
-            id="message-content"
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            placeholder="Enter your message"
-            rows="5"
-          />
-        </div>
-        <Button onClick={handleSendMessage} disabled={sending}>
-          {sending ? 'Sending...' : 'Send Message'}
-        </Button>
-      </div>
+      </SideDrawer>
     </div>
   );
 };

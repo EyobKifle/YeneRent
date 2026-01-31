@@ -402,9 +402,10 @@ const Leases = () => {
                                         const tenantId = getMongoId(lease.tenantId);
                                         const unitId = getMongoId(lease.unitId);
                                         
-                                        const tenant = tenants.find(t => t._id === tenantId);
-                                        const unit = units.find(u => u._id === unitId);
-                                        const property = unit ? properties.find(p => p._id === getMongoId(unit.propertyId)) : null;
+                                        const tenant = tenants.find(t => (t._id || t.id) === tenantId);
+                                        const unit = units.find(u => (u._id || u.id) === unitId);
+                                        const unitPropertyId = getMongoId(unit?.propertyId);
+                                        const property = unitPropertyId ? properties.find(p => (p._id || p.id) === unitPropertyId) : null;
                                         
                                         const status = getLeaseStatus(lease);
                                         return (

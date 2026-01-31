@@ -130,6 +130,7 @@ app.use('/api/leases', authenticateToken, leasesRouter);
 app.use('/api/units', authenticateToken, unitsRouter);
 app.use('/api/expenses', authenticateToken, expensesRouter);
 app.use('/api/analytics', authenticateToken, analyticsRouter);
+app.use('/api/user-requests', authenticateToken, userRequestRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/admin', authenticateToken, adminRouter);
 app.use('/api/v1/uploads', uploadsRouter);

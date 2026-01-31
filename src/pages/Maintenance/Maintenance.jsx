@@ -57,31 +57,41 @@ const Maintenance = () => {
     fetchData();
   }, []);
 
+  const enrichedRequests = useMemo(() => {
+    return maintenanceRequests.map(request => {
+      const propId = request.propertyId?._id || request.propertyId;
+      const property = properties.find(p => (p._id || p.id) === propId);
+      return { ...request, propertyName: property?.name || request.property || 'N/A' };
+    });
+  }, [maintenanceRequests, properties]);
+
   const filteredRequests = useMemo(() => {
-    return maintenanceRequests.filter(request =>
-      request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      request.status.toLowerCase().includes(searchTerm.toLowerCase())
+    const s = searchTerm.toLowerCase();
+    return enrichedRequests.filter(request =>
+      (request.title || '').toLowerCase().includes(s) ||
+      (request.propertyName || '').toLowerCase().includes(s) ||
+      (request.status || '').toLowerCase().includes(s)
     );
-  }, [searchTerm, maintenanceRequests]);
+  }, [searchTerm, enrichedRequests]);
 
   const handleAddRequest = () => {
     setIsModalOpen(true);
   };
 
   const handleViewDetails = (request) => {
-    navigate(`/maintenance/${request.id}`);
+    navigate(`/maintenance/${request._id || request.id}`);
   };
 
   const handleEditRequest = (request) => {
-    navigate(`/maintenance/${request.id}/edit`);
+    navigate(`/maintenance/${request._id || request.id}/edit`);
   };
 
   const handleDeleteRequest = async (request) => {
+    const requestId = request._id || request.id;
     if (window.confirm('Are you sure you want to delete this maintenance request?')) {
       try {
-        await api.delete(`maintenance/${request.id}`);
-        setMaintenanceRequests(prev => prev.filter(r => r.id !== request.id));
+        await api.delete(`maintenance/${requestId}`);
+        setMaintenanceRequests(prev => prev.filter(r => (r._id || r.id) !== requestId));
         alert('Maintenance request deleted successfully');
       } catch (error) {
         console.error('Failed to delete maintenance request:', error);
@@ -104,9 +114,9 @@ const Maintenance = () => {
       };
 
       if (selectedMaintenance) {
-        // Update existing request
-        await api.put(`maintenance/${selectedMaintenance.id}`, maintenanceData);
-        setMaintenanceRequests(prev => prev.map(r => r.id === selectedMaintenance.id ? { ...r, ...maintenanceData } : r));
+        const requestId = selectedMaintenance._id || selectedMaintenance.id;
+        await api.put(`maintenance/${requestId}`, maintenanceData);
+        setMaintenanceRequests(prev => prev.map(r => (r._id || r.id) === requestId ? { ...r, ...maintenanceData } : r));
         alert('Maintenance request updated successfully');
       } else {
         // Create new request
@@ -206,7 +216,7 @@ const Maintenance = () => {
                   return (
                   <tr key={requestId}>
                     <td>{request.title}</td>
-                    <td>{request.property}</td>
+                    <td>{request.propertyName}</td>
                     <td>
                       <span className={getStatusBadgeClass(request.status)}>
                         {formatStatus(request.status)}

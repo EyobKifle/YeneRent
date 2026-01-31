@@ -45,10 +45,15 @@ const UnitDetails = () => {
                 setDocuments(fetchedDocuments);
                 setLeases(fetchedLeases);
 
-                const foundUnit = units.find(u => u.id === id);
+                // Ensure units is an array
+                const unitsArray = Array.isArray(units) ? units : [];
+                const foundUnit = unitsArray.find(u => {
+                    const uId = (u._id || u.id)?.toString();
+                    return uId === id.toString();
+                });
 
                 if (!foundUnit) {
-                    alert('Unit not found.'); // Placeholder for notification
+                    alert('Unit not found.');
                     navigate('/units');
                     return;
                 }
@@ -93,10 +98,11 @@ const UnitDetails = () => {
         return <div className="no-unit">Unit not found.</div>;
     }
 
-    const property = properties.find(p => p.id === currentUnit.propertyId);
-    const unitTenants = tenants.filter(t => t.unitId === currentUnit.id);
-    const unitDocuments = documents.filter(d => d.unitId === currentUnit.id);
-    const unitLeases = leases.filter(l => l.unitId === currentUnit.id);
+    const currentUnitId = currentUnit._id || currentUnit.id;
+    const property = properties.find(p => (p._id || p.id) === (currentUnit.propertyId?._id || currentUnit.propertyId));
+    const unitTenants = tenants.filter(t => (t.unitId?._id || t.unitId) === currentUnitId);
+    const unitDocuments = documents.filter(d => (d.unitId?._id || d.unitId) === currentUnitId);
+    const unitLeases = leases.filter(l => (l.unitId?._id || l.unitId) === currentUnitId);
 
     const renderOverview = () => (
         <div className="details-summary-card">
@@ -143,9 +149,10 @@ const UnitDetails = () => {
                     {unitTenants.length === 0 ? (
                         <tr><td colSpan={5} className="text-center p-4">No tenants assigned to this unit.</td></tr>
                     ) : unitTenants.map(tenant => {
-                        const lease = unitLeases.find(l => l.tenantId === tenant.id);
+                        const tId = tenant._id || tenant.id;
+                        const lease = unitLeases.find(l => (l.tenantId?._id || l.tenantId) === tId);
                         return (
-                            <tr key={tenant.id}>
+                            <tr key={tId}>
                                 <td>{tenant.name}</td>
                                 <td>{tenant.email}</td>
                                 <td>{tenant.phone}</td>
@@ -174,7 +181,7 @@ const UnitDetails = () => {
                     {unitDocuments.length === 0 ? (
                         <tr><td colSpan={4} className="text-center p-4">No documents for this unit.</td></tr>
                     ) : unitDocuments.map(doc => (
-                        <tr key={doc.id}>
+                        <tr key={doc._id || doc.id}>
                             <td>{doc.name}</td>
                             <td>{doc.category}</td>
                             <td>{formatDate(doc.uploadDate)}</td>

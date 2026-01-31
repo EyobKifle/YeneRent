@@ -35,9 +35,8 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
       const selectedLease = leases.find(lease => (lease._id || lease.id) === formData.leaseId);
       if (selectedLease) {
         const rentAmount = selectedLease.rentAmount || 0;
-        const withholdingAmount = selectedLease.withholdingAmount || (rentAmount * 0.15);
         
-        // Calculate next due date based on lease start date
+        // Calculate next due date based on lease start date or existing payments
         const startDate = new Date(selectedLease.startDate);
         const today = new Date();
         const monthsDiff = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth());
@@ -47,8 +46,8 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         setFormData(prev => ({
           ...prev,
           amount: rentAmount.toString(),
-          withholdingAmount: withholdingAmount.toFixed(2),
-          dueDate: nextDueDate.toISOString().split('T')[0]
+          dueDate: nextDueDate.toISOString().split('T')[0],
+          includeWithholding: true // Default to true for Rent
         }));
       }
     }
@@ -216,7 +215,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         )}
 
         <div className="form-group">
-          <label htmlFor="leaseId">Lease *</label>
+          <label htmlFor="leaseId">Lease <span style={{color: 'red'}}>*</span></label>
           <select
             id="leaseId"
             name="leaseId"
@@ -236,7 +235,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="amount">Amount *</label>
+          <label htmlFor="amount">Amount <span style={{color: 'red'}}>*</span></label>
           <input
             type="number"
             id="amount"
@@ -278,10 +277,11 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
                 checked={formData.includeWithholding}
                 onChange={handleInputChange}
                 className="checkbox-input"
+                disabled // Made read-only as per request
               />
               <span className="checkbox-custom"></span>
               <span className="checkbox-label">
-                Include Withholding Tax (15%)
+                Include Withholding Tax (15%) - <small style={{color: '#666'}}>Determined by system</small>
               </span>
             </label>
           </div>
@@ -299,13 +299,13 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
               step="0.01"
               min="0"
               readOnly
-              style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
+              style={{ backgroundColor: '#f9f9f9', cursor: 'not-allowed', color: '#666' }}
             />
           </div>
         )}
 
         <div className="form-group">
-          <label htmlFor="date">Payment Date *</label>
+          <label htmlFor="date">Payment Date <span style={{color: 'red'}}>*</span></label>
           <input
             type="date"
             id="date"
@@ -319,7 +319,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="dueDate">Due Date *</label>
+          <label htmlFor="dueDate">Due Date <span style={{color: 'red'}}>*</span></label>
           <input
             type="date"
             id="dueDate"
@@ -333,7 +333,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="method">Payment Method *</label>
+          <label htmlFor="method">Payment Method <span style={{color: 'red'}}>*</span></label>
           <select
             id="method"
             name="method"

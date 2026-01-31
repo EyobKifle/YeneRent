@@ -181,7 +181,7 @@ export default function UnitsPage() {
           units.map(u => {
             const tenant = tenants.find(t => t.id === u.tenantId)
             return (
-              <div key={u.id} className="unit-card" data-id={u.id}>
+              <div key={u._id || u.id} className="unit-card" data-id={u._id || u.id}>
                 <div className="unit-card-header">
                   <h3>Unit {u.unitNumber}</h3>
                   <span className={`status-badge ${tenant ? 'status-occupied' : 'status-vacant'}`}>{tenant ? 'Occupied' : 'Vacant'}</span>

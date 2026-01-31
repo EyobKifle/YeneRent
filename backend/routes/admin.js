@@ -208,7 +208,7 @@ router.put('/subscriptions/:id/status', async (req, res) => {
     // Log the action
     try {
       await AuditLog.create({
-        actor: req.user.id,
+        actor: req.user.userId,
         action: 'subscription_status_changed',
         target: subscription.user,
         details: { subscriptionId: subscription._id, newStatus: status },

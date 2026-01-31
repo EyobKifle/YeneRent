@@ -30,25 +30,12 @@ const MaintenanceDetails = () => {
                 const [fetchedProperties, fetchedUnits, maintenanceData] = await Promise.all([
                     api.get('properties'),
                     api.get('units'),
-                    api.get('maintenance')
+                    api.get(`maintenance/${id}`)
                 ]);
 
                 setProperties(fetchedProperties.properties || fetchedProperties || []);
                 setUnits(fetchedUnits || []);
-                
-                // Ensure maintenance is an array
-                const maintenanceArray = Array.isArray(maintenanceData) ? maintenanceData : [];
-                const foundMaintenance = maintenanceArray.find(m => {
-                    const mId = (m._id || m.id)?.toString();
-                    return mId === id.toString();
-                });
-
-                if (!foundMaintenance) {
-                    alert('Maintenance request not found.');
-                    navigate('/maintenance');
-                    return;
-                }
-                setCurrentMaintenance(foundMaintenance);
+                setCurrentMaintenance(maintenanceData);
             } catch (err) {
                 console.error('Failed to fetch maintenance details:', err);
                 setError('Failed to load maintenance details.');

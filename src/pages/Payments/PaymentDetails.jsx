@@ -28,30 +28,17 @@ const PaymentDetails = () => {
             }
 
             try {
-                const [fetchedProperties, fetchedUnits, fetchedTenants, paymentsData] = await Promise.all([
+                const [fetchedProperties, fetchedUnits, fetchedTenants, paymentData] = await Promise.all([
                     api.get('properties'),
                     api.get('units'),
                     api.get('tenants'),
-                    api.get('payments')
+                    api.get(`payments/${id}`)
                 ]);
 
                 setProperties(fetchedProperties.properties || fetchedProperties || []);
                 setUnits(fetchedUnits || []);
                 setTenants(fetchedTenants || []);
-                
-                // Ensure payments is an array
-                const paymentsArray = Array.isArray(paymentsData) ? paymentsData : [];
-                const foundPayment = paymentsArray.find(p => {
-                    const pId = (p._id || p.id)?.toString();
-                    return pId === id.toString();
-                });
-
-                if (!foundPayment) {
-                    alert('Payment not found.');
-                    navigate('/payments');
-                    return;
-                }
-                setCurrentPayment(foundPayment);
+                setCurrentPayment(paymentData);
             } catch (err) {
                 console.error('Failed to fetch payment details:', err);
                 setError('Failed to load payment details.');
@@ -192,6 +179,7 @@ const PaymentDetails = () => {
                             <div className="detail-item"><span>Payment Date</span><span id="detail-payment-date">{formatDate(currentPayment.paymentDate)}</span></div>
                             <div className="detail-item"><span>Payment Method</span><span id="detail-method">{currentPayment.method}</span></div>
                             <div className="detail-item"><span>Receipt Number</span><span id="detail-receipt-number">{currentPayment.receiptNumber || 'N/A'}</span></div>
+                            <div className="detail-item"><span>Invoice Number</span><span id="detail-invoice-number">{currentPayment.invoiceNumber || 'N/A'}</span></div>
                         </div>
                         <div className="detail-section">
                             <h4>Receipt</h4>

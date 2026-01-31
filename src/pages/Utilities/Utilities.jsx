@@ -52,10 +52,12 @@ const Utilities = () => {
   }, []);
 
   const filteredUtilities = useMemo(() => {
+    const s = searchTerm.toLowerCase();
     return utilities.filter(util => {
-      const property = properties.find(p => p.id === util.propertyId);
-      return util.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             (property?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const utilPropertyId = util.propertyId?._id || util.propertyId;
+      const property = properties.find(p => (p._id || p.id) === utilPropertyId);
+      return (util.type || '').toLowerCase().includes(s) ||
+             (property?.name || '').toLowerCase().includes(s);
     });
   }, [searchTerm, utilities, properties]);
 

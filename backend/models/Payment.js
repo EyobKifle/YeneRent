@@ -59,6 +59,14 @@ const paymentSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  receiptNumber: {
+    type: String,
+    trim: true
+  },
+  invoiceNumber: {
+    type: String,
+    trim: true
+  },
   reference: {
     type: String,
     trim: true

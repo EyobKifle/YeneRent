@@ -110,10 +110,10 @@ class AnalyticsDataService {
         ]);
 
         const propertyUnitIds = propertyId !== "all"
-            ? allUnits.filter((u) => u.propertyId === propertyId).map((u) => u.id)
+            ? allUnits.filter((u) => (u.propertyId?._id || u.propertyId) === propertyId).map((u) => u._id || u.id)
             : null;
         const propertyLeaseIds = propertyUnitIds
-            ? allLeases.filter((l) => propertyUnitIds.includes(l.unitId)).map((l) => l.id)
+            ? allLeases.filter((l) => propertyUnitIds.includes(l.unitId?._id || l.unitId)).map((l) => l._id || l.id)
             : null;
 
         const filteredPayments = payments.filter(
@@ -121,14 +121,14 @@ class AnalyticsDataService {
                 p.status === "Paid" &&
                 (!start || p.date >= start) &&
                 (!end || p.date <= end) &&
-                (propertyId === "all" || (propertyLeaseIds && propertyLeaseIds.includes(p.leaseId)))
+                (propertyId === "all" || (propertyLeaseIds && propertyLeaseIds.includes(p.leaseId?._id || p.leaseId)))
         );
 
         const filteredExpenses = expenses.filter(
             (e) =>
                 (!start || e.date >= start) &&
                 (!end || e.date <= end) &&
-                (propertyId === "all" || e.propertyId === propertyId)
+                (propertyId === "all" || (e.propertyId?._id || e.propertyId) === propertyId)
         );
 
         const totalRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -154,19 +154,23 @@ class AnalyticsDataService {
 
     _aggregateIncomeByProperty(payments, leases, units, properties) {
         return payments.reduce((acc, p) => {
-            const lease = leases.find((l) => l.id === p.leaseId);
+            const pLeaseId = p.leaseId?._id || p.leaseId;
+            const lease = leases.find((l) => (l._id || l.id) === pLeaseId);
             if (!lease) return acc;
 
-            const unit = units.find(u => u.id === lease.unitId);
+            const lUnitId = lease.unitId?._id || lease.unitId;
+            const unit = units.find(u => (u._id || u.id) === lUnitId);
             if (!unit) return acc;
 
-            const property = properties.find((prop) => prop.id === unit.propertyId);
+            const uPropId = unit.propertyId?._id || unit.propertyId;
+            const property = properties.find((prop) => (prop._id || prop.id) === uPropId);
 
             if (property) {
-                if (!acc[property.id]) {
-                    acc[property.id] = { name: property.name, totalIncome: 0, taxType: property.taxType };
+                const propId = property._id || property.id;
+                if (!acc[propId]) {
+                    acc[propId] = { name: property.name, totalIncome: 0, taxType: property.taxType, id: propId };
                 }
-                acc[property.id].totalIncome += p.amount;
+                acc[propId].totalIncome += p.amount;
             }
             return acc;
         }, {});
@@ -453,7 +457,7 @@ const Analytics = () => {
                     <select id="filter-property" className="form-input" value={selectedProperty} onChange={(e) => setSelectedProperty(e.target.value)}>
                         <option value="all">All Properties</option>
                         {properties.map(prop => (
-                            <option key={prop.id} value={prop.id}>{prop.name}</option>
+                            <option key={prop._id || prop.id} value={prop._id || prop.id}>{prop.name}</option>
                         ))}
                     </select>
                 </div>

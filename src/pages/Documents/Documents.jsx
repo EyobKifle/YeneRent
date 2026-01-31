@@ -83,12 +83,14 @@ export default function DocumentsPage() {
 
   const linkedTo = (doc) => {
     if (!doc) return 'General'
-    if (doc.propertyId) {
-      const p = properties.find(x => x.id === doc.propertyId)
+    const docPropId = doc.propertyId?._id || doc.propertyId;
+    if (docPropId) {
+      const p = properties.find(x => (x._id || x.id) === docPropId)
       return p?.name || 'Property'
     }
-    if (doc.tenantId) {
-      const t = tenants.find(x => x.id === doc.tenantId)
+    const docTenantId = doc.tenantId?._id || doc.tenantId;
+    if (docTenantId) {
+      const t = tenants.find(x => (x._id || x.id) === docTenantId)
       return t?.name || 'Tenant'
     }
     return 'General'
@@ -99,7 +101,7 @@ export default function DocumentsPage() {
   }
 
   const handleViewDocument = (doc) => {
-    navigate(`/documents/${doc.id}`)
+    navigate(`/documents/${doc._id || doc.id}`)
   }
 
   const handleDownloadDocument = (doc) => {
@@ -116,10 +118,11 @@ export default function DocumentsPage() {
   }
 
   const handleDeleteDocument = async (doc) => {
+    const docId = doc._id || doc.id;
     if (window.confirm('Are you sure you want to delete this document?')) {
       try {
-        await api.delete(`documents/${doc.id}`)
-        setDocuments(prev => prev.filter(d => d.id !== doc.id))
+        await api.delete(`documents/${docId}`)
+        setDocuments(prev => prev.filter(d => (d._id || d.id) !== docId))
         alert('Document deleted successfully')
       } catch (error) {
         console.error('Failed to delete document:', error)

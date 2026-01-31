@@ -14,7 +14,7 @@ router.get('/', authenticateToken, requireRole(['admin']), async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -26,7 +26,7 @@ router.get('/my', authenticateToken, async (req, res) => {
       .sort({ createdAt: -1 });
     res.json(requests);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -44,7 +44,7 @@ router.post('/', authenticateToken, async (req, res) => {
     await savedRequest.populate('user', 'name email');
     res.status(201).json(savedRequest);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -89,7 +89,7 @@ router.patch('/:id', authenticateToken, requireRole(['admin']), async (req, res)
 
     res.json(updatedRequest);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -109,7 +109,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     await request.deleteOne();
     res.json({ message: 'Request deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 

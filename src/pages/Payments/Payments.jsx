@@ -139,7 +139,7 @@ const Payments = () => {
     };
 
     const handleViewDetails = (payment) => {
-        navigate(`/payments/${payment.id}`);
+        navigate(`/payments/${payment._id || payment.id}`);
     };
 
     if (loading) {

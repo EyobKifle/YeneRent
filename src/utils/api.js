@@ -75,7 +75,14 @@ class ApiClient {
       const response = await fetch(url, config);
 
       if (response.status === 304) {
-        // Not Modified - return null or cached data if available
+        // Not Modified - return cached data if available
+        const key = this.getCacheKey(endpoint, options);
+        const cached = this.cache.get(key);
+        if (cached) {
+          // Update timestamp so it doesn't try to fetch again immediately
+          cached.timestamp = Date.now();
+          return cached.data;
+        }
         return null;
       }
 
@@ -102,7 +109,7 @@ class ApiClient {
           const errorMessage = errorData.errors.map(err => err.msg || err.message).join(', ');
           throw new Error(errorMessage);
         }
-        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data = await response.json();
