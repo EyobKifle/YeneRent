@@ -14,7 +14,7 @@ router.use(requireRole(['owner', 'admin']));
 // GET /admin/overview - Get overview metrics
 router.get('/overview', async (req, res) => {
   try {
-    const totalUsers = await User.countDocuments();
+    const totalUsers = await User.countDocuments({ isDeleted: false });
     const activeSubscribers = await Subscription.countDocuments({ status: 'active' });
     const trialUsers = await Subscription.countDocuments({ status: 'trial' });
     const failedPayments = await Subscription.countDocuments({ status: 'past_due' });
@@ -42,7 +42,7 @@ router.get('/overview', async (req, res) => {
 
     // New users vs churn over last 6 months
     const userGrowth = await User.aggregate([
-      { $match: { createdAt: { $gte: sixMonthsAgo } } },
+      { $match: { createdAt: { $gte: sixMonthsAgo }, isDeleted: false } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
@@ -73,6 +73,13 @@ router.get('/overview', async (req, res) => {
       $expr: { $gte: [{ $divide: ['$usedStorage', '$storageLimit'] }, 0.9] }
     });
 
+    // Recent Activities
+    const recentActivities = await AuditLog.find()
+      .populate('actor', 'name email')
+      .populate('target', 'name email')
+      .sort({ createdAt: -1 })
+      .limit(10);
+
     res.json({
       totalUsers,
       activeSubscribers,
@@ -83,6 +90,7 @@ router.get('/overview', async (req, res) => {
       mrrHistory,
       userGrowth,
       storageGrowth,
+      recentActivities,
       alerts: {
         failedPayments,
         expiringTrials,
@@ -99,6 +107,7 @@ router.get('/overview', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     const users = await User.aggregate([
+      { $match: { isDeleted: false } },
       {
         $lookup: {
           from: 'subscriptions',
@@ -184,6 +193,30 @@ router.put('/users/:id/status', async (req, res) => {
   } catch (error) {
     console.error('Error updating user status:', error);
     res.status(500).json({ error: 'Failed to update user status' });
+  }
+});
+
+// DELETE /admin/users/:id - Soft delete user
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(req.params.id, { isDeleted: true, isActive: false }, { new: true });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Log the action
+    try {
+      await AuditLog.create({
+        actor: req.user.userId,
+        action: 'user_terminated',
+        target: user._id,
+      });
+    } catch (auditError) {
+      console.error('Error logging user termination:', auditError);
+    }
+
+    res.json({ message: 'User terminated successfully' });
+  } catch (error) {
+    console.error('Error terminating user:', error);
+    res.status(500).json({ error: 'Failed to terminate user' });
   }
 });
 

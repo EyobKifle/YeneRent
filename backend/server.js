@@ -23,6 +23,9 @@ import expensesRouter from './routes/expenses.js';
 import analyticsRouter from './routes/analytics.js';
 import uploadsRouter from './routes/uploads.js';
 import userRequestRouter from './routes/userRequests.js';
+import notificationsRouter from './routes/notifications.js';
+import subscriptionsRouter from './routes/subscriptions.js';
+
 
 
 // Middleware
@@ -142,6 +145,9 @@ app.use('/api/units', authenticateToken, unitsRouter);
 app.use('/api/expenses', authenticateToken, expensesRouter);
 app.use('/api/analytics', authenticateToken, analyticsRouter);
 app.use('/api/user-requests', authenticateToken, userRequestRouter);
+app.use('/api/notifications', authenticateToken, notificationsRouter);
+app.use('/api/subscriptions', authenticateToken, subscriptionsRouter);
+
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/admin', authenticateToken, adminRouter);
 app.use('/api/v1/uploads', uploadsRouter);
@@ -156,6 +162,9 @@ app.use('/api/v1/units', authenticateToken, unitsRouter);
 app.use('/api/v1/expenses', authenticateToken, expensesRouter);
 app.use('/api/v1/analytics', authenticateToken, analyticsRouter);
 app.use('/api/v1/user-requests', authenticateToken, userRequestRouter);
+app.use('/api/v1/notifications', authenticateToken, notificationsRouter);
+app.use('/api/v1/subscriptions', authenticateToken, subscriptionsRouter);
+
 
 
 // 404 Not Found Middleware

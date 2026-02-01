@@ -3,7 +3,9 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { body, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
+import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import AuditLog from '../models/AuditLog.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -59,6 +61,18 @@ router.post('/register', [
     });
 
     await user.save();
+
+    // Log the action
+    try {
+      await AuditLog.create({
+        actor: user._id, 
+        action: 'user_created',
+        target: user._id,
+        details: { email: user.email, role: user.role }
+      });
+    } catch (auditError) {
+      console.error('Error logging user creation:', auditError);
+    }
 
     // Generate token
     const token = generateToken(user._id, user.role);

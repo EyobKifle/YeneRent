@@ -10,6 +10,8 @@ const notificationSchema = new Schema({
   type: { type: String, enum: ['system', 'message', 'alert', 'reminder', 'admin'], default: 'message' },
   read: { type: Boolean, default: false, index: true },
   readAt: { type: Date, default: null },
+  eventDate: { type: Date, default: null },
+  isReminder: { type: Boolean, default: false },
   metadata: { type: Schema.Types.Mixed, default: null },
 }, { timestamps: true });
 

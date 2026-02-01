@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['owner', 'admin', 'property_manager', 'tenant', 'customer'], default: 'customer' },
   password: { type: String, required: true },
   isActive: { type: Boolean, default: true },
+  isDeleted: { type: Boolean, default: false },
   lastLogin: { type: Date, default: null },
 }, { timestamps: true });
 

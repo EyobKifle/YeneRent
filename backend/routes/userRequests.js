@@ -1,6 +1,8 @@
 import express from 'express';
 import UserRequest from '../models/UserRequest.js';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
+import AuditLog from '../models/AuditLog.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -78,13 +80,25 @@ router.patch('/:id', authenticateToken, requireRole(['admin']), async (req, res)
 
       const notification = new Notification({
         toUser: request.user,
-        fromUser: req.user.id,
+        fromUser: req.user.userId,
         title: notificationTitle,
         message: notificationMessage,
         type: 'admin',
         metadata: { requestId: request._id }
       });
       await notification.save();
+    }
+
+    // Log the action
+    try {
+      await AuditLog.create({
+        actor: req.user.userId,
+        action: `request_${status}`,
+        target: request.user,
+        details: { requestId: request._id, title: request.title }
+      });
+    } catch (auditError) {
+      console.error('Error logging request update:', auditError);
     }
 
     res.json(updatedRequest);
