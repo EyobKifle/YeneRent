@@ -13,9 +13,9 @@
 }
 
 .modal-content-wrapper {
-  background: white;
+  background: var(--card-bg);
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
   max-width: 500px;
   width: 90%;
   max-height: 90vh;
@@ -27,14 +27,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-color);
 }
 
 .close-modal-btn {
@@ -42,14 +42,14 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--gray-500);
   padding: 0.25rem;
   border-radius: 0.25rem;
   transition: color 0.2s;
 }
 
 .close-modal-btn:hover {
-  color: #374151;
+  color: var(--gray-700);
 }
 
 .modal-body {
@@ -65,7 +65,7 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-color);
 }
 
 .modal-form input,
@@ -73,17 +73,19 @@
 .modal-form textarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-color);
   border-radius: 0.375rem;
   font-size: 0.875rem;
   transition: border-color 0.2s, box-shadow 0.2s;
+  background-color: var(--card-bg);
+  color: var(--text-color);
 }
 
 .modal-form input:focus,
 .modal-form select:focus,
 .modal-form textarea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--accent-color);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -98,7 +100,7 @@
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border-color);
 }
 
 .btn-primary,
@@ -113,7 +115,7 @@
 }
 
 .btn-primary {
-  background-color: #3b82f6;
+  background-color: var(--accent-color);
   color: white;
 }
 
@@ -122,13 +124,13 @@
 }
 
 .btn-secondary {
-  background-color: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background-color: var(--gray-100);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
 }
 
 .btn-secondary:hover {
-  background-color: #e5e7eb;
+  background-color: var(--gray-200);
 }
 
 /* Custom Checkbox Styles */
@@ -144,7 +146,7 @@
 }
 
 .checkbox-container:hover {
-  background-color: #f9fafb;
+  background-color: var(--gray-50);
 }
 
 .checkbox-input {
@@ -159,16 +161,16 @@
   position: relative;
   height: 20px;
   width: 20px;
-  background-color: #fff;
-  border: 2px solid #d1d5db;
+  background-color: var(--card-bg);
+  border: 2px solid var(--border-color);
   border-radius: 0.25rem;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .checkbox-input:checked ~ .checkbox-custom {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
 }
 
 .checkbox-input:checked ~ .checkbox-custom::after {
@@ -191,11 +193,12 @@
 .checkbox-label {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: var(--text-color);
   line-height: 1.5;
 }
 
 .checkbox-input:checked ~ .checkbox-label {
-  color: #111827;
+  color: var(--text-color);
 }
+
 

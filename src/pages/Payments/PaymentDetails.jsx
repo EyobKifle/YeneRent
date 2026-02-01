@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getImageUrl } from '../../utils/api';
-import { formatDate, formatCurrency } from '../../utils/utils';
+import { formatDate, formatCurrency, printFile } from '../../utils/utils';
 import Button from '../../components/ui/Button';
 import SharePrintModal from '../../components/ui/SharePrintModal';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
 import './PaymentDetails.css';
 
 const PaymentDetails = () => {
@@ -18,6 +19,8 @@ const PaymentDetails = () => {
     
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [printModalOpen, setPrintModalOpen] = useState(false);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
     useEffect(() => {
         const fetchPaymentDetails = async () => {
@@ -51,11 +54,12 @@ const PaymentDetails = () => {
     }, [id, navigate]);
 
     const attachments = useMemo(() => {
-        if (!currentPayment?.receiptImage) return [];
+        if (!currentPayment?.receiptUrl) return [];
+        const isPdf = currentPayment.receiptUrl.toLowerCase().endsWith('.pdf') || (currentPayment.receiptName && currentPayment.receiptName.toLowerCase().endsWith('.pdf'));
         return [{
-            type: 'image',
-            name: 'Receipt',
-            url: getImageUrl(currentPayment.receiptImage)
+            type: isPdf ? 'pdf' : 'image',
+            name: currentPayment.receiptName || 'Receipt',
+            url: getImageUrl(currentPayment.receiptUrl)
         }];
     }, [currentPayment]);
 
@@ -66,13 +70,12 @@ const PaymentDetails = () => {
             if (selection === 'all') {
                 window.print();
             } else if (item) {
-                const w = window.open(item.url);
-                if (w) w.onload = () => w.print();
+                printFile(item.url);
             }
         } else if (mode === 'share') {
             const shareData = selection === 'all' 
                 ? { title: `Payment Receipt`, url: window.location.href }
-                : { title: item.name, url: item.url };
+                : { title: item?.name || 'Attachment', url: item?.url || window.location.href };
 
             if (navigator.share) {
                 navigator.share(shareData).catch(console.error);
@@ -123,20 +126,95 @@ const PaymentDetails = () => {
 
     const propertyUnitText = property && unit ? `${property.name} / ${unit.name}` : property ? property.name : unit ? unit.name : 'N/A';
 
+    const handlePreview = (url, name, type) => {
+        const fileUrl = url || currentPayment?.receiptUrl;
+        if (!fileUrl) return;
+        
+        const isPdf = fileUrl.toLowerCase().endsWith('.pdf');
+        
+        setPreviewFile({ 
+            url: fileUrl, 
+            name: name || currentPayment?.receiptName || 'Receipt', 
+            type: type || (isPdf ? 'application/pdf' : 'image')
+        });
+        setPreviewModalOpen(true);
+    };
+
     const renderReceiptImage = () => {
-        if (!currentPayment.receiptImage) {
+        if (!currentPayment.receiptUrl) {
             return (
                 <div className="detail-image-placeholder">
                     <i className="fa-solid fa-receipt"></i>
-                    <p>No receipt image.</p>
+                    <p>No receipt attachment.</p>
                 </div>
             );
         }
 
-        return (
-            <a href={getImageUrl(currentPayment.receiptImage)} target="_blank" rel="noopener noreferrer" className="detail-image-wrapper">
-                <img src={getImageUrl(currentPayment.receiptImage)} alt="Receipt" />
-            </a>
+        const fullUrl = getImageUrl(currentPayment.receiptUrl);
+        const fileName = currentPayment.receiptName || 'Receipt';
+        const isPdf = currentPayment.receiptUrl.toLowerCase().endsWith('.pdf') || (currentPayment.receiptName && currentPayment.receiptName.toLowerCase().endsWith('.pdf'));
+        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(currentPayment.receiptUrl) || (currentPayment.receiptName && /\.(jpg|jpeg|png|gif|webp)$/i.test(currentPayment.receiptName));
+        const isWord = /\.(doc|docx)$/i.test(currentPayment.receiptUrl) || (currentPayment.receiptName && /\.(doc|docx)$/i.test(currentPayment.receiptName));
+        const isExcel = /\.(xls|xlsx)$/i.test(currentPayment.receiptUrl) || (currentPayment.receiptName && /\.(xls|xlsx)$/i.test(currentPayment.receiptName));
+        
+        let fileType = 'other';
+        if (isPdf) fileType = 'application/pdf';
+        else if (isImage) fileType = 'image';
+        else if (isWord) fileType = 'application/msword';
+        else if (isExcel) fileType = 'application/vnd.ms-excel';
+
+        const renderContainer = (content) => (
+            <div className="detail-image-preview" style={{width: '100%', border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden', backgroundColor: 'white', padding: '0.75rem'}}>
+                {content}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                    <span style={{fontWeight: 'bold', fontSize: '0.9rem', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis', maxWidth: '150px'}} title={fileName}>{fileName}</span>
+                    <Button variant="secondary" onClick={() => handlePreview(currentPayment.receiptUrl, fileName, fileType)} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+                        Preview
+                    </Button>
+                </div>
+            </div>
+        );
+
+        if (isPdf) {
+            return renderContainer(
+                <div style={{ height: '200px', width: '100%', overflow: 'hidden', backgroundColor: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <iframe 
+                        src={fullUrl + "#toolbar=0&navpanes=0&scrollbar=0"} 
+                        title="Receipt PDF" 
+                        style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }} 
+                    />
+                </div>
+            );
+        }
+
+        if (isImage) {
+            return renderContainer(
+                <img 
+                    src={fullUrl} 
+                    alt={fileName} 
+                    onClick={() => handlePreview(currentPayment.receiptUrl, fileName, 'image')} 
+                    style={{ cursor: 'pointer', height: '200px', objectFit: 'cover', width: '100%', borderRadius: '4px' }} 
+                />
+            );
+        }
+
+        // Word/Excel/Other
+        let iconClass = 'fa-solid fa-file';
+        let iconColor = '#6b7280';
+        
+        if (isWord) {
+            iconClass = 'fa-solid fa-file-word';
+            iconColor = '#2b579a';
+        } else if (isExcel) {
+            iconClass = 'fa-solid fa-file-excel';
+            iconColor = '#1d6f42';
+        }
+
+        return renderContainer(
+            <div style={{ height: '200px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+                <i className={`${iconClass} fa-3x`} style={{ color: iconColor, marginBottom: '10px' }}></i>
+                <p style={{fontSize: '0.8rem', color: '#666'}}>Preview in modal</p>
+            </div>
         );
     };
 
@@ -205,6 +283,14 @@ const PaymentDetails = () => {
                 mode="print"
                 items={attachments}
                 onAction={(sel) => handleAction('print', sel)}
+            />
+
+            <DocumentPreviewModal
+                isOpen={previewModalOpen}
+                onClose={() => setPreviewModalOpen(false)}
+                fileUrl={previewFile.url}
+                fileName={previewFile.name}
+                fileType={previewFile.type}
             />
         </main>
     );

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
-import api from '../../utils/api';
+import api, { getImageUrl } from '../../utils/api';
+import { useNotification } from '../../contexts/NotificationContext';
 
 const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -140,19 +142,25 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
       // Upload ID photos if present
       if (formData.idPhotos.length > 0) {
         for (const photo of formData.idPhotos) {
-          const formDataUpload = new FormData();
-          formDataUpload.append('file', photo);
+          // Check if photo is already uploaded (has url property) or is a new File
+          if (photo.url) {
+            // Already uploaded, just keep the existing data
+            idPhotoUrls.push({
+              url: photo.url,
+              name: photo.name
+            });
+          } else {
+            // New file, upload it
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', photo);
 
-          const uploadResponse = await api.post('uploads/image', formDataUpload, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
+            const uploadResponse = await api.post('uploads/document', formDataUpload);
 
-          idPhotoUrls.push({
-            url: uploadResponse.url,
-            name: photo.name
-          });
+            idPhotoUrls.push({
+              url: uploadResponse.url,
+              name: photo.name
+            });
+          }
         }
       }
 
@@ -176,6 +184,7 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         result = await api.post('tenants', tenantData);
       }
       onTenantAdded(result);
+      showNotification(tenant ? 'Tenant updated successfully!' : 'Tenant added successfully!', 'success');
       handleClose();
     } catch (error) {
       console.error('Error creating tenant:', error);
@@ -346,58 +355,95 @@ const AddTenantModal = ({ isOpen, onClose, onTenantAdded, tenant }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="idPhotos">ID Photos</label>
+          <label htmlFor="idPhotos">ID Photos / Documents</label>
           <input
             type="file"
             id="idPhotos"
             name="idPhotos"
-            accept="image/*"
+            accept="image/*,.pdf"
             multiple
             onChange={handleInputChange}
           />
           {formData.idPhotos?.length > 0 && (
             <div style={{ marginTop: '0.5rem' }}>
               <p style={{ fontSize: '0.875rem', color: '#666', marginBottom: '0.5rem' }}>
-                Selected photos ({formData.idPhotos.length}):
+                Selected attachments ({formData.idPhotos.length}):
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {formData.idPhotos.map((photo, index) => (
-                  <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
-                    <img
-                      src={URL.createObjectURL(photo)}
-                      alt={`ID Photo ${index + 1}`}
-                      style={{
-                        width: '80px',
-                        height: '60px',
-                        objectFit: 'cover',
-                        borderRadius: '4px',
-                        border: '1px solid #ddd'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeIdPhoto(index)}
-                      style={{
-                        position: 'absolute',
-                        top: '-8px',
-                        right: '-8px',
-                        background: '#ff4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                {formData.idPhotos.map((photo, index) => {
+                  const isFileObject = photo instanceof File;
+                  const imageUrl = isFileObject 
+                    ? URL.createObjectURL(photo) 
+                    : getImageUrl(photo.url);
+                  
+                  const isPdf = isFileObject 
+                    ? photo.type === 'application/pdf'
+                    : (photo.url?.toLowerCase().endsWith('.pdf') || photo.type === 'application/pdf');
+                  
+                  const isWord = isFileObject
+                    ? photo.name.match(/\.docx?$/i)
+                    : photo.url?.toLowerCase().match(/\.docx?$/i);
+                  
+                  const isExcel = isFileObject
+                    ? photo.name.match(/\.xlsx?$/i)
+                    : photo.url?.toLowerCase().match(/\.xlsx?$/i);
+
+                  return (
+                    <div key={index} style={{ position: 'relative', border: '1px solid #ddd', borderRadius: '4px', overflow: 'hidden' }}>
+                      {isPdf ? (
+                        <div style={{ width: '100px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                          <i className="fa-solid fa-file-pdf fa-2x" style={{ color: '#ff4444' }}></i>
+                        </div>
+                      ) : isWord ? (
+                        <div style={{ width: '100px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                          <i className="fa-solid fa-file-word fa-2x" style={{ color: '#2b579a' }}></i>
+                        </div>
+                      ) : isExcel ? (
+                        <div style={{ width: '100px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                          <i className="fa-solid fa-file-excel fa-2x" style={{ color: '#1d6f42' }}></i>
+                        </div>
+                      ) : (
+                        <img
+                          src={imageUrl}
+                          alt={`ID Photo ${index + 1}`}
+                          style={{
+                            width: '100px',
+                            height: '80px',
+                            objectFit: 'cover'
+                          }}
+                        />
+                      )}
+                      {isFileObject && (
+                        <div style={{ fontSize: '10px', padding: '2px', background: 'rgba(255,255,255,0.8)', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100px' }}>
+                          {photo.name}
+                          {(isWord || isExcel) && <div style={{ fontSize: '8px', color: '#666' }}>(Will convert)</div>}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeIdPhoto(index)}
+                        style={{
+                          position: 'absolute',
+                          top: '2px',
+                          right: '2px',
+                          background: 'rgba(255, 68, 68, 0.9)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

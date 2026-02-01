@@ -1,0 +1,227 @@
+/* Document Preview Modal Styles */
+.document-preview-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  max-width: 1200px;
+  height: 90vh;
+  background: var(--card-bg, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  z-index: 1001;
+  overflow: hidden;
+}
+
+.preview-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  background: var(--header-bg, #f9fafb);
+}
+
+.preview-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+}
+
+.preview-modal-title i {
+  color: var(--primary-color, #3b82f6);
+  font-size: 1.5rem;
+}
+
+.preview-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-secondary, #6b7280);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.preview-modal-close:hover {
+  background: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #1f2937);
+}
+
+.preview-modal-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--preview-bg, #f9fafb);
+  overflow: hidden;
+  position: relative;
+}
+
+.preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.preview-image-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.preview-loading,
+.preview-error,
+.preview-unsupported {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--text-secondary, #6b7280);
+  text-align: center;
+}
+
+.preview-loading i,
+.preview-error i,
+.preview-unsupported i {
+  color: var(--primary-color, #3b82f6);
+}
+
+.preview-error i {
+  color: var(--error-color, #ef4444);
+}
+
+.preview-hint {
+  font-size: 0.875rem;
+  color: var(--text-tertiary, #9ca3af);
+  margin-top: 0.5rem;
+}
+
+.preview-modal-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  background: var(--footer-bg, #ffffff);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.preview-navigation {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.preview-page-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary, #6b7280);
+  font-weight: 500;
+  padding: 0 1rem;
+  white-space: nowrap;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .document-preview-modal {
+    width: 95vw;
+    height: 95vh;
+  }
+
+  .preview-modal-header,
+  .preview-modal-footer {
+    padding: 1rem;
+  }
+
+  .preview-modal-body {
+    padding: 1rem;
+  }
+
+  .preview-modal-footer {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .preview-navigation,
+  .preview-actions {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .preview-navigation {
+    order: 2;
+  }
+
+  .preview-actions {
+    order: 1;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .document-preview-modal {
+    background: var(--card-bg-dark, #1f2937);
+  }
+
+  .preview-modal-header {
+    background: var(--header-bg-dark, #111827);
+    border-bottom-color: var(--border-color-dark, #374151);
+  }
+
+  .preview-modal-footer {
+    background: var(--footer-bg-dark, #1f2937);
+    border-top-color: var(--border-color-dark, #374151);
+  }
+
+  .preview-modal-body {
+    background: var(--preview-bg-dark, #111827);
+  }
+
+  .preview-modal-title {
+    color: var(--text-primary-dark, #f9fafb);
+  }
+
+  .preview-modal-close {
+    color: var(--text-secondary-dark, #d1d5db);
+  }
+
+  .preview-modal-close:hover {
+    background: var(--hover-bg-dark, #374151);
+    color: var(--text-primary-dark, #f9fafb);
+  }
+}

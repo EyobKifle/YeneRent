@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../../utils/api';
 import { formatCurrency, formatDate, getPaymentStatus, debounce } from '../../utils/utils';
 import { Card } from '../../components/ui/Card';
@@ -28,6 +28,7 @@ const SimpleTable = ({ headers, data, renderRow }) => (
 const Payments = () => {
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [payments, setPayments] = useState([]);
     const [leases, setLeases] = useState([]);
     const [tenants, setTenants] = useState([]);
@@ -37,6 +38,7 @@ const Payments = () => {
     const [loading, setLoading] = useState(true);
     const [openActionId, setOpenActionId] = useState(null);
     const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
+    const [editingPayment, setEditingPayment] = useState(null);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -63,7 +65,7 @@ const Payments = () => {
                 setPayments(paymentsData);
                 setLeases(leasesData);
                 setTenants(tenantsData);
-                setProperties(propertiesData);
+                setProperties(propertiesData.properties || propertiesData);
                 setUnits(unitsData);
             } catch (error) {
                 console.error("Failed to fetch payments data", error);
@@ -73,6 +75,18 @@ const Payments = () => {
         };
         fetchData();
     }, []);
+
+    // Handle editId from URL
+    useEffect(() => {
+        const editId = searchParams.get('editId');
+        if (editId && payments.length > 0) {
+            const paymentToEdit = payments.find(p => (p._id || p.id) === editId);
+            if (paymentToEdit) {
+                handleEditPayment(paymentToEdit);
+                setSearchParams({}, { replace: true });
+            }
+        }
+    }, [searchParams, payments, setSearchParams]);
 
     const enrichedPayments = useMemo(() => {
         return payments.map(payment => {
@@ -142,8 +156,32 @@ const Payments = () => {
         navigate(`/payments/${payment._id || payment.id}`);
     };
 
+    const handleEditPayment = (payment) => {
+        setEditingPayment(payment);
+        setIsRecordModalOpen(true);
+    };
+
+    const handleDeletePayment = async (payment) => {
+        const paymentId = payment._id || payment.id;
+        if (window.confirm(t('Are you sure you want to delete this payment?'))) {
+            try {
+                await api.delete(`payments/${paymentId}`);
+                setPayments(prev => prev.filter(p => (p._id || p.id) !== paymentId));
+                showNotification('Payment deleted successfully', 'success');
+            } catch (error) {
+                console.error('Failed to delete payment:', error);
+                showNotification('Failed to delete payment', 'error');
+            }
+        }
+    };
+
     if (loading) {
-        return <div>Loading...</div>;
+        return (
+            <div className="loading-indicator">
+                <i className="fa-solid fa-spinner fa-spin"></i>
+                <p>Loading payments...</p>
+            </div>
+        );
     }
 
     return (
@@ -200,9 +238,10 @@ const Payments = () => {
                                                 <i className="fa-solid fa-ellipsis-vertical"></i>
                                             </button>
                                             {openActionId === paymentId && (
-                                            <div className="dropdown-menu align-right show">
+                                            <div className="dropdown-menu show">
                                                 <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(payment); }}><i className="fa-solid fa-eye"></i>{t('View Details')}</a>
-                                                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); alert('Download receipt'); }}><i className="fa-solid fa-download"></i>{t('Receipt')}</a>
+                                                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditPayment(payment); }}><i className="fa-solid fa-pencil"></i>{t('Edit')}</a>
+                                                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeletePayment(payment); }}><i className="fa-solid fa-trash-can"></i>{t('Delete')}</a>
                                             </div>
                                             )}
                                         </div>
@@ -221,8 +260,9 @@ const Payments = () => {
             </Card>
             <RecordPaymentModal
                 isOpen={isRecordModalOpen}
-                onClose={() => setIsRecordModalOpen(false)}
+                onClose={() => { setIsRecordModalOpen(false); setEditingPayment(null); }}
                 onPaymentRecorded={handlePaymentRecorded}
+                editPayment={editingPayment}
             />
 
 

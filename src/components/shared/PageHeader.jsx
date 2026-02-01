@@ -3,7 +3,7 @@ import './PageHeader.css';
 
 const PageHeader = ({ title, description, breadcrumbs, actions }) => {
   return (
-    <div className="page-header">
+    <div className="shared-page-header">
       {breadcrumbs && (
         <nav className="page-breadcrumbs">
           <ol className="breadcrumb-list">

@@ -22,6 +22,8 @@ export default function TenantsPage() {
   const [selectedTenant, setSelectedTenant] = useState(null)
 
 
+  const [loading, setLoading] = useState(true)
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -35,14 +37,23 @@ export default function TenantsPage() {
 
   useEffect(() => {
     (async () => {
-      const ts = await api.get('tenants')
-      const ps = await api.get('properties')
-      const us = await api.get('units')
-      const ls = await api.get('leases')
-      setTenants(ts || [])
-      setProperties(ps.properties || [])
-      setUnits(us || [])
-      setLeases(ls || [])
+      try {
+        setLoading(true)
+        const [ts, ps, us, ls] = await Promise.all([
+          api.get('tenants'),
+          api.get('properties'),
+          api.get('units'),
+          api.get('leases')
+        ]);
+        setTenants(ts || [])
+        setProperties(ps.properties || [])
+        setUnits(us || [])
+        setLeases(ls || [])
+      } catch (error) {
+        console.error('Failed to fetch data:', error)
+      } finally {
+        setLoading(false)
+      }
     })()
   }, [])
 
@@ -107,6 +118,12 @@ export default function TenantsPage() {
         <div className="table-header">
           <input type="text" className="form-input" placeholder={t('Search by name, email, or property...')} value={search} onChange={e=>setSearch(e.target.value)} />
         </div>
+        {loading ? (
+          <div className="loading-indicator">
+            <i className="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading tenants...</p>
+          </div>
+        ) : (
         <div className="table-container">
           <table className="data-table">
             <thead>
@@ -126,11 +143,16 @@ export default function TenantsPage() {
               ) : filtered.map(tenant => {
                 const tenantId = tenant._id || tenant.id
                 const unit = units.find(u=>u._id===tenantId) // Note: unit mapping might need unitId check, but let's stick to dropdown fix
-                // Wait, tenant.unitId is the foreign key.
-                const linkedUnit = units.find(u=>u._id===tenant.unitId)
-                const prop = linkedUnit ? properties.find(p=>p._id===linkedUnit.propertyId) : null
-                const lease = leases.find(l=>l.tenantId===tenantId) || null
-                const status = getLeaseStatus(lease)
+                // Correctly handle populated unitId or string ID
+                const unitId = tenant.unitId?._id || tenant.unitId;
+                const linkedUnit = units.find(u => (u._id || u.id) === unitId);
+                
+                // Find property based on unit's propertyId
+                const unitPropertyId = linkedUnit?.propertyId?._id || linkedUnit?.propertyId;
+                const prop = unitPropertyId ? properties.find(p => (p._id || p.id) === unitPropertyId) : null;
+                
+                const lease = leases.find(l => (l.tenantId?._id || l.tenantId) === tenantId) || null;
+                const status = getLeaseStatus(lease);
                 return (
                   <tr key={tenantId}>
                     <td>{tenant.name}</td>
@@ -148,7 +170,7 @@ export default function TenantsPage() {
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         {openActionId === tenantId && (
-                        <div className="dropdown-menu align-right show">
+                        <div className="dropdown-menu show">
                           <a key="view" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(tenant); }}>
                             <i className="fa-solid fa-eye"></i>{t('View Details')}
                           </a>
@@ -168,13 +190,17 @@ export default function TenantsPage() {
             </tbody>
           </table>
         </div>
+        )}
       </Card>
 
       <AddTenantModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onTenantAdded={(newTenant) => {
+        onTenantAdded={async (newTenant) => {
           setTenants(prev => [newTenant, ...prev])
+          // Re-fetch to get populated fields if any
+          const ts = await api.get('tenants')
+          setTenants(ts || [])
         }}
       />
     </div>

@@ -35,9 +35,7 @@ const OverviewSection = ({ data }) => {
     activeSubscribers = 0, 
     mrr = 0, 
     totalStorage = 0, 
-    mrrHistory = [], 
-    userGrowth = [], 
-    storageGrowth = [] 
+    recentActivities = []
   } = safeData;
 
   const cards = [
@@ -46,21 +44,6 @@ const OverviewSection = ({ data }) => {
     { title: 'Monthly Revenue', value: `$${Number(mrr).toFixed(2)}`, trend: '+8%' },
     { title: 'Storage Used', value: `${(Number(totalStorage) || 0).toFixed(2)} GB`, trend: '+2%' },
   ];
-
-  const mrrChartData = (Array.isArray(mrrHistory) ? mrrHistory : []).map(item => ({
-    label: item._id, 
-    value: item.total
-  }));
-
-  const userChartData = (Array.isArray(userGrowth) ? userGrowth : []).map(item => ({
-    label: item._id,
-    value: item.newUsers
-  }));
-  
-  const storageChartData = (Array.isArray(storageGrowth) ? storageGrowth : []).map(item => ({
-    label: item._id,
-    value: Number((item.totalStorage / (1024 ** 3)).toFixed(2))
-  }));
 
   return (
     <div>
@@ -74,16 +57,48 @@ const OverviewSection = ({ data }) => {
         ))}
       </div>
       
-      <div className="charts-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-           <Chart type="line" data={mrrChartData} title="MRR History (6 Months)" height={250} />
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-           <Chart type="bar" data={userChartData} title="New User Growth" height={250} />
-        </div>
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-           <Chart type="area" data={storageChartData} title="Storage Usage Growth (GB)" height={250} />
-        </div>
+      <div className="table-section" style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e5e7eb', marginTop: '2rem' }}>
+        <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', fontWeight: '600' }}>Recent Activities</h3>
+        <GenericTable 
+          data={recentActivities}
+          columns={[
+            { 
+              key: 'action', 
+              label: 'Action', 
+              render: (val, row) => (
+                <div>
+                  <div style={{ fontWeight: '500', color: '#374151' }}>
+                    {val.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </div>
+                  {row.details?.title && (
+                    <div style={{ fontSize: '0.75rem', color: '#666' }}>
+                      {row.details.title}
+                    </div>
+                  )}
+                </div>
+              )
+            },
+            { key: 'actor', label: 'Actor', render: (val) => val?.name || 'System' },
+            { 
+              key: 'target', 
+              label: 'Affected User', 
+              render: (val, row) => {
+                // If action is user_created, the actor is the target, so we don't need to show it twice
+                if (row.action === 'user_created') return '-';
+                return val?.name || '-';
+              }
+            },
+            { 
+              key: 'createdAt', 
+              label: 'Time', 
+              render: (val) => (
+                <span style={{ color: '#666', fontSize: '0.875rem' }}>
+                  {new Date(val).toLocaleString()}
+                </span>
+              )
+            },
+          ]}
+        />
       </div>
     </div>
   );
@@ -145,9 +160,9 @@ const GenericTable = ({ data, columns, actions }) => {
 
 // --- Messaging Tab ---
 
-const MessagingTab = () => {
+const MessagingTab = ({ initialRecipientId }) => {
   const [users, setUsers] = useState([]);
-  const [selectedRecipient, setSelectedRecipient] = useState('');
+  const [selectedRecipient, setSelectedRecipient] = useState(initialRecipientId || '');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -159,6 +174,12 @@ const MessagingTab = () => {
       setUsers(uList);
     }).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (initialRecipientId) {
+      setSelectedRecipient(initialRecipientId);
+    }
+  }, [initialRecipientId]);
 
   const handleSend = async () => {
     if (!selectedRecipient || !title || !message) return alert('Please fill all fields');
@@ -243,7 +264,7 @@ const MessagingTab = () => {
 
 // --- User Details View ---
 
-const UserDetailsView = ({ user, onClose, onRefresh }) => {
+const UserDetailsView = ({ user, onClose, onRefresh, onMessageUser }) => {
   if (!user) return null;
 
   const handleAction = async (action, value) => {
@@ -253,6 +274,8 @@ const UserDetailsView = ({ user, onClose, onRefresh }) => {
         await api.put(`admin/users/${user._id}/status`, { isActive: value });
       } else if (action === 'change_role') {
         await api.put(`admin/users/${user._id}/role`, { role: value });
+      } else if (action === 'terminate') {
+        await api.delete(`admin/users/${user._id}`);
       }
       alert('Update successful');
       onRefresh(); // Refresh parent data
@@ -271,6 +294,17 @@ const UserDetailsView = ({ user, onClose, onRefresh }) => {
 
   return (
     <div style={{ padding: '0.5rem' }}>
+      <button 
+        onClick={onClose}
+        style={{ 
+          width: '100%', padding: '0.75rem', marginBottom: '1.5rem', 
+          background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '6px',
+          fontWeight: '600', color: '#374151', cursor: 'pointer'
+        }}
+      >
+        Close View
+      </button>
+      
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <div style={{ 
           width: '64px', height: '64px', borderRadius: '50%', 
@@ -323,17 +357,18 @@ const UserDetailsView = ({ user, onClose, onRefresh }) => {
           )}
 
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            {['admin', 'property_manager', 'tenant'].map(role => (
-              user.role !== role && (
-                <button
-                  key={role}
-                  onClick={() => handleAction('change_role', role)}
-                  style={{ flex: 1, padding: '8px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
-                >
-                  Make {role.replace('_', ' ')}
-                </button>
-              )
-            ))}
+            <button
+               onClick={() => onMessageUser(user._id)}
+               style={{ flex: 1, padding: '10px', background: '#e0e7ff', color: '#4338ca', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+            >
+              Message User
+            </button>
+            <button
+               onClick={() => handleAction('terminate')}
+               style={{ flex: 1, padding: '10px', background: '#fef2f2', color: '#b91c1c', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+            >
+              Terminate User
+            </button>
           </div>
         </div>
       </div>
@@ -353,6 +388,13 @@ const Admin = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [drawerContent, setDrawerContent] = useState(null);
+  const [recipientId, setRecipientId] = useState('');
+
+  const handleMessageUser = (userId) => {
+    setRecipientId(userId);
+    setActiveTab('messaging');
+    setDrawerOpen(false);
+  };
 
   const fetchData = async (tab, silent = false) => {
     if (!silent) setLoading(true);
@@ -502,7 +544,7 @@ const Admin = () => {
         );
 
       case 'messaging':
-        return <MessagingTab />;
+        return <MessagingTab initialRecipientId={recipientId} />;
 
       default:
         return <EmptyState message="Unknown Tab" />;
@@ -552,6 +594,7 @@ const Admin = () => {
             user={selectedUser} 
             onClose={() => setDrawerOpen(false)}
             onRefresh={() => fetchData(activeTab, true)}
+            onMessageUser={handleMessageUser}
           />
         ) : (
           <div style={{ padding: '1rem', overflowX: 'auto' }}>

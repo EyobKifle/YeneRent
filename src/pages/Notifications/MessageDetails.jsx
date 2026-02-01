@@ -12,15 +12,11 @@ const MessageDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchNotification();
-  }, [id, fetchNotification]);
-
   const fetchNotification = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get(`notifications/${id}`);
-      setNotification(response.data);
+      setNotification(response);
     } catch (err) {
       setError('Failed to load notification details');
       console.error('Error fetching notification:', err);
@@ -29,10 +25,14 @@ const MessageDetails = () => {
     }
   }, [id]);
 
+  useEffect(() => {
+    fetchNotification();
+  }, [id, fetchNotification]);
+
   const markAsRead = async () => {
     if (notification && !notification.read) {
       try {
-        await api.patch(`notifications/${id}/read`);
+        await api.put(`notifications/${id}/read`);
         setNotification({ ...notification, read: true, readAt: new Date() });
       } catch (err) {
         console.error('Error marking notification as read:', err);

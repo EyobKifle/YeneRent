@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getImageUrl } from '../../utils/api';
-import { formatDate, formatCurrency } from '../../utils/utils';
+import { formatDate, formatCurrency, printFile } from '../../utils/utils';
 import Button from '../../components/ui/Button';
 import SharePrintModal from '../../components/ui/SharePrintModal';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
 import './MaintenanceDetails.css';
 
 const MaintenanceDetails = () => {
@@ -17,6 +18,8 @@ const MaintenanceDetails = () => {
     
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [printModalOpen, setPrintModalOpen] = useState(false);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
     useEffect(() => {
         const fetchMaintenanceDetails = async () => {
@@ -49,8 +52,14 @@ const MaintenanceDetails = () => {
 
     const attachments = useMemo(() => {
         const items = [];
-        if (currentMaintenance?.receiptImage) {
-            items.push({ type: 'image', name: 'Receipt', url: getImageUrl(currentMaintenance.receiptImage) });
+        if (currentMaintenance?.receiptUrl) {
+            const url = getImageUrl(currentMaintenance.receiptUrl);
+            const isPdf = currentMaintenance.receiptUrl.toLowerCase().endsWith('.pdf');
+            items.push({ 
+                type: isPdf ? 'pdf' : 'image', 
+                name: currentMaintenance.receiptName || 'Receipt', 
+                url 
+            });
         }
         if (currentMaintenance?.images && Array.isArray(currentMaintenance.images)) {
             currentMaintenance.images.forEach((img, idx) => {
@@ -71,13 +80,12 @@ const MaintenanceDetails = () => {
             if (selection === 'all') {
                 window.print();
             } else if (item) {
-                const w = window.open(item.url);
-                if (w) w.onload = () => w.print();
+                printFile(item.url);
             }
         } else if (mode === 'share') {
             const shareData = selection === 'all' 
                 ? { title: `Maintenance: ${currentMaintenance.title}`, url: window.location.href }
-                : { title: item.name, url: item.url };
+                : { title: item?.name || 'Attachment', url: item?.url || window.location.href };
 
             if (navigator.share) {
                 navigator.share(shareData).catch(console.error);
@@ -105,6 +113,11 @@ const MaintenanceDetails = () => {
             }
         }
     };
+    
+    const handlePreview = (url, name, type) => {
+        setPreviewFile({ url, name, type });
+        setPreviewModalOpen(true);
+    };
 
     if (loading) {
         return <div className="loading">Loading maintenance details...</div>;
@@ -118,8 +131,8 @@ const MaintenanceDetails = () => {
         return <div className="no-maintenance">Maintenance request not found.</div>;
     }
 
-    const propId = typeof currentMaintenance.propertyId === 'object' ? currentMaintenance.propertyId._id : currentMaintenance.propertyId;
-    const unitId = typeof currentMaintenance.unitId === 'object' ? currentMaintenance.unitId._id : currentMaintenance.unitId;
+    const propId = currentMaintenance.propertyId?._id || currentMaintenance.propertyId;
+    const unitId = currentMaintenance.unitId?._id || currentMaintenance.unitId;
     
     const property = properties.find(p => (p._id || p.id) === propId);
     const unit = units.find(u => (u._id || u.id) === unitId);
@@ -134,28 +147,91 @@ const MaintenanceDetails = () => {
             );
         }
 
-        return currentMaintenance.images.map((image, index) => (
-            <div key={index} className="detail-image-preview">
-                <img src={getImageUrl(image.url)} alt={image.caption || `Image ${index + 1}`} />
-                <span>{image.caption || `Image ${index + 1}`}</span>
+        const beforeImg = currentMaintenance.images.find(img => img.caption === 'Before');
+        const afterImg = currentMaintenance.images.find(img => img.caption === 'After');
+        const otherImages = currentMaintenance.images.filter(img => img.caption !== 'Before' && img.caption !== 'After');
+
+        const renderImageItem = (image, index, label) => (
+            <div key={index} className="detail-image-preview" style={{width: '100%'}}>
+                <img 
+                    src={getImageUrl(image.url)} 
+                    alt={label || image.caption || `Image ${index + 1}`} 
+                    onClick={() => handlePreview(image.url, label || image.caption || `Image ${index + 1}`, 'image')} 
+                    style={{ cursor: 'pointer', height: '200px', objectFit: 'cover', width: '100%' }} 
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                    <span style={{fontWeight: label ? 'bold' : 'normal'}}>{label || image.caption || `Image ${index + 1}`}</span>
+                    <Button variant="secondary" onClick={() => handlePreview(image.url, label || image.caption || `Image ${index + 1}`, 'image')} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
+                        Preview
+                    </Button>
+                </div>
             </div>
-        ));
+        );
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                {(beforeImg || afterImg) && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+                        {beforeImg && renderImageItem(beforeImg, 'before', 'Before Work')}
+                        {afterImg && renderImageItem(afterImg, 'after', 'After Work')}
+                    </div>
+                )}
+                
+                {otherImages.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                        {otherImages.map((image, index) => renderImageItem(image, index))}
+                    </div>
+                )}
+            </div>
+        );
     };
 
+
     const renderReceiptImage = () => {
-        if (!currentMaintenance.receiptImage) {
+        if (!currentMaintenance.receiptUrl) {
             return (
                 <div className="detail-image-placeholder">
                     <i className="fa-solid fa-receipt"></i>
-                    <p>No receipt image.</p>
+                    <p>No receipt attachment.</p>
                 </div>
             );
         }
 
-        return (
-            <a href={getImageUrl(currentMaintenance.receiptImage)} target="_blank" rel="noopener noreferrer" className="detail-image-wrapper">
-                <img src={getImageUrl(currentMaintenance.receiptImage)} alt="Receipt" />
-            </a>
+        const fullUrl = getImageUrl(currentMaintenance.receiptUrl);
+        const isPdf = currentMaintenance.receiptUrl.toLowerCase().endsWith('.pdf');
+        const receiptName = currentMaintenance.receiptName || 'Receipt';
+
+        const renderContainer = (content) => (
+            <div className="detail-image-preview" style={{width: '100%'}}>
+                {content}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '5px' }}>
+                    <span style={{fontWeight: 'bold'}}>Receipt</span>
+                    <Button variant="secondary" onClick={() => handlePreview(currentMaintenance.receiptUrl, receiptName, isPdf ? 'application/pdf' : 'image')} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
+                        Preview
+                    </Button>
+                </div>
+            </div>
+        );
+
+        if (isPdf) {
+            return renderContainer(
+                <div style={{ height: '200px', width: '100%', overflow: 'hidden', backgroundColor: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <iframe 
+                        src={fullUrl + "#toolbar=0&navpanes=0&scrollbar=0"} 
+                        title="Receipt PDF" 
+                        style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }} 
+                    />
+                </div>
+            );
+        }
+
+        return renderContainer(
+            <img 
+                src={fullUrl} 
+                alt={receiptName} 
+                onClick={() => handlePreview(currentMaintenance.receiptUrl, receiptName, 'image')} 
+                style={{ cursor: 'pointer', height: '200px', objectFit: 'cover', width: '100%' }} 
+            />
         );
     };
 
@@ -192,10 +268,10 @@ const MaintenanceDetails = () => {
                             <h4>Request Information</h4>
                             <div className="detail-item"><span>Title</span><span id="detail-title">{currentMaintenance.title}</span></div>
                             <div className="detail-item"><span>Property</span><span id="detail-property">{property ? property.name : 'N/A'}</span></div>
-                            <div className="detail-item"><span>Unit</span><span id="detail-unit">{unit ? unit.name : 'N/A'}</span></div>
+                            <div className="detail-item"><span>Unit</span><span id="detail-unit">{unit ? unit.unitNumber : 'N/A'}</span></div>
                             <div className="detail-item"><span>Category</span><span id="detail-category">{currentMaintenance.category}</span></div>
                             <div className="detail-item"><span>Status</span><span id="detail-status">{currentMaintenance.status}</span></div>
-                            <div className="detail-item"><span>Date Reported</span><span id="detail-reported-date">{formatDate(currentMaintenance.dateReported)}</span></div>
+                            <div className="detail-item"><span>Date Reported</span><span id="detail-reported-date">{formatDate(currentMaintenance.reportedDate)}</span></div>
                         </div>
                         <div className="detail-section">
                             <h4>Financials & Receipt</h4>
@@ -229,6 +305,14 @@ const MaintenanceDetails = () => {
                 mode="print"
                 items={attachments}
                 onAction={(sel) => handleAction('print', sel)}
+            />
+
+            <DocumentPreviewModal
+                isOpen={previewModalOpen}
+                onClose={() => setPreviewModalOpen(false)}
+                fileUrl={previewFile.url}
+                fileName={previewFile.name}
+                fileType={previewFile.type}
             />
         </main>
     );

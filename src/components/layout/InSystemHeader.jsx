@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNotification } from '../../contexts/NotificationContext';
 import useClickOutside from '../../hooks/useClickOutside';
 import './InSystemHeader.css';
 
@@ -14,6 +15,7 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
   const { user, logout } = useAuth();
   const { setLanguage, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+  const { unreadCount } = useNotification();
   const navigate = useNavigate();
 
   const handleLanguageChange = (lang) => {
@@ -22,7 +24,7 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
   };
 
   const handleLogout = () => {
-    logout();
+    if (logout) logout();
     navigate('/login');
   };
 
@@ -89,7 +91,15 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
     // Also adjust on window resize
     window.addEventListener('resize', adjustDropdownPosition);
     return () => window.removeEventListener('resize', adjustDropdownPosition);
-  }, [showLanguageMenu, showUserMenu]);
+  }, [showLanguageMenu, showUserMenu, languageMenuRef, userMenuRef]);
+
+  // Helper to safely get user initials
+  const getUserInitials = () => {
+    if (!user) return 'U';
+    if (user.name) return user.name.charAt(0).toUpperCase();
+    if (user.email) return user.email.charAt(0).toUpperCase();
+    return 'U';
+  };
 
   return (
     <header className="header">
@@ -148,7 +158,9 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
 
         <Link to="/notifications" className="header-icon-btn notification-btn" aria-label="View notifications">
           <i className="fa-solid fa-bell"></i>
-          <span className="notification-badge hidden"></span>
+          {unreadCount > 0 && (
+            <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
+          )}
         </Link>
 
         <div className="user-menu menu-container" ref={userMenuRef}>
@@ -165,7 +177,7 @@ const InSystemHeader = ({ onSidebarToggle, pageTitle }) => {
                 <img src={user.avatar} alt="User avatar" />
               ) : (
                 <span className="user-initials">
-                  {user?.name ? user.name.charAt(0).toUpperCase() : user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
+                  {getUserInitials()}
                 </span>
               )}
             </div>

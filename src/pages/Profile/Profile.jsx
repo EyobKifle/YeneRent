@@ -354,50 +354,55 @@ export default function ProfilePage() {
             {pwdMessage}
           </div>
         )}
-        <div className="form-group">
-          <label htmlFor="currentPassword">Current Password</label>
-          <input
-            type="password"
-            id="currentPassword"
-            name="currentPassword"
-            value={pwdForm.currentPassword}
-            onChange={(e) => setPwdForm(prev => ({ ...prev, currentPassword: e.target.value }))}
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="newPassword">New Password</label>
-          <input
-            type="password"
-            id="newPassword"
-            name="newPassword"
-            value={pwdForm.newPassword}
-            onChange={(e) => setPwdForm(prev => ({ ...prev, newPassword: e.target.value }))}
-          />
-        </div>
-        <div className="profile-actions">
-          <Button variant="secondary" onClick={async () => {
-            setPwdLoading(true)
-            setPwdMessage('')
-            try {
-              if (!pwdForm.currentPassword || !pwdForm.newPassword) {
-                setPwdMessage('Please enter current and new password.')
-              } else {
-                await api.updateProfile({ currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword })
-                setPwdMessage('Password updated successfully!')
-                setPwdForm({ currentPassword: '', newPassword: '' })
-              }
-            } catch (e) {
-              setPwdMessage(e.message || 'Failed to change password.')
-            } finally {
-              setPwdLoading(false)
+        <form onSubmit={async (e) => {
+          e.preventDefault()
+          setPwdLoading(true)
+          setPwdMessage('')
+          try {
+            if (!pwdForm.currentPassword || !pwdForm.newPassword) {
+              setPwdMessage('Please enter current and new password.')
+            } else {
+              await api.updateProfile({ currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword })
+              setPwdMessage('Password updated successfully!')
+              setPwdForm({ currentPassword: '', newPassword: '' })
             }
-          }} disabled={pwdLoading}>
-            {pwdLoading ? 'Updating...' : 'Change Password'}
-          </Button>
-          <Button variant="danger" onClick={logout}>
-            Logout
-          </Button>
-        </div>
+          } catch (e) {
+            setPwdMessage(e.message || 'Failed to change password.')
+          } finally {
+            setPwdLoading(false)
+          }
+        }}>
+          <div className="form-group">
+            <label htmlFor="currentPassword">Current Password</label>
+            <input
+              type="password"
+              id="currentPassword"
+              name="currentPassword"
+              value={pwdForm.currentPassword}
+              onChange={(e) => setPwdForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+              autoComplete="current-password"
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="newPassword">New Password</label>
+            <input
+              type="password"
+              id="newPassword"
+              name="newPassword"
+              value={pwdForm.newPassword}
+              onChange={(e) => setPwdForm(prev => ({ ...prev, newPassword: e.target.value }))}
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="profile-actions">
+            <Button type="submit" variant="secondary" disabled={pwdLoading}>
+              {pwdLoading ? 'Updating...' : 'Change Password'}
+            </Button>
+            <Button type="button" variant="danger" onClick={logout}>
+              Logout
+            </Button>
+          </div>
+        </form>
       </Card>
 
       <Card className="requests-card">

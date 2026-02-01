@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getImageUrl } from '../../utils/api';
-import { formatCurrency, formatDate } from '../../utils/utils';
+import { formatCurrency, formatDate, printFile } from '../../utils/utils';
 import Button from '../../components/ui/Button';
 import SharePrintModal from '../../components/ui/SharePrintModal';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
 import './LeaseDetails.css';
 
 export default function LeaseDetails() {
@@ -19,6 +20,8 @@ export default function LeaseDetails() {
   
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
   useEffect(() => {
     const fetchLease = async () => {
@@ -49,8 +52,16 @@ export default function LeaseDetails() {
 
   const attachments = useMemo(() => {
       const items = [];
-      if (lease?.leaseAgreementUrl) items.push({ type: 'document', name: lease.leaseAgreementName || 'Lease Agreement', url: getImageUrl(lease.leaseAgreementUrl) });
-      if (lease?.withholdingReceiptUrl) items.push({ type: 'document', name: lease.withholdingReceiptName || 'Withholding Receipt', url: getImageUrl(lease.withholdingReceiptUrl) });
+      if (lease?.leaseAgreementUrl) {
+          const url = getImageUrl(lease.leaseAgreementUrl);
+          const isPdf = lease.leaseAgreementUrl.toLowerCase().endsWith('.pdf');
+          items.push({ type: isPdf ? 'pdf' : 'image', name: lease.leaseAgreementName || 'Lease Agreement', url });
+      }
+      if (lease?.withholdingReceiptUrl) {
+          const url = getImageUrl(lease.withholdingReceiptUrl);
+          const isPdf = lease.withholdingReceiptUrl.toLowerCase().endsWith('.pdf');
+          items.push({ type: isPdf ? 'pdf' : 'image', name: lease.withholdingReceiptName || 'Withholding Receipt', url });
+      }
       return items;
   }, [lease]);
 
@@ -61,8 +72,7 @@ export default function LeaseDetails() {
         if (selection === 'all') {
             window.print();
         } else if (item) {
-            const w = window.open(item.url);
-            if (w) w.onload = () => w.print();
+            printFile(item.url);
         }
     } else if (mode === 'share') {
         const shareData = selection === 'all' 
@@ -112,14 +122,30 @@ export default function LeaseDetails() {
     return { text: 'Upcoming', class: 'status-upcoming' };
   };
 
+  const handlePreview = (url, name) => {
+    let fileType = 'other';
+    if (url.startsWith('data:application/pdf') || url.toLowerCase().split('?')[0].endsWith('.pdf')) {
+      fileType = 'application/pdf';
+    } else if (url.startsWith('data:image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(url.split('?')[0])) {
+      fileType = 'image';
+    }
+    setPreviewFile({ url, name, type: fileType });
+    setPreviewModalOpen(true);
+  };
+
   const renderDocPreview = (url, name) => {
     if (!url) return <p className="text-sm text-gray-500">Not provided</p>;
-    const fullUrl = getImageUrl(url);
+    
     return (
-      <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="document-preview-sm">
-        <i className="fa-solid fa-file-lines fa-2x"></i>
-        <p className="text-sm">{name || 'View File'}</p>
-      </a>
+      <div style={{ marginTop: '8px', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <Button 
+          variant="secondary" 
+          onClick={() => handlePreview(url, name)}
+          style={{ fontSize: '0.875rem', padding: '0.5rem 1rem' }}
+        >
+          <i className="fa-solid fa-eye"></i> Preview
+        </Button>
+      </div>
     );
   };
 
@@ -135,9 +161,13 @@ export default function LeaseDetails() {
     return <div className="no-lease">Lease not found.</div>;
   }
 
-  const tenant = tenants.find(t => t.id === lease.tenantId || t._id === lease.tenantId);
-  const unit = units.find(u => u.id === lease.unitId || u._id === lease.unitId);
-  const property = unit ? properties.find(p => p.id === unit.propertyId || p._id === unit.propertyId) : null;
+  const leaseTenantId = lease.tenantId?._id || lease.tenantId;
+  const leaseUnitId = lease.unitId?._id || lease.unitId;
+  
+  const tenant = tenants.find(t => (t._id || t.id) === leaseTenantId);
+  const unit = units.find(u => (u._id || u.id) === leaseUnitId);
+  const unitPropertyId = unit?.propertyId?._id || unit?.propertyId;
+  const property = unitPropertyId ? properties.find(p => (p._id || p.id) === unitPropertyId) : null;
   const status = getLeaseStatus(lease);
 
   const fields = [
@@ -224,6 +254,14 @@ export default function LeaseDetails() {
         mode="print"
         items={attachments}
         onAction={(sel) => handleAction('print', sel)}
+      />
+
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        fileUrl={previewFile.url}
+        fileName={previewFile.name}
+        fileType={previewFile.type}
       />
     </div>
   );

@@ -96,26 +96,16 @@ export default function DocumentsPage() {
     return 'General'
   }
 
-  const handleDocumentUploaded = (newDocument) => {
+  const handleDocumentUploaded = async (newDocument) => {
     setDocuments(prev => [newDocument, ...prev])
+    const docs = await api.get('documents')
+    setDocuments(docs || [])
   }
 
   const handleViewDocument = (doc) => {
     navigate(`/documents/${doc._id || doc.id}`)
   }
 
-  const handleDownloadDocument = (doc) => {
-    if (doc.url) {
-      const link = document.createElement('a');
-      link.href = doc.url;
-      link.download = doc.name || 'document';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      alert('Document URL not available');
-    }
-  }
 
   const handleDeleteDocument = async (doc) => {
     const docId = doc._id || doc.id;
@@ -244,15 +234,12 @@ export default function DocumentsPage() {
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         {openActionId === docId && (
-                          <div className="dropdown-menu align-right show">
+                          <div className="dropdown-menu show">
                             <a key={`view-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDocument(doc); }}>
                               <i className="fa-solid fa-eye"></i>View Details
                             </a>
                             <a key={`edit-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate(`/documents/${docId}/edit`); }}>
                               <i className="fa-solid fa-pencil"></i>Edit
-                            </a>
-                            <a key={`download-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDownloadDocument(doc); }}>
-                              <i className="fa-solid fa-download"></i>Download
                             </a>
                             <a key={`delete-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteDocument(doc); }}>
                               <i className="fa-solid fa-trash-can"></i>Delete

@@ -8,16 +8,20 @@ import NumberInput from '../../components/ui/NumberInput';
 import api, { getImageUrl } from '../../utils/api';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotification } from '../../contexts/NotificationContext';
 
 const Properties = () => {
   console.log('Properties component rendered');
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
+  const { showNotification } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [openActionId, setOpenActionId] = useState(null);
   const [properties, setProperties] = useState([]);
+  const [editingProperty, setEditingProperty] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -29,6 +33,17 @@ const Properties = () => {
     image: null,
     units: []
   });
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (openActionId && !event.target.closest('.action-dropdown')) {
+        setOpenActionId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openActionId]);
 
   useEffect(() => {
     const fetchProperties = async () => {
@@ -67,11 +82,7 @@ const Properties = () => {
         const formDataUpload = new FormData();
         formDataUpload.append('file', formData.image);
 
-        const uploadResponse = await api.post('uploads/image', formDataUpload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        const uploadResponse = await api.post('uploads/image', formDataUpload);
         imageUrl = uploadResponse.url;
       }
 
@@ -83,11 +94,7 @@ const Properties = () => {
           const formDataUpload = new FormData();
           formDataUpload.append('file', unit.image);
 
-          const uploadResponse = await api.post('uploads/image', formDataUpload, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-          });
+          const uploadResponse = await api.post('uploads/image', formDataUpload);
           unitImageUrl = uploadResponse.url;
         }
 
@@ -115,11 +122,22 @@ const Properties = () => {
         units: processedUnits // Send actual units array
       };
 
-      // Create property
-      const newProperty = await api.post('properties', propertyData);
+      // Create or Update property
+      let newProperty;
+      if (editingProperty) {
+        newProperty = await api.put(`properties/${editingProperty._id}`, propertyData);
+      } else {
+        newProperty = await api.post('properties', propertyData);
+      }
 
       // Update local state
-      setProperties(prev => [newProperty, ...prev]);
+      if (editingProperty) {
+        setProperties(prev => prev.map(p => p._id === editingProperty._id ? newProperty : p));
+        showNotification('Property updated successfully!', 'success');
+      } else {
+        setProperties(prev => [newProperty, ...prev]);
+        showNotification('Property added successfully!', 'success');
+      }
 
       // Reset form and close modal
       setFormData({
@@ -134,9 +152,43 @@ const Properties = () => {
         units: []
       });
       setIsModalOpen(false);
+      setEditingProperty(null);
+      
+      // Optionally re-fetch to ensure data consistency
+      const response = await api.getProperties();
+      setProperties(response.properties || []);
     } catch (error) {
       console.error('Error creating property:', error);
-      // Handle error (could show error message to user)
+      showNotification('Failed to create property', 'error');
+    }
+  };
+
+  const handleEditProperty = (prop) => {
+    setEditingProperty(prop);
+    setFormData({
+      name: prop.name || '',
+      address: prop.address || '',
+      type: prop.type || 'Apartment',
+      rent: prop.rent?.toString() || '',
+      taxType: prop.taxType || 'property-only',
+      description: prop.description || '',
+      amenities: prop.amenities || [],
+      image: null,
+      units: [] // Units are handled separately or we can populate if needed
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteProperty = async (prop) => {
+    if (window.confirm(t('Are you sure you want to delete this property?'))) {
+      try {
+        await api.delete(`properties/${prop._id}`);
+        setProperties(prev => prev.filter(p => p._id !== prop._id));
+        showNotification('Property deleted successfully', 'success');
+      } catch (error) {
+        console.error('Failed to delete property:', error);
+        showNotification('Failed to delete property', 'error');
+      }
     }
   };
 
@@ -256,6 +308,31 @@ const Properties = () => {
                 <span>ETB {prop.rent.toLocaleString()}</span>
               </div>
             </div>
+            <div className="action-dropdown" style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
+              <button 
+                className="action-dropdown-btn" 
+                style={{ background: 'rgba(255,255,255,0.8)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenActionId(openActionId === prop._id ? null : prop._id);
+                }}
+              >
+                <i className="fa-solid fa-ellipsis-vertical"></i>
+              </button>
+              {openActionId === prop._id && (
+              <div className="dropdown-menu show">
+                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/units?propertyId=${prop._id}`); }}>
+                  <i className="fa-solid fa-eye"></i>{t('View Details')}
+                </a>
+                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditProperty(prop); }}>
+                  <i className="fa-solid fa-pencil"></i>{t('Edit')}
+                </a>
+                <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteProperty(prop); }}>
+                  <i className="fa-solid fa-trash-can"></i>{t('Delete')}
+                </a>
+              </div>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -268,7 +345,7 @@ const Properties = () => {
         </div>
       )}
 
-      <Modal title="Add New Property" isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
+      <Modal title={editingProperty ? "Edit Property" : "Add New Property"} isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingProperty(null); }}>
         <form onSubmit={handleFormSubmit} className="property-form">
           <div className="form-group">
             <label htmlFor="name">Property Name</label>
@@ -362,7 +439,16 @@ const Properties = () => {
               onChange={handleImageChange}
               className="form-input"
             />
-            {!formData.image && (
+            {formData.image ? (
+              <div className="image-preview" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                <img 
+                  src={URL.createObjectURL(formData.image)} 
+                  alt="Property Preview" 
+                  style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px', objectFit: 'cover' }} 
+                />
+                <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>Selected: {formData.image.name}</div>
+              </div>
+            ) : (
               <div className="image-placeholder">
                 <i className="fa-solid fa-building"></i>
                 <span>No image selected</span>
@@ -456,7 +542,16 @@ const Properties = () => {
                       onChange={(e) => handleUnitImageChange(index, e)}
                       className="form-input"
                     />
-                    {!unit.image && (
+                    {unit.image ? (
+                      <div className="image-preview" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                        <img 
+                          src={URL.createObjectURL(unit.image)} 
+                          alt="Unit Preview" 
+                          style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '4px', objectFit: 'cover' }} 
+                        />
+                        <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>Selected: {unit.image.name}</div>
+                      </div>
+                    ) : (
                       <div className="image-placeholder">
                         <i className="fa-solid fa-building"></i>
                         <span>No image selected</span>
@@ -479,7 +574,7 @@ const Properties = () => {
               Cancel
             </Button>
             <Button type="submit" variant="primary">
-              Add Property
+              {editingProperty ? "Update Property" : "Add Property"}
             </Button>
           </div>
         </form>

@@ -1,46 +1,4 @@
-/* --- Migrated Global Styles from Insystemstyles.css and publicstyles.css --- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-
-:root {
-  --sidebar-width: 280px;
-  --primary-color: #111827;
-  --primary-hover-color: #374151;
-  --secondary-color: #6b7280;
-  --success-color: #10b981;
-  --danger-color: #ef4444;
-  --warning-color: #f59e0b;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-400: #9ca3af;
-  --gray-500: #6b7280;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-800: #1f2937;
-  --gray-900: #111827;
-  --border-color: var(--gray-200);
-  --body-bg: #f9fafb;
-  --text-color: var(--gray-900);
-  --card-bg: white;
-
-  --font-family: 'Inter', sans-serif;
-  --header-height: 65px;
-
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-
-  /* publicstyles.css additions/overrides */
-  --accent-color: #4f46e5; /* A nice blue for primary actions */
-  --text-color-secondary: var(--gray-500);
-  --transition-speed: 0.3s;
-}
-
 
 * {
   box-sizing: border-box;
@@ -95,19 +53,21 @@ a:hover {
   border-radius: 0.375rem;
   font-size: 0.875rem;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  background-color: var(--card-bg);
+  color: var(--text-color);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-label {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--gray-700);
+  color: var(--text-color);
   margin-bottom: 0.5rem;
 }
 
@@ -212,7 +172,7 @@ a:hover {
 }
 
 .modal-content-wrapper {
-  background-color: white;
+  background-color: var(--card-bg);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   width: 100%;
@@ -249,7 +209,7 @@ table {
 th, td {
   padding: 0.75rem 1.5rem;
   text-align: left;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 1px solid var(--border-color);
 }
 
 th {
@@ -261,7 +221,7 @@ th {
 }
 
 tbody tr:hover {
-  background-color: var(--gray-50);
+  background-color: var(--bg-hover);
 }
 
 @media (max-width: 1024px) {
@@ -402,7 +362,7 @@ tbody tr:hover {
 .main-content {
   margin-left: 0;
   padding: 0; /* This sets default padding */
-  padding-top: calc(var(--header-height) + 1.5rem);
+  padding-top: calc(var(--header-height) + 0.5rem);
   min-height: 100vh;
   transition: margin-left 0.3s ease-in-out;
 }
@@ -481,10 +441,10 @@ tbody tr:hover {
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border-color);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
     height: auto;
-    min-height: 200px;
+    min-height: 100px;
     overflow: visible;
 }
 
@@ -527,25 +487,25 @@ tbody tr:hover {
     position: absolute;
     top: calc(100% + 4px);
     z-index: 1050;
-    background-color: white;
+    background-color: var(--card-bg);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
-    border: 1px solid var(--gray-200);
+    border: 1px solid var(--border-color);
     min-width: 160px;
     padding: 0.5rem 0;
     overflow: hidden;
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px);
+    transform: translateX(-50%) translateY(-10px);
     transition: all 0.2s ease;
-    /* Position based on parent */
-    left: 0;
+    /* Center based on parent */
+    left: 50%;
 }
 
 .dropdown-menu.show {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
 }
 
 /* For dropdowns that should be aligned to the right, like in the header */
@@ -574,7 +534,7 @@ tbody tr:hover {
     height: 1px;
     margin: 0.5rem 0;
     overflow: hidden;
-    background-color: var(--gray-200);
+    background-color: var(--border-color);
 }
 
 /* --- Base & Utilities --- */
@@ -694,5 +654,157 @@ h2 {
 
     .price-card {
         padding: 25px;
+    }
+}
+
+/* --- Print Styles --- */
+@media print {
+  .sidebar, 
+  .header, 
+  .page-actions, 
+  .page-header-actions,
+  .preview-actions,
+  .modal-actions,
+  .btn, 
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger,
+  .no-print,
+  #sidebar-toggle,
+  #theme-toggle,
+  #language-menu-button,
+  .notification-btn,
+  #user-menu-button,
+  .filter-bar {
+    display: none !important;
+  }
+
+  .app-layout {
+    display: block !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    padding-top: 0 !important;
+    min-height: auto !important;
+    background: white !important;
+  }
+
+  .page-content {
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .data-card {
+    box-shadow: none !important;
+    border: 1px solid #eee !important;
+    margin-bottom: 2rem !important;
+    break-inside: avoid;
+  }
+
+  .data-table {
+    border: 1px solid #eee !important;
+  }
+
+  th {
+    background-color: #f9fafb !important;
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: black !important;
+  }
+
+  /* Add some space at the top of the printed page */
+  @page {
+    margin: 1cm;
+  }
+}
+
+/* Toast Notification Styles */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    min-width: 300px;
+    max-width: 450px;
+    pointer-events: auto;
+    cursor: pointer;
+    animation: slideIn 0.3s ease-out;
+    border-left: 4px solid var(--accent-color);
+}
+
+.toast-success {
+    border-left-color: var(--success-color);
+}
+
+.toast-error {
+    border-left-color: var(--danger-color);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toast-content i {
+    font-size: 1.25rem;
+}
+
+.toast-success i {
+    color: var(--success-color);
+}
+
+.toast-error i {
+    color: var(--danger-color);
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0;
+}
+
+.toast-close:hover {
+    color: var(--gray-600);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
     }
 }

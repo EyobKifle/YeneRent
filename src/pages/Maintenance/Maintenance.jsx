@@ -4,11 +4,14 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import DetailsModal from '../../components/ui/DetailsModal';
 import NumberInput from '../../components/ui/NumberInput';
+import { formatDate } from '../../utils/utils';
 import api from '../../utils/api';
+import { useNotification } from '../../contexts/NotificationContext';
 import '../../styles/pages/Maintenance.css';
 
 const Maintenance = () => {
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,6 +28,9 @@ const Maintenance = () => {
     reportedDate: '',
     cost: ''
   });
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [beforeImageFile, setBeforeImageFile] = useState(null);
+  const [afterImageFile, setAfterImageFile] = useState(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -117,12 +123,82 @@ const Maintenance = () => {
         const requestId = selectedMaintenance._id || selectedMaintenance.id;
         await api.put(`maintenance/${requestId}`, maintenanceData);
         setMaintenanceRequests(prev => prev.map(r => (r._id || r.id) === requestId ? { ...r, ...maintenanceData } : r));
-        alert('Maintenance request updated successfully');
+        showNotification('Maintenance request updated successfully', 'success');
       } else {
+        // Upload files if they exist
+        let receiptUrl = null;
+        let receiptName = null;
+        const images = [];
+
+        if (receiptFile) {
+          const formData = new FormData();
+          formData.append('file', receiptFile);
+          try {
+            const response = await api.post('uploads/document', formData);
+            if (response && response.url) {
+              receiptUrl = response.url;
+              receiptName = response.originalName || receiptFile.name;
+            }
+          } catch (uploadError) {
+            console.error('Failed to upload receipt:', uploadError);
+            showNotification('Failed to upload receipt, but creating request...', 'warning');
+          }
+        }
+
+        if (beforeImageFile) {
+          const formData = new FormData();
+          formData.append('file', beforeImageFile);
+          try {
+            const response = await api.post('uploads/image', formData);
+            if (response && response.url) {
+              images.push({ url: response.url, caption: 'Before' });
+            }
+          } catch (uploadError) {
+            console.error('Failed to upload before image:', uploadError);
+          }
+        }
+
+        if (afterImageFile) {
+          const formData = new FormData();
+          formData.append('file', afterImageFile);
+          try {
+             const response = await api.post('uploads/image', formData);
+             if (response && response.url) {
+               images.push({ url: response.url, caption: 'After' });
+             }
+          } catch (uploadError) {
+            console.error('Failed to upload after image:', uploadError);
+          }
+        }
+
+        const maintenanceDataPayload = {
+          ...maintenanceData,
+          receiptUrl,
+          receiptName,
+          images
+        };
+
+        if (selectedMaintenance) {
+           // Edit logic would go here but this block currently doesn't handle files for edit properly as implemented in Maintenance.jsx
+           // Maintenance.jsx's handleFormSubmit handles both Add and Edit (lines 119-124 vs 126-128)
+           // However, for Add Request (modal), selectedMaintenance is null.
+           // For Edit, it navigates to /edit page usually, but context menu has 'Edit' which sets selectedMaintenance and open modal?
+           // Wait, handleEditRequest in Maintenance.jsx:88 navigates: navigate(`/maintenance/${request._id || request.id}/edit`);
+           // But lines 250 in JSX calls handleEditRequest.
+           // So the Modal in Maintenance.jsx is ONLY for ADDING?
+           // Let's check handleAddRequest (line 80): sets modal Open.
+           // handleEditRequest navigates away.
+           // But handleFormSubmit has: if (selectedMaintenance) ...
+           // It seems selectedMaintenance is never set in the current code flow for the Modal, because 'Edit' button navigates to a new page.
+           // I will assume this Modal is primarly for ADD.
+           // So I will update the 'else' block mainly, or both.
+           // Since selectedMaintenance logic exists, I'll update maintenanceDataPayload to be used.
+        }
+
         // Create new request
-        const newRequest = await api.post('maintenance', maintenanceData);
+        const newRequest = await api.post('maintenance', maintenanceDataPayload);
         setMaintenanceRequests(prev => [newRequest, ...prev]);
-        alert('Maintenance request added successfully');
+        showNotification('Maintenance request added successfully', 'success');
       }
 
       // Reset form and close modal
@@ -135,11 +211,18 @@ const Maintenance = () => {
         reportedDate: '',
         cost: ''
       });
+      setReceiptFile(null);
+      setBeforeImageFile(null);
+      setAfterImageFile(null);
       setSelectedMaintenance(null);
       setIsModalOpen(false);
+
+      // Re-fetch to ensure consistency
+      const maintenanceDataFetched = await api.get('maintenance');
+      setMaintenanceRequests(maintenanceDataFetched || []);
     } catch (error) {
       console.error('Failed to save maintenance request:', error);
-      alert('Failed to save maintenance request');
+      showNotification('Failed to save maintenance request', 'error');
     }
   };
 
@@ -222,7 +305,7 @@ const Maintenance = () => {
                         {formatStatus(request.status)}
                       </span>
                     </td>
-                    <td>{request.reportedDate}</td>
+                    <td>{formatDate(request.reportedDate)}</td>
                     <td>${request.cost ? request.cost.toFixed(2) : '0.00'}</td>
                     <td>
                       <div className="action-dropdown">
@@ -236,7 +319,7 @@ const Maintenance = () => {
                           <i className="fa-solid fa-ellipsis-vertical"></i>
                         </button>
                         {openActionId === requestId && (
-                        <div className="dropdown-menu align-right show">
+                        <div className="dropdown-menu show">
                           <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(request); }}>
                             <i className="fa-solid fa-eye"></i>View Details
                           </a>
@@ -369,6 +452,39 @@ const Maintenance = () => {
               placeholder="0.00"
               min={0}
               step={0.01}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="receipt">Receipt (Image/PDF)</label>
+            <input
+              type="file"
+              id="receipt"
+              name="receipt"
+              accept="image/*,.pdf"
+              onChange={(e) => setReceiptFile(e.target.files[0])}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="beforeImage">Before Image</label>
+            <input
+              type="file"
+              id="beforeImage"
+              name="beforeImage"
+              accept="image/*"
+              onChange={(e) => setBeforeImageFile(e.target.files[0])}
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="afterImage">After Image</label>
+            <input
+              type="file"
+              id="afterImage"
+              name="afterImage"
+              accept="image/*"
+              onChange={(e) => setAfterImageFile(e.target.files[0])}
             />
           </div>
 

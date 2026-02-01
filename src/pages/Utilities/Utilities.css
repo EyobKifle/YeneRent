@@ -17,13 +17,13 @@
 }
 
 .status-paid {
-    color: #059669;
-    background-color: #f0fdf4;
+    color: var(--success-color);
+    background-color: rgba(16, 185, 129, 0.1);
 }
 
 .status-unpaid {
-    color: #d97706;
-    background-color: #fffbeb;
+    color: var(--warning-color);
+    background-color: rgba(245, 158, 11, 0.1);
 }
 
 /* Action dropdown positioning - inherits from global dropdown-menu styles */
@@ -41,7 +41,7 @@
 }
 
 .action-dropdown-btn:hover {
-    background-color: var(--gray-100);
+    background-color: var(--bg-hover);
 }
 
 .action-dropdown .dropdown-menu {

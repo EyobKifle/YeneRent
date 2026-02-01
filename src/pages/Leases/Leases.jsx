@@ -6,8 +6,10 @@ import { formatDate, formatCurrency, debounce, generateId, readFileAsDataURL } f
 import TaxCalculator from '../../utils/taxCalculator';
 import { settingsService } from '../../utils/settingsService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotification } from '../../contexts/NotificationContext';
 import Button from '../../components/ui/Button';
 import NumberInput from '../../components/ui/NumberInput';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
 import './Leases.css';
 
 // Placeholder for a generic Modal component (to be replaced by a proper UI component later)
@@ -32,6 +34,7 @@ const Modal = ({ title, children, onClose, isOpen, maxWidth = '500px' }) => {
 const Leases = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { showNotification } = useNotification();
     const [leases, setLeases] = useState([]);
     const [tenants, setTenants] = useState([]);
     const [properties, setProperties] = useState([]);
@@ -44,6 +47,8 @@ const Leases = () => {
     const [currentLease, setCurrentLease] = useState(null);
     const [isRenewal, setIsRenewal] = useState(false);
     const [openActionId, setOpenActionId] = useState(null);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -270,11 +275,11 @@ const Leases = () => {
                 await api.put(`${LEASE_KEY}/${currentLease._id}`, leaseData);
                 // Optimistic update: use the string IDs in leaseData, the UI will handle safely via getMongoId
                 setLeases(leases.map(l => l._id === currentLease._id ? { ...l, ...leaseData } : l));
-                alert('Lease updated successfully!');
+                showNotification('Lease updated successfully!', 'success');
             } else {
                 const newLease = await api.post(LEASE_KEY, leaseData);
                 setLeases([...leases, newLease]);
-                alert('Lease created successfully!');
+                showNotification('Lease created successfully!', 'success');
             }
 
             // Update tenant and unit records
@@ -298,7 +303,7 @@ const Leases = () => {
             console.error('Failed to save lease:', err);
             // Log the full error object for debugging
             console.log(JSON.stringify(err, null, 2)); 
-            alert(`Failed to save lease: ${err.message || 'Unknown error'}`);
+            showNotification(`Failed to save lease: ${err.message || 'Unknown error'}`, 'error');
         }
     };
 
@@ -309,21 +314,61 @@ const Leases = () => {
         if(leaseId) navigate(`/leases/${leaseId}`);
     }, [navigate]);
 
+    const handleViewFile = (e, url) => {
+        if (!url) return;
+        if (url.startsWith('data:')) {
+            e.preventDefault();
+            try {
+                const parts = url.split(',');
+                if (parts.length < 2) return;
+                const mimeMatch = parts[0].match(/:(.*?);/);
+                const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                const bstr = atob(parts[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                const blob = new Blob([u8arr], { type: mime });
+                const blobUrl = URL.createObjectURL(blob);
+                window.open(blobUrl, '_blank');
+            } catch (err) {
+                console.error('Error opening data URL:', err);
+                window.open(url, '_blank'); // Fallback
+            }
+        }
+    };
+
+    const handlePreview = (url, name) => {
+        let fileType = 'other';
+        if (url.startsWith('data:application/pdf') || url.toLowerCase().split('?')[0].endsWith('.pdf')) {
+          fileType = 'application/pdf';
+        } else if (url.startsWith('data:image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(url.split('?')[0])) {
+          fileType = 'image';
+        }
+        setPreviewFile({ url, name, type: fileType });
+        setPreviewModalOpen(true);
+    };
+
     const renderDocPreview = (url, name) => {
         if (!url) return <p className="text-sm text-gray-500">Not provided</p>;
         return (
-            <a href={url} target="_blank" rel="noopener noreferrer" className="document-preview-sm">
-                <i className="fa-solid fa-file-lines fa-2x"></i>
-                <p className="text-sm">{name || 'View File'}</p>
-            </a>
+            <Button 
+                variant="secondary" 
+                onClick={() => handlePreview(url, name)}
+                style={{ fontSize: '0.8rem', padding: '4px 12px' }}
+            >
+                <i className="fa-solid fa-eye" style={{ marginRight: '5px' }}></i>
+                Preview
+            </Button>
         );
     };
 
     // --- Action Handlers ---
     const handleAddLease = () => openLeaseModal();
 
-    const handleEditLease = (leaseId) => {
-        navigate(`/leases/${leaseId}/edit`);
+    const handleEditLease = (lease) => {
+        openLeaseModal(lease);
     };
 
     const handleRenewLease = (leaseId) => {
@@ -349,7 +394,12 @@ const Leases = () => {
     const debouncedSearch = useRef(debounce((value) => setSearchTerm(value), 300)).current;
 
     if (loading) {
-        return <div className="loading">Loading leases...</div>;
+        return (
+            <div className="loading-indicator">
+                <i className="fa-solid fa-spinner fa-spin"></i>
+                <p>Loading leases...</p>
+            </div>
+        );
     }
 
     if (error) {
@@ -428,15 +478,16 @@ const Leases = () => {
                                                             <i className="fa-solid fa-ellipsis-vertical"></i>
                                                         </button>
                                                         {openActionId === leaseId && (
-                                                        <div className="dropdown-menu align-right show">
+                                                        <div className="dropdown-menu show">
                                                             <a key="view" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); openLeaseDetailsModal(lease); }}>
                                                                 <i className="fa-solid fa-eye"></i>View Details
                                                             </a>
-                                                            {(user?.role === 'admin' || user?.role === 'property_manager' || user?.role === 'tenant') && (
+                                                                 <a key="edit" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditLease(lease); }}>
+                                                                    <i className="fa-solid fa-pencil"></i>Edit
+                                                                </a>
                                                                 <a key="delete" href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteLease(leaseId); }}>
                                                                     <i className="fa-solid fa-trash-can"></i>Delete
                                                                 </a>
-                                                            )}
                                                         </div>
                                                         )}
                                                     </div>
@@ -661,6 +712,14 @@ const Leases = () => {
                     <button type="button" className="close-modal-btn btn-secondary" onClick={() => setIsDetailsModalOpen(false)}>Close</button>
                 </div>
             </Modal>
+
+            <DocumentPreviewModal
+                isOpen={previewModalOpen}
+                onClose={() => setPreviewModalOpen(false)}
+                fileUrl={previewFile.url}
+                fileName={previewFile.name}
+                fileType={previewFile.type}
+            />
         </main>
     );
 };

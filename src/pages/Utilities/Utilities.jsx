@@ -1,16 +1,22 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import DetailsModal from '../../components/ui/DetailsModal';
 import NumberInput from '../../components/ui/NumberInput';
 import api from '../../utils/api';
+import { useNotification } from '../../contexts/NotificationContext';
 import './Utilities.css';
 
 const Utilities = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { showNotification } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false); // Added state
+  const [loading, setLoading] = useState(true);
   const [utilities, setUtilities] = useState([]);
   const [properties, setProperties] = useState([]);
   const [selectedUtility, setSelectedUtility] = useState(null);
@@ -38,6 +44,7 @@ const Utilities = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setLoading(true);
         const [utilitiesData, propertiesData] = await Promise.all([
           api.get('utilities'),
           api.get('properties')
@@ -46,10 +53,26 @@ const Utilities = () => {
         setProperties(propertiesData.properties || []);
       } catch (error) {
         console.error('Failed to fetch data:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
+    fetchData();
   }, []);
+
+  // Handle editId from URL
+  useEffect(() => {
+    const editId = searchParams.get('editId');
+    if (editId && utilities.length > 0) {
+      const utilToEdit = utilities.find(u => (u._id || u.id) === editId);
+      if (utilToEdit) {
+        handleEditUtility(utilToEdit);
+        // Clear param so refreshing doesn't re-open or if user closes modal
+        // setSearchParams({}); // Optional: keep it or clear it. Clearing might be better UX.
+      }
+    }
+  }, [searchParams, utilities]);
 
   const filteredUtilities = useMemo(() => {
     const s = searchTerm.toLowerCase();
@@ -89,11 +112,7 @@ const Utilities = () => {
         const formDataUpload = new FormData();
         formDataUpload.append('file', formData.billImage);
 
-        const uploadResponse = await api.post('uploads/image', formDataUpload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        const uploadResponse = await api.post('uploads/image', formDataUpload);
 
         billUrl = uploadResponse.url;
         billName = formData.billImage.name;
@@ -114,12 +133,12 @@ const Utilities = () => {
         const utilId = selectedUtility._id || selectedUtility.id;
         await api.put(`utilities/${utilId}`, utilityData);
         setUtilities(prev => prev.map(u => (u._id || u.id) === utilId ? { ...u, ...utilityData } : u));
-        alert('Utility bill updated successfully');
+        showNotification('Utility bill updated successfully', 'success');
       } else {
         // Create new utility
         const newUtility = await api.post('utilities', utilityData);
         setUtilities(prev => [newUtility, ...prev]);
-        alert('Utility bill added successfully');
+        showNotification('Utility bill added successfully', 'success');
       }
 
       // Reset form and close modal
@@ -133,9 +152,17 @@ const Utilities = () => {
       });
       setSelectedUtility(null);
       setIsModalOpen(false);
+      
+      // Re-fetch to ensure consistency
+      const utilitiesData = await api.get('utilities');
+      setUtilities(utilitiesData || []);
+      
+      // Clear URL params if we were editing from URL
+      setSearchParams({}, { replace: true });
+
     } catch (error) {
       console.error('Error saving utility bill:', error);
-      alert('Failed to save utility bill');
+      showNotification('Failed to save utility bill', 'error');
     }
   };
 
@@ -215,6 +242,12 @@ const Utilities = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        {loading ? (
+          <div className="loading-indicator">
+            <i className="fa-solid fa-spinner fa-spin"></i>
+            <p>Loading utility bills...</p>
+          </div>
+        ) : (
         <div className="table-container">
         <table className="data-table">
           <thead>
@@ -230,11 +263,11 @@ const Utilities = () => {
           <tbody id="utilities-table-body">
             {filteredUtilities.map(util => {
               const utilId = util._id || util.id;
-              const property = properties.find(p => p.id === util.propertyId);
+              const propertyName = util.propertyId?.name || 'N/A';
               return (
                 <tr key={utilId}>
                   <td>{util.type}</td>
-                  <td>{property?.name || 'N/A'}</td>
+                  <td>{propertyName}</td>
                   <td>${util.amount ? util.amount.toFixed(2) : '0.00'}</td>
                   <td>{util.dueDate ? new Date(util.dueDate).toLocaleDateString() : 'N/A'}</td>
                   <td>
@@ -254,7 +287,7 @@ const Utilities = () => {
                       <i className="fa-solid fa-ellipsis-vertical"></i>
                     </button>
                     {openActionId === utilId && (
-                    <div className="dropdown-menu align-right show">
+                    <div className="dropdown-menu show">
                       <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate(`/utilities/${utilId}`); }}>
                         <i className="fa-solid fa-eye"></i>View Details
                       </a>
@@ -273,6 +306,7 @@ const Utilities = () => {
           </tbody>
         </table>
         </div>
+        )}
       </div>
 
       {filteredUtilities.length === 0 && (
@@ -374,10 +408,20 @@ const Utilities = () => {
               accept="image/*"
               onChange={handleInputChange}
             />
-            {formData.billImage && (
-              <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#666' }}>
-                Selected: {formData.billImage.name}
+            {formData.billImage ? (
+              <div className="image-preview" style={{ marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                <img 
+                  src={URL.createObjectURL(formData.billImage)} 
+                  alt="Bill Preview" 
+                  style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px', objectFit: 'cover' }} 
+                />
+                <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '0.25rem' }}>Selected: {formData.billImage.name}</div>
               </div>
+            ) : (
+                <div className="image-placeholder" style={{ border: '2px dashed #ddd', borderRadius: '8px', padding: '20px', textAlign: 'center', color: '#999' }}>
+                    <i className="fa-solid fa-file-image fa-2x" style={{ marginBottom: '10px' }}></i>
+                    <p>No receipt image selected</p>
+                </div>
             )}
           </div>
 

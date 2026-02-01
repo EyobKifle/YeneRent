@@ -222,12 +222,10 @@
 .properties-stats > *:nth-child(4) { animation-delay: 0.4s; }
 
 /* Dark theme adjustments */
-@media (prefers-color-scheme: dark) {
-  .stats-card {
-    background-color: var(--bg-secondary);
-  }
+[data-theme="dark"] .stats-card {
+  background-color: var(--bg-primary);
+}
 
-  .stats-icon {
-    background-color: var(--accent-color);
-  }
+[data-theme="dark"] .stats-icon {
+  background-color: var(--accent-color);
 }

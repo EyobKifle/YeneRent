@@ -39,7 +39,7 @@ const SharePrintModal = ({ isOpen, onClose, title = "Share or Print", mode = "sh
                 onChange={() => setSelectedItem(idx)}
               />
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <i className={`fa-solid ${item.type === 'image' ? 'fa-image' : 'fa-file'}`}></i>
+                <i className={`fa-solid ${item.type === 'image' ? 'fa-image' : item.type === 'pdf' ? 'fa-file-pdf' : 'fa-file'}`} style={{ color: item.type === 'pdf' ? '#e74c3c' : 'inherit' }}></i>
                 {item.name || `Attachment ${idx + 1}`}
               </span>
             </label>

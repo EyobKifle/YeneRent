@@ -242,46 +242,23 @@
 
 /* === Print Specific Styles === */
 @media print {
-    /* Hide all non-essential elements */
-    body > #sidebar-container,
-    body > #header-container,
+    .sidebar, .header, #sidebar-container, #header-container,
     #document-details-view .page-header,
-    .document-preview-section h4, /* Hide the "Document Preview" heading */
-    .detail-section:not(.document-preview-section),
     .preview-actions {
-        display: none;
+        display: none !important;
     }
 
-    /* Reset layout for printing */
     body, .main-content {
         margin: 0 !important;
         padding: 0 !important;
-        background-color: #fff;
-        -webkit-print-color-adjust: exact; /* Ensures background colors and images are printed */
-    }
-
-    .data-card, .document-details-grid, .document-preview-section {
-        border: none !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        display: block; /* Ensure it's not a grid */
+        background-color: #fff !important;
     }
 
     .document-preview-content {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        border: none;
-        border-radius: 0;
-        background-color: #fff;
-    }
-
-    .document-preview-content iframe, .document-preview-content img {
+        position: relative;
         width: 100%;
-        height: 100%;
-        object-fit: contain; /* Fit the whole image/pdf on the page */
+        height: auto;
+        min-height: 500px;
+        border: none !important;
     }
 }

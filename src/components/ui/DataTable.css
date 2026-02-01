@@ -36,8 +36,8 @@
 
 .data-table th {
   font-weight: 600;
-  color: var(--text-color);
-  background-color: var(--gray-50);
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -49,7 +49,7 @@
 }
 
 .data-table th.sortable:hover {
-  background-color: var(--gray-100);
+  background-color: var(--bg-hover);
 }
 
 .sort-indicator {
@@ -58,7 +58,7 @@
 }
 
 .data-table tr:hover {
-  background-color: var(--gray-50);
+  background-color: var(--bg-hover);
 }
 
 .action-btn {
@@ -134,16 +134,16 @@
 
 /* Dark Mode */
 [data-theme="dark"] .data-table th {
-  background-color: var(--gray-200);
+  background-color: var(--bg-secondary);
 }
 
 [data-theme="dark"] .data-table tr:hover {
-  background-color: var(--gray-200);
+  background-color: var(--bg-hover);
 }
 
 [data-theme="dark"] .data-table-search input {
-  background-color: var(--gray-100);
-  border-color: var(--gray-300);
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
 }
 
 [data-theme="dark"] .action-btn {
@@ -151,6 +151,6 @@
 }
 
 [data-theme="dark"] .data-table-pagination button {
-  background-color: var(--gray-100);
-  border-color: var(--gray-300);
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
 }

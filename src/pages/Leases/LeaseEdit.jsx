@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../utils/api';
 import { readFileAsDataURL } from '../../utils/utils';
 import Button from '../../components/ui/Button';
@@ -9,7 +9,7 @@ import './LeaseEdit.css';
 export default function LeaseEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({
     tenantId: '',
@@ -22,7 +22,9 @@ export default function LeaseEdit() {
     leaseAgreementFile: null,
     withholdingReceiptFile: null,
     leaseAgreementFileName: '',
-    withholdingReceiptFileName: ''
+    withholdingReceiptFileName: '',
+    leaseAgreementUrl: '',
+    withholdingReceiptUrl: ''
   });
   const [tenants, setTenants] = useState([]);
   const [properties, setProperties] = useState([]);
@@ -44,18 +46,46 @@ export default function LeaseEdit() {
         setTenants(tenantsData || []);
         setProperties(propertiesData.properties || []);
         setUnits(unitsData || []);
+        // Helper function to convert ISO date to YYYY-MM-DD format
+        const formatDateForInput = (dateString) => {
+          if (!dateString) return '';
+          const date = new Date(dateString);
+          return date.toISOString().split('T')[0];
+        };
+
+        // Helper to extract MongoDB ID from populated field or string
+        const extractId = (field) => {
+          if (!field) return '';
+          return typeof field === 'object' ? (field._id || field.id || '') : field;
+        };
+
+        // Extract IDs from potentially populated fields
+        const tenantId = extractId(leaseData.tenantId);
+        const unitId = extractId(leaseData.unitId);
+        
+        // Find the property ID from the unit
+        let propertyId = '';
+        if (unitId) {
+          const unit = unitsData.find(u => (u._id || u.id) === unitId);
+          if (unit) {
+            propertyId = extractId(unit.propertyId);
+          }
+        }
+
         setFormData({
-          tenantId: leaseData.tenantId || '',
-          propertyId: leaseData.unitId ? unitsData.find(u => u.id === leaseData.unitId)?.propertyId || '' : '',
-          unitId: leaseData.unitId || '',
-          startDate: leaseData.startDate || '',
-          endDate: leaseData.endDate || '',
+          tenantId,
+          propertyId,
+          unitId,
+          startDate: formatDateForInput(leaseData.startDate),
+          endDate: formatDateForInput(leaseData.endDate),
           rentAmount: leaseData.rentAmount || '',
           withholdingAmount: leaseData.withholdingAmount || '',
           leaseAgreementFile: null,
           withholdingReceiptFile: null,
           leaseAgreementFileName: leaseData.leaseAgreementName || '',
-          withholdingReceiptFileName: leaseData.withholdingReceiptName || ''
+          withholdingReceiptFileName: leaseData.withholdingReceiptName || '',
+          leaseAgreementUrl: leaseData.leaseAgreementUrl || '',
+          withholdingReceiptUrl: leaseData.withholdingReceiptUrl || ''
         });
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -71,8 +101,13 @@ export default function LeaseEdit() {
 
   useEffect(() => {
     if (formData.propertyId) {
-      const activeLeaseUnitIds = [] // For edit, allow current unit
-      const unitsForProperty = units.filter(u => u.propertyId === formData.propertyId && !activeLeaseUnitIds.includes(u.id) || u.id === formData.unitId);
+      const activeLeaseUnitIds = []; // For edit, allow current unit
+      const unitsForProperty = units.filter(u => {
+        if (!u.propertyId) return false; // Skip units without a property
+        const unitPropertyId = typeof u.propertyId === 'object' ? (u.propertyId._id || u.propertyId.id) : u.propertyId;
+        const unitId = u._id || u.id;
+        return (unitPropertyId === formData.propertyId && !activeLeaseUnitIds.includes(unitId)) || unitId === formData.unitId;
+      });
       setAvailableUnitsForProperty(unitsForProperty);
     } else {
       setAvailableUnitsForProperty([]);
@@ -116,11 +151,11 @@ export default function LeaseEdit() {
 
     setLoading(true);
     try {
-      let leaseAgreementUrl = null;
-      let withholdingReceiptUrl = null;
+      let leaseAgreementUrl = formData.leaseAgreementUrl;
+      let withholdingReceiptUrl = formData.withholdingReceiptUrl;
       let leaseAgreementName = formData.leaseAgreementFileName;
       let withholdingReceiptName = formData.withholdingReceiptFileName;
-
+      
       if (formData.leaseAgreementFile) {
         leaseAgreementUrl = await readFileAsDataURL(formData.leaseAgreementFile);
         leaseAgreementName = formData.leaseAgreementFile.name;
@@ -192,7 +227,7 @@ export default function LeaseEdit() {
           >
             <option value="">{t('Select a tenant')}</option>
             {tenants.map(t => (
-              <option key={t.id} value={t.id}>{t.name}</option>
+              <option key={t._id || t.id} value={t._id || t.id}>{t.name}</option>
             ))}
           </select>
           {errors.tenantId && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.tenantId}</span>}
@@ -210,7 +245,7 @@ export default function LeaseEdit() {
             >
               <option value="">{t('Select a property')}</option>
               {properties.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p._id || p.id} value={p._id || p.id}>{p.name}</option>
               ))}
             </select>
             {errors.propertyId && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.propertyId}</span>}
@@ -226,7 +261,7 @@ export default function LeaseEdit() {
             >
               <option value="">{t('Select a unit')}</option>
               {availableUnitsForProperty.map(u => (
-                <option key={u.id} value={u.id}>Unit {u.unitNumber}</option>
+                <option key={u._id || u.id} value={u._id || u.id}>Unit {u.unitNumber}</option>
               ))}
             </select>
             {errors.unitId && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.unitId}</span>}

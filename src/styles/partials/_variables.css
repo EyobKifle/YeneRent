@@ -20,8 +20,15 @@
   --gray-900: #111827;
   --border-color: var(--gray-200);
   --body-bg: #f9fafb;
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-500);
   --text-color: var(--gray-900);
+  --text-color-secondary: var(--gray-500);
+  --bg-primary: white;
+  --bg-secondary: var(--gray-50);
+  --bg-hover: var(--gray-100);
   --card-bg: white;
+  --info-color: #3b82f6;
 
   --font-family: 'Inter', sans-serif;
   --header-height: 65px;
@@ -34,43 +41,50 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
-  --accent-color: #3b82f6;
+  --accent-color: #4f46e5;
+  --transition-speed: 0.3s;
 }
 
 [data-theme="dark"] {
   /* Brand / semantic colors */
-  --primary-color: #0f172a;          /* slate-900 */
-  --primary-hover-color: #1e293b;    /* slate-800 */
+  --primary-color: #1e293b;          /* slate-800 - lighter for better visibility */
+  --primary-hover-color: #334155;    /* slate-700 */
   --secondary-color: #94a3b8;        /* slate-400 */
 
-  --success-color: #22c55e;
-  --danger-color: #f43f5e;
-  --warning-color: #facc15;
-  --accent-color: #3b82f6;
+  --success-color: #10b981;          /* emerald-500 - slightly muted */
+  --danger-color: #ef4444;           /* red-500 */
+  --warning-color: #f59e0b;          /* amber-500 */
+  --accent-color: #818cf8;           /* indigo-400 for better visibility on dark */
+  --info-color: #60a5fa;
 
-  /* Neutral scale (dark-first, not inverted light) */
-  --gray-50: #020617;   /* near-black */
-  --gray-100: #020617;
-  --gray-200: #0f172a;
-  --gray-300: #1e293b;
-  --gray-400: #334155;
-  --gray-500: #475569;
-  --gray-600: #64748b;
-  --gray-700: #94a3b8;
-  --gray-800: #cbd5f5;
-  --gray-900: #f8fafc;
+  /* Neutral scale (optimized for dark mode) */
+  --gray-50: #0f172a;   /* slate-900 */
+  --gray-100: #1e293b;  /* slate-800 */
+  --gray-200: #334155;  /* slate-700 */
+  --gray-300: #475569;  /* slate-600 */
+  --gray-400: #64748b;  /* slate-500 */
+  --gray-500: #94a3b8;  /* slate-400 */
+  --gray-600: #cbd5e1;  /* slate-300 */
+  --gray-700: #e2e8f0;  /* slate-200 */
+  --gray-800: #f1f5f9;  /* slate-100 */
+  --gray-900: #f8fafc;  /* slate-50 */
 
   /* Layout & surfaces */
-  --border-color: var(--gray-300);
-  --body-bg: #020617;                /* deep dark */
-  --card-bg: #0f172a;                /* elevated surface */
+  --border-color: #334155;           /* slate-700 - visible but subtle */
+  --body-bg: #0f172a;                /* slate-900 - deep dark blue */
+  --card-bg: #1d3576;                /* requested deep blue */
+  --bg-primary: #1d3576;             /* matching card-bg for consistency */
+  --bg-secondary: #0f172a;           /* matching body-bg */
+  --bg-hover: #26418f;               /* slightly lighter than #1d3576 for hover */
 
   /* Text */
-  --text-color: #f8fafc;
-  --text-color-secondary: #94a3b8;
+  --text-color: #f1f5f9;             /* slate-100 - high contrast */
+  --text-color-secondary: #94a3b8;   /* slate-400 - muted */
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
 
-  /* Shadows (subtle in dark mode) */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+  /* Shadows (enhanced for dark mode depth) */
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 8px -2px rgba(0, 0, 0, 0.6), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 20px -5px rgba(0, 0, 0, 0.7), 0 4px 8px -4px rgba(0, 0, 0, 0.5);
 }

@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import api from '../../utils/api';
+import { useNotification } from '../../contexts/NotificationContext';
 
-const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
+const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded, editPayment = null }) => {
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState({
     leaseId: '',
     amount: '',
@@ -26,8 +28,25 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
   useEffect(() => {
     if (isOpen) {
       fetchLeases();
+      if (editPayment) {
+        setFormData({
+          leaseId: editPayment.leaseId?._id || editPayment.leaseId || '',
+          amount: editPayment.amount?.toString() || '',
+          type: editPayment.type || 'Rent',
+          includeWithholding: editPayment.withholdingAmount > 0,
+          withholdingAmount: editPayment.withholdingAmount?.toString() || '',
+          date: editPayment.date ? new Date(editPayment.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          dueDate: editPayment.dueDate ? new Date(editPayment.dueDate).toISOString().split('T')[0] : '',
+          method: editPayment.method || '',
+          status: editPayment.status || 'Paid',
+          receiptNumber: editPayment.receiptNumber || '',
+          invoiceNumber: editPayment.invoiceNumber || '',
+          notes: editPayment.notes || '',
+          receiptImage: null
+        });
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, editPayment]);
 
   // Auto-populate fields when lease is selected
   useEffect(() => {
@@ -128,11 +147,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         const formDataUpload = new FormData();
         formDataUpload.append('file', formData.receiptImage);
 
-        const uploadResponse = await api.post('uploads/image', formDataUpload, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
+        const uploadResponse = await api.post('uploads/document', formDataUpload);
 
         receiptUrl = uploadResponse.url;
         receiptName = formData.receiptImage.name;
@@ -156,14 +171,22 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         notes: formData.notes || undefined
       };
 
-      const newPayment = await api.post('payments', paymentData);
-      alert('Payment recorded successfully!');
-      onPaymentRecorded(newPayment);
+      const pId = editPayment?._id || editPayment?.id;
+      let result;
+      if (pId) {
+        result = await api.put(`payments/${pId}`, paymentData);
+        showNotification('Payment updated successfully!', 'success');
+      } else {
+        result = await api.post('payments', paymentData);
+        showNotification('Payment recorded successfully!', 'success');
+      }
+      
+      onPaymentRecorded(result);
       handleClose();
     } catch (error) {
       console.error('Error recording payment:', error);
       const errorMessage = error.message || error.error || 'Failed to record payment';
-      alert(`Error: ${errorMessage}`);
+      showNotification(`Error: ${errorMessage}`, 'error');
       if (error.errors) {
         setErrors(error.errors.reduce((acc, err) => ({ ...acc, [err.path]: err.msg }), {}));
       } else if (error.error) {
@@ -390,17 +413,50 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="receiptImage">Receipt Image (Optional)</label>
+          <label htmlFor="receiptImage">Receipt / Attachment (Optional)</label>
           <input
             type="file"
             id="receiptImage"
             name="receiptImage"
-            accept="image/*"
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
             onChange={handleInputChange}
           />
-          {formData.receiptImage && (
-            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#666' }}>
-              Selected: {formData.receiptImage.name}
+          {formData.receiptImage ? (
+            <div className="attachment-preview" style={{ marginTop: '1rem', border: '1px solid #ddd', borderRadius: '8px', padding: '8px', position: 'relative' }}>
+              {formData.receiptImage.type.startsWith('image/') ? (
+                <img 
+                  src={URL.createObjectURL(formData.receiptImage)} 
+                  alt="Receipt Preview" 
+                  style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px', display: 'block', margin: '0 auto' }} 
+                />
+              ) : formData.receiptImage.type === 'application/pdf' ? (
+                <div style={{ height: '300px' }}>
+                  <iframe 
+                    src={URL.createObjectURL(formData.receiptImage) + "#toolbar=0"} 
+                    title="PDF Preview"
+                    style={{ width: '100%', height: '100%', border: 'none', borderRadius: '4px' }}
+                  />
+                </div>
+              ) : formData.receiptImage.name.match(/\.(docx?|xlsx?)$/i) ? (
+                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+                  <i className={`fa-solid ${formData.receiptImage.name.match(/\.xlsx?$/i) ? 'fa-file-excel' : 'fa-file-word'} fa-3x`} style={{ color: formData.receiptImage.name.match(/\.xlsx?$/i) ? '#1d6f42' : '#2b579a', marginBottom: '10px' }}></i>
+                  <p>{formData.receiptImage.name}</p>
+                  <p style={{ fontSize: '0.8rem', color: '#666' }}>Document will be converted to PDF after upload</p>
+                </div>
+              ) : (
+                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#f9f9f9', borderRadius: '4px' }}>
+                  <i className="fa-solid fa-file fa-3x" style={{ color: '#666', marginBottom: '10px' }}></i>
+                  <p>{formData.receiptImage.name}</p>
+                </div>
+              )}
+              <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '8px', textAlign: 'center' }}>
+                Selected: {formData.receiptImage.name} ({(formData.receiptImage.size / (1024)).toFixed(1)} KB)
+              </div>
+            </div>
+          ) : (
+            <div className="image-placeholder" style={{ border: '2px dashed #ddd', borderRadius: '8px', padding: '20px', textAlign: 'center', color: '#999' }}>
+                <i className="fa-solid fa-receipt fa-2x" style={{ marginBottom: '10px' }}></i>
+                <p>No receipt or document selected (PDF, Image, Word, or Excel)</p>
             </div>
           )}
         </div>
@@ -421,7 +477,7 @@ const RecordPaymentModal = ({ isOpen, onClose, onPaymentRecorded }) => {
             Cancel
           </Button>
           <Button type="submit" variant="primary" disabled={loading}>
-            {loading ? 'Recording...' : 'Record Payment'}
+            {loading ? (editPayment ? 'Updating...' : 'Recording...') : (editPayment ? 'Update Payment' : 'Record Payment')}
           </Button>
         </div>
       </form>

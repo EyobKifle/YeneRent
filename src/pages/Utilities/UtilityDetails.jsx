@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getImageUrl } from '../../utils/api';
 import Button from '../../components/ui/Button';
+import { printFile } from '../../utils/utils';
 import SharePrintModal from '../../components/ui/SharePrintModal';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
 
 export default function UtilityDetails() {
   const { id } = useParams();
@@ -15,6 +17,8 @@ export default function UtilityDetails() {
   // Share/Print State
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -64,11 +68,7 @@ export default function UtilityDetails() {
         if (selection === 'all') {
             window.print();
         } else if (item) {
-            // Open image in new window to print
-            const w = window.open(item.url);
-            if (w) {
-                w.onload = () => { w.print(); }
-            }
+            printFile(item.url);
         }
     } else if (mode === 'share') {
         const shareData = selection === 'all' 
@@ -84,6 +84,34 @@ export default function UtilityDetails() {
     
     setShareModalOpen(false);
     setPrintModalOpen(false);
+  };
+
+  const handlePreview = (url, name, type) => {
+    let fileType = type;
+    if (!fileType) {
+        if (url.toLowerCase().split('?')[0].endsWith('.pdf')) {
+            fileType = 'application/pdf';
+        } else if (/\.(jpg|jpeg|png|gif|webp)$/i.test(url.split('?')[0])) {
+            fileType = 'image';
+        } else {
+            fileType = 'other';
+        }
+    }
+    setPreviewFile({ url, name, type: fileType });
+    setPreviewModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to delete this utility bill?')) {
+        try {
+            await api.delete(`utilities/${id}`);
+            alert('Utility bill deleted successfully');
+            navigate('/utilities');
+        } catch (err) {
+            console.error('Failed to delete utility bill:', err);
+            alert('Failed to delete utility bill');
+        }
+    }
   };
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
@@ -106,8 +134,11 @@ export default function UtilityDetails() {
           <Button variant="secondary" onClick={() => setPrintModalOpen(true)}>
             <i className="fa-solid fa-print"></i> Print
           </Button>
-          <Button variant="primary" onClick={() => navigate(`/utilities`)}>
-             Edit (in list)
+          <Button variant="primary" onClick={() => navigate(`/utilities?editId=${id}`)}>
+             <i className="fa-solid fa-pencil"></i> Edit
+          </Button>
+          <Button variant="danger" onClick={handleDelete}>
+             <i className="fa-solid fa-trash-can"></i> Delete
           </Button>
         </div>
       </div>
@@ -130,10 +161,45 @@ export default function UtilityDetails() {
             
             {attachments.length > 0 && (
                 <div>
-                    <h3>Receipt</h3>
-                    <div style={{ marginTop: 10 }}>
-                        <img src={attachments[0].url} alt="Receipt" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid #ddd' }} />
-                    </div>
+                    <h3 style={{ marginBottom: 15 }}>Receipt</h3>
+                    {(() => {
+                        const attachment = attachments[0];
+                        const fullUrl = attachment.url;
+                        const isPdf = fullUrl.toLowerCase().split('?')[0].endsWith('.pdf') || attachment.name.toLowerCase().endsWith('.pdf');
+                        
+                        const renderContainer = (content) => (
+                            <div className="detail-image-preview" style={{width: '100%', border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden', backgroundColor: 'white', padding: '0.75rem'}}>
+                                {content}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                                    <span style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{attachment.name}</span>
+                                    <Button variant="secondary" onClick={() => handlePreview(fullUrl, attachment.name, isPdf ? 'application/pdf' : 'image')} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+                                        Preview
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+
+                        if (isPdf) {
+                            return renderContainer(
+                                <div style={{ height: '200px', width: '100%', overflow: 'hidden', backgroundColor: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <iframe 
+                                        src={fullUrl + "#toolbar=0&navpanes=0&scrollbar=0"} 
+                                        title="Receipt PDF" 
+                                        style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }} 
+                                    />
+                                </div>
+                            );
+                        }
+
+                        return renderContainer(
+                            <img 
+                                src={fullUrl} 
+                                alt={attachment.name} 
+                                onClick={() => handlePreview(fullUrl, attachment.name, 'image')} 
+                                style={{ cursor: 'pointer', height: '200px', objectFit: 'cover', width: '100%', borderRadius: '4px' }} 
+                            />
+                        );
+                    })()}
                 </div>
             )}
         </div>
@@ -153,6 +219,14 @@ export default function UtilityDetails() {
         mode="print"
         items={attachments}
         onAction={(sel) => handleAction('print', sel)}
+      />
+
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        fileUrl={previewFile.url}
+        fileName={previewFile.name}
+        fileType={previewFile.type}
       />
     </div>
   );

@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import Modal from './Modal';
 import Button from './Button';
 import api from '../../utils/api';
+import { useNotification } from '../../contexts/NotificationContext';
 
 const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
+  const { showNotification } = useNotification();
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -72,12 +74,14 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
       // Create FormData with file and metadata
       const formDataUpload = new FormData();
       formDataUpload.append('file', formData.file);
+      formDataUpload.append('name', formData.name);
       formDataUpload.append('category', formData.category);
       if (formData.propertyId) formDataUpload.append('propertyId', formData.propertyId);
       if (formData.tenantId) formDataUpload.append('tenantId', formData.tenantId);
 
       const newDocument = await api.post('documents', formDataUpload);
       onDocumentUploaded(newDocument);
+      showNotification('Document uploaded successfully!', 'success');
       handleClose();
     } catch (error) {
       console.error('Error uploading document:', error);
@@ -204,8 +208,33 @@ const UploadDocumentModal = ({ isOpen, onClose, onDocumentUploaded }) => {
           />
           {errors.file && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.file}</span>}
           {formData.file && (
-            <div style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#666' }}>
-              Selected: {formData.file.name} ({(formData.file.size / 1024).toFixed(1)} KB)
+            <div className="file-preview-container" style={{ marginTop: '1rem' }}>
+              <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#666' }}>
+                Selected: {formData.file.name} ({(formData.file.size / 1024).toFixed(1)} KB)
+              </div>
+              
+              <div className="preview-window" style={{ border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f9f9f9' }}>
+                {formData.file.type.startsWith('image/') ? (
+                  <img 
+                    src={URL.createObjectURL(formData.file)} 
+                    alt="Preview" 
+                    style={{ width: '100%', maxHeight: '300px', objectFit: 'contain', display: 'block' }} 
+                  />
+                ) : formData.file.type === 'application/pdf' ? (
+                  <div style={{ height: '300px' }}>
+                    <iframe 
+                      src={URL.createObjectURL(formData.file) + "#toolbar=0"} 
+                      title="PDF Preview"
+                      style={{ width: '100%', height: '100%', border: 'none' }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>
+                    <i className="fa-solid fa-file-lines fa-3x" style={{ color: '#999', marginBottom: '1rem' }}></i>
+                    <p style={{ margin: 0 }}>Preview not available for this file type</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

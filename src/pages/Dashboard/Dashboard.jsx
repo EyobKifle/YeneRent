@@ -21,6 +21,9 @@ export default function DashboardPage() {
   const [tenants, setTenants] = useState([])
   const [payments, setPayments] = useState([])
   const [leases, setLeases] = useState([]) // Add leases state
+  const [utilities, setUtilities] = useState([])
+  const [maintenance, setMaintenance] = useState([])
+  const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [retryCount, setRetryCount] = useState(0)
@@ -31,23 +34,37 @@ export default function DashboardPage() {
       setLoading(true)
       setError(null)
       if (user?.role === 'tenant') {
-        const pays = await api.get('payments')
-        const lses = await api.get('leases')
+        const [pays, lses, utils, maint, docs] = await Promise.all([
+          api.get('payments'),
+          api.get('leases'),
+          api.get('utilities'),
+          api.get('maintenance'),
+          api.get('documents')
+        ])
         setPayments(pays || [])
         setLeases(lses || [])
+        setUtilities(utils || [])
+        setMaintenance(maint || [])
+        setDocuments(docs || [])
         setProperties([])
         setTenants([])
       } else {
-        const [props, tens, pays, lses] = await Promise.all([
+        const [props, tens, pays, lses, utils, maint, docs] = await Promise.all([
           api.get('properties'),
           api.get('tenants'),
           api.get('payments'),
-          api.get('leases')
+          api.get('leases'),
+          api.get('utilities'),
+          api.get('maintenance'),
+          api.get('documents')
         ])
         setProperties(props.properties || [])
         setTenants(tens || [])
         setPayments(pays || [])
         setLeases(lses || [])
+        setUtilities(utils || [])
+        setMaintenance(maint || [])
+        setDocuments(docs || [])
       }
     } catch (err) {
       setError('Failed to load dashboard data. Please try again.')
@@ -80,24 +97,68 @@ export default function DashboardPage() {
   }, [properties, tenants, payments, leases, user])
 
   const recentActivity = useMemo(() => {
-    const tenantActivities = tenants.filter(tenant => tenant.moveInDate).map(tenant => ({
+    const tenantActivities = tenants.map(tenant => ({
       ...tenant,
       activityType: 'tenant',
-      activityDate: new Date(tenant.moveInDate),
+      activityDate: new Date(tenant.createdAt || tenant.moveInDate || Date.now()),
       displayName: tenant.name,
       activity: 'New Tenant Added'
     }))
-    const propertyActivities = properties.filter(property => property.createdAt).map(property => ({
+    const propertyActivities = properties.map(property => ({
       ...property,
       activityType: 'property',
-      activityDate: new Date(property.createdAt),
+      activityDate: new Date(property.createdAt || Date.now()),
       displayName: property.name,
       activity: 'New Property Added'
     }))
-    const allActivities = [...tenantActivities, ...propertyActivities]
+    const leaseActivities = leases.map(lease => ({
+      ...lease,
+      activityType: 'lease',
+      activityDate: new Date(lease.createdAt || Date.now()),
+      displayName: tenants.find(t => t._id === (lease.tenantId?._id || lease.tenantId))?.name || 'Lease',
+      activity: 'New Lease Created'
+    }))
+    const paymentActivities = payments.map(payment => ({
+      ...payment,
+      activityType: 'payment',
+      activityDate: new Date(payment.createdAt || payment.date || Date.now()),
+      displayName: tenants.find(t => t._id === (payment.tenantId?._id || payment.tenantId))?.name || 'Payment',
+      activity: 'Payment Recorded'
+    }))
+    const maintenanceActivities = maintenance.map(m => ({
+      ...m,
+      activityType: 'maintenance',
+      activityDate: new Date(m.createdAt || m.reportedDate || Date.now()),
+      displayName: m.title || 'Maintenance',
+      activity: 'Maintenance Request'
+    }))
+    const utilityActivities = utilities.map(u => ({
+      ...u,
+      activityType: 'utility',
+      activityDate: new Date(u.createdAt || u.dueDate || Date.now()),
+      displayName: u.type || 'Utility',
+      activity: 'Utility Bill Added'
+    }))
+    const documentActivities = documents.map(d => ({
+      ...d,
+      activityType: 'document',
+      activityDate: new Date(d.createdAt || d.uploadDate || Date.now()),
+      displayName: d.name || 'Document',
+      activity: 'Document Uploaded'
+    }))
+
+    const allActivities = [
+      ...tenantActivities, 
+      ...propertyActivities, 
+      ...leaseActivities, 
+      ...paymentActivities,
+      ...maintenanceActivities,
+      ...utilityActivities,
+      ...documentActivities
+    ]
     const sorted = allActivities.sort((a,b) => b.activityDate - a.activityDate)
-    return sorted.slice(0,3)
-  }, [tenants, properties])
+    return sorted.slice(0, 10) // Show more activities
+  }, [tenants, properties, leases, payments, maintenance, utilities, documents])
 
   const activityRows = useMemo(() => {
     return recentActivity.length === 0 ? [{ id: 'no-activity', type: 'empty' }] : recentActivity.map(tenant => ({ ...tenant, type: 'activity' }))
@@ -188,7 +249,7 @@ export default function DashboardPage() {
           <div className="table-container">
             <table className="data-table">
               <thead>
-                <tr><th>{t('Activity')}</th><th>{t('Tenant')}</th><th>{t('Date')}</th></tr>
+                <tr><th>{t('Activity')}</th><th>{t('Related To')}</th><th>{t('Date')}</th></tr>
               </thead>
               <tbody>
                 {activityRows.map((row, index) => (

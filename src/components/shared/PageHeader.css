@@ -1,8 +1,10 @@
 /* PageHeader Styles */
-.page-header {
+.shared-page-header {
+  display: block; /* Ensure block layout to override any global flex styles */
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid var(--border-color);
+  width: 100%;
 }
 
 .page-breadcrumbs {
@@ -48,6 +50,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
+  width: 100%; /* Ensure flex container takes full width */
 }
 
 .page-header-text {
@@ -132,6 +135,6 @@
   }
 }
 
-.page-header {
+.shared-page-header {
   animation: slideInDown 0.3s ease-out;
 }

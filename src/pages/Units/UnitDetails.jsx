@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { get } from '../../utils/api'; // Assuming 'get' is exported from api.js
-import { formatDate, formatCurrency } from '../../utils/utils';
+import { formatDate, formatCurrency, printFile } from '../../utils/utils';
+import Button from '../../components/ui/Button';
+import SharePrintModal from '../../components/ui/SharePrintModal';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
+import { getImageUrl } from '../../utils/api';
 import './UnitDetails.css'; // Import the specific CSS for this component
 
 const UnitDetails = () => {
@@ -16,6 +20,12 @@ const UnitDetails = () => {
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [selectedDocument, setSelectedDocument] = useState(null);
+    
+    // Share/Print State
+    const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [printModalOpen, setPrintModalOpen] = useState(false);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
     const UNIT_KEY = 'units';
     const PROPERTY_KEY = 'properties';
@@ -78,12 +88,70 @@ const UnitDetails = () => {
         setActiveTab(tab);
     };
 
+    const attachments = React.useMemo(() => {
+        const items = [];
+        if (currentUnit?.imageUrl) {
+            items.push({ type: 'image', name: 'Unit Image', url: getImageUrl(currentUnit.imageUrl) });
+        }
+        unitDocuments.forEach(doc => {
+            items.push({ type: 'document', name: doc.name, url: getImageUrl(doc.url) });
+        });
+        return items;
+    }, [currentUnit, unitDocuments]);
+
+    const handleAction = (mode, selection) => {
+        const item = selection === 'all' ? null : attachments[selection];
+        
+        if (mode === 'print') {
+            if (selection === 'all') {
+                window.print();
+            } else if (item) {
+                printFile(item.url);
+            }
+        } else if (mode === 'share') {
+            const shareData = selection === 'all' 
+                ? { title: `Unit: ${currentUnit.unitNumber}`, url: window.location.href }
+                : { title: item.name, url: item.url };
+
+            if (navigator.share) {
+                navigator.share(shareData).catch(console.error);
+            } else if (navigator.clipboard) {
+                navigator.clipboard.writeText(shareData.url).then(() => alert('Link copied'));
+            }
+        }
+        setShareModalOpen(false);
+        setPrintModalOpen(false);
+    };
+
+    const handleEdit = () => {
+        // navigate(`/units/${id}/edit`);
+        alert('Edit unit');
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm('Are you sure you want to delete this unit?')) {
+            try {
+                await api.delete(`units/${id}`);
+                alert('Unit deleted successfully');
+                navigate('/units');
+            } catch (err) {
+                console.error('Failed to delete unit:', err);
+                alert('Failed to delete unit');
+            }
+        }
+    };
+
     const openDocumentModal = (doc) => {
-        setSelectedDocument(doc);
+        setPreviewFile({
+            url: doc.url,
+            name: doc.name,
+            type: doc.type
+        });
+        setPreviewModalOpen(true);
     };
 
     const closeDocumentModal = () => {
-        setSelectedDocument(null);
+        setPreviewModalOpen(false);
     };
 
     if (loading) {
@@ -195,38 +263,33 @@ const UnitDetails = () => {
         </div>
     );
 
-    const renderDocumentModal = () => {
-        if (!selectedDocument) return null;
-
-        return (
-            <div className="modal-overlay" onClick={closeDocumentModal}>
-                <div className="modal-content-wrapper" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <h2>{selectedDocument.name}</h2>
-                        <button className="close-modal-btn" onClick={closeDocumentModal}>&times;</button>
-                    </div>
-                    <div id="modal-body" className="document-view">
-                        <div className="document-preview">
-                            {selectedDocument.type && selectedDocument.type.startsWith('image/') ? (
-                                <img src={selectedDocument.url} alt={selectedDocument.name} />
-                            ) : selectedDocument.type === 'application/pdf' ? (
-                                <iframe src={selectedDocument.url} title={selectedDocument.name}></iframe>
-                            ) : (
-                                <p>Preview not available for this file type.</p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
+    const renderDocumentModal = () => null; // Replaced by DocumentPreviewModal
 
     return (
         <main id="main-content" className="main-content">
             <div id="unit-details-view">
-                <button onClick={handleBack} className="btn-secondary back-btn">
-                    <i className="fa-solid fa-arrow-left"></i> Back to Units
-                </button>
+                <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <div>
+                        <Button variant="secondary" onClick={handleBack}>
+                            <i className="fa-solid fa-arrow-left"></i> Back to Units
+                        </Button>
+                        <h1 style={{ marginTop: '10px' }}>Unit {currentUnit.unitNumber} Details</h1>
+                    </div>
+                    <div className="page-actions" style={{ display: 'flex', gap: '10px' }}>
+                        <Button variant="secondary" onClick={() => setShareModalOpen(true)}>
+                            <i className="fa-solid fa-share"></i> Share
+                        </Button>
+                        <Button variant="secondary" onClick={() => setPrintModalOpen(true)}>
+                            <i className="fa-solid fa-print"></i> Print
+                        </Button>
+                        <Button variant="primary" onClick={handleEdit}>
+                            <i className="fa-solid fa-pencil"></i> Edit
+                        </Button>
+                        <Button variant="danger" onClick={handleDelete}>
+                            <i className="fa-solid fa-trash-can"></i> Delete
+                        </Button>
+                    </div>
+                </div>
 
                 {renderOverview()}
 
@@ -250,6 +313,30 @@ const UnitDetails = () => {
 
                 {renderDocumentModal()}
             </div>
+
+            <SharePrintModal 
+                isOpen={shareModalOpen} 
+                onClose={() => setShareModalOpen(false)} 
+                mode="share"
+                items={attachments}
+                onAction={(sel) => handleAction('share', sel)}
+            />
+            
+            <SharePrintModal 
+                isOpen={printModalOpen} 
+                onClose={() => setPrintModalOpen(false)} 
+                mode="print"
+                items={attachments}
+                onAction={(sel) => handleAction('print', sel)}
+            />
+
+            <DocumentPreviewModal
+                isOpen={previewModalOpen}
+                onClose={closeDocumentModal}
+                fileUrl={previewFile.url}
+                fileName={previewFile.name}
+                fileType={previewFile.type}
+            />
         </main>
     );
 };

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getImageUrl } from '../../utils/api';
-import { formatCurrency } from '../../utils/utils';
+import { formatCurrency, printFile } from '../../utils/utils';
 import { useLanguage } from '../../contexts/LanguageContext';
 import Button from '../../components/ui/Button';
 import SharePrintModal from '../../components/ui/SharePrintModal';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
 import './TenantDetails.css';
 
 export default function TenantDetails() {
@@ -22,6 +23,8 @@ export default function TenantDetails() {
   // Share/Print State
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,28 +76,65 @@ export default function TenantDetails() {
   const tenantUnit = useMemo(() => {
       const uId = tenant?.unitId || tenantLease?.unitId;
       if (!uId) return null;
-      const uIdStr = typeof uId === 'object' ? uId._id : uId;
+      const uIdStr = uId?._id || uId;
       return units.find(u => (u._id || u.id) === uIdStr);
   }, [tenant, tenantLease, units]);
 
   const tenantProperty = useMemo(() => {
       if (!tenantUnit) return null;
-      const pId = typeof tenantUnit.propertyId === 'object' ? tenantUnit.propertyId._id : tenantUnit.propertyId;
+      const pId = tenantUnit.propertyId?._id || tenantUnit.propertyId;
       return properties.find(p => (p._id || p.id) === pId);
   }, [tenantUnit, properties]);
 
 
   const attachments = useMemo(() => {
-    // Tenant might have profile picture or documents? 
-    // Assuming 'attachments' array based on previous code or specific fields
     const items = [];
-    if (tenant?.profilePicture) { // Example field
-        items.push({ type: 'image', name: 'Profile Picture', url: getImageUrl(tenant.profilePicture) });
+    
+    // Helper to determine type
+    const getFileType = (url, type) => {
+      const lowerUrl = (url || '').toLowerCase();
+      const lowerType = (type || '').toLowerCase();
+      if (lowerType === 'application/pdf' || lowerUrl.endsWith('.pdf')) return 'pdf';
+      if (lowerType.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|avif)$/i.test(lowerUrl)) return 'image';
+      return 'file';
+    };
+
+    // Add tenant ID photos
+    if (tenant?.idPhotos && Array.isArray(tenant.idPhotos)) {
+      tenant.idPhotos.forEach((photo, index) => {
+        const url = getImageUrl(photo.url);
+        items.push({ 
+          type: getFileType(photo.url, photo.type), 
+          name: photo.name || `ID Document ${index + 1}`, 
+          url 
+        });
+      });
     }
-    // Check lease documents if linked?
+    
+    // Add linked documents
+    if (tenant?.documents && Array.isArray(tenant.documents)) {
+      tenant.documents.forEach((doc) => {
+        const url = getImageUrl(doc.url);
+        items.push({
+          type: getFileType(doc.url, doc.type),
+          name: doc.name || 'Document',
+          url
+        });
+      });
+    }
+
+    // Check lease documents if linked
     if (tenantLease) {
-        if (tenantLease.leaseAgreementUrl) items.push({ type: 'document', name: 'Lease Agreement', url: getImageUrl(tenantLease.leaseAgreementUrl) });
+      if (tenantLease.leaseAgreementUrl) {
+        const url = getImageUrl(tenantLease.leaseAgreementUrl);
+        items.push({ 
+          type: getFileType(tenantLease.leaseAgreementUrl), 
+          name: 'Lease Agreement', 
+          url 
+        });
+      }
     }
+    
     return items;
   }, [tenant, tenantLease]);
 
@@ -105,8 +145,7 @@ export default function TenantDetails() {
         if (selection === 'all') {
             window.print();
         } else if (item) {
-            const w = window.open(item.url);
-            if (w) w.onload = () => w.print();
+            printFile(item.url);
         }
     } else if (mode === 'share') {
         const shareData = selection === 'all' 
@@ -134,6 +173,11 @@ export default function TenantDetails() {
         alert('Failed to delete tenant');
       }
     }
+  };
+
+  const handlePreview = (url, name, type) => {
+    setPreviewFile({ url, name, type });
+    setPreviewModalOpen(true);
   };
 
   if (loading) return <div className="loading">Loading...</div>;
@@ -192,18 +236,36 @@ export default function TenantDetails() {
           <div className="detail-section">
              <h4 style={{marginBottom:15, borderBottom:'1px solid #eee', paddingBottom:5}}>Attachments & Files</h4>
              {attachments.length === 0 ? <p className="text-gray-500">No attachments found.</p> : (
-                 <div style={{display:'grid', gap:15}}>
+                 <div style={{display:'grid', gap:20}}>
                      {attachments.map((att, i) => (
-                         <div key={i} style={{border:'1px solid #eee', borderRadius:8, overflow:'hidden'}}>
-                            {att.type === 'image' ? (
-                                <img src={att.url} alt={att.name} style={{width:'100%', height:'auto', display:'block'}} />
-                            ) : (
-                                <div style={{padding:20, textAlign:'center', background:'#f9f9f9'}}>
-                                    <i className="fa-solid fa-file-pdf fa-3x" style={{color:'#e74c3c', marginBottom:10}}></i>
-                                    <p>{att.name}</p>
-                                    <a href={att.url} target="_blank" rel="noreferrer" style={{color:'#2563eb', textDecoration:'underline'}}>View Document</a>
-                                </div>
-                            )}
+                         <div key={i} style={{border:'1px solid #eee', borderRadius:8, overflow:'hidden', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)'}}>
+                            <div style={{ padding: '8px 12px', borderBottom: '1px solid #eee', fontSize: '0.9rem', fontWeight: 500, backgroundColor: '#fcfcfc' }}>
+                                {att.name}
+                            </div>
+                             <div style={{ position: 'relative' }}>
+                                 {att.type === 'image' ? (
+                                     <img src={att.url} alt={att.name} style={{width:'100%', height:'auto', maxHeight: '400px', objectFit: 'contain', display:'block'}} />
+                                 ) : att.type === 'pdf' ? (
+                                     <div style={{ height: '400px' }}>
+                                         <iframe src={att.url} title={att.name} style={{ width: '100%', height: '100%', border: 'none' }} />
+                                     </div>
+                                 ) : (
+                                     <div style={{padding:40, textAlign:'center', background:'#f9f9f9'}}>
+                                         <i className="fa-solid fa-file-export fa-3x" style={{color:'#666', marginBottom:10}}></i>
+                                         <p>{att.name}</p>
+                                     </div>
+                                 )}
+                                 <div style={{ padding: '10px', textAlign: 'center', background: '#fcfcfc', borderTop: '1px solid #eee' }}>
+                                     <Button 
+                                         variant="secondary" 
+                                         onClick={() => handlePreview(att.url, att.name, att.type === 'pdf' ? 'application/pdf' : (att.type === 'image' ? 'image' : 'other'))}
+                                         style={{ fontSize: '0.8rem', padding: '4px 12px' }}
+                                     >
+                                         <i className="fa-solid fa-eye" style={{marginRight: 5}}></i>
+                                         Preview & Actions
+                                     </Button>
+                                 </div>
+                             </div>
                          </div>
                      ))}
                  </div>
@@ -226,6 +288,14 @@ export default function TenantDetails() {
         mode="print"
         items={attachments}
         onAction={(sel) => handleAction('print', sel)}
+      />
+
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        fileUrl={previewFile.url}
+        fileName={previewFile.name}
+        fileType={previewFile.type}
       />
     </div>
   );

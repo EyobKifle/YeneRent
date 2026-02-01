@@ -2,8 +2,9 @@
 
 .data-card {
   background: var(--card-bg);
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 3px 0 rgb(169, 169, 169);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
   padding: 1.5rem;
   overflow: visible;
 }
@@ -15,19 +16,21 @@
   border-radius: 0.375rem;
   font-size: 0.875rem;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  background-color: var(--card-bg);
+  color: var(--text-color);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .form-label {
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: var(--gray-700);
+  color: var(--text-color);
   margin-bottom: 0.5rem;
 }
 
@@ -69,7 +72,7 @@
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--gray-200);
+  border-top: 1px solid var(--border-color);
 }
 .form-hint {
   display: block;
@@ -132,7 +135,7 @@
 }
 
 .modal-content-wrapper {
-  background-color: white;
+  background-color: var(--card-bg);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   width: 100%;
@@ -442,15 +445,17 @@ tbody tr:hover {
     position: absolute;
     top: calc(100% + 4px);
     z-index: 99999;
-    background-color: white;
+    background-color: var(--card-bg);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
-    border: 1px solid var(--gray-200);
-    min-width: 160px;
+    border: 1px solid var(--border-color);
+    width: max-content;
+    min-width: auto;
     padding: 0.5rem 0;
     overflow: hidden;
-    /* Position based on parent */
-    left: 0;
+    /* Position centered based on parent */
+    left: 50%;
+    transform: translateX(-50%);
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
@@ -461,10 +466,11 @@ tbody tr:hover {
     visibility: visible;
 }
 
-/* For dropdowns that should be aligned to the right, like in the header */
+/* For dropdowns that should be aligned to the right */
 .dropdown-menu.align-right {
     left: auto;
     right: 0;
+    transform: none;
 }
 
 .dropdown-item {

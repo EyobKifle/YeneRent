@@ -6,21 +6,22 @@
 /* Stats Cards */
 .tenants-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .stats-card {
-  padding: 1.5rem;
+  padding: 1rem;
   border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  background-color: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  background-color: var(--card-bg);
+  border-left: 4px solid var(--primary-color);
   transition: all 0.2s ease;
 }
 
 .stats-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
@@ -186,12 +187,10 @@
 .tenants-stats > *:nth-child(4) { animation-delay: 0.4s; }
 
 /* Dark theme adjustments */
-@media (prefers-color-scheme: dark) {
-  .stats-card {
-    background-color: var(--bg-secondary);
-  }
+[data-theme="dark"] .stats-card {
+  background-color: var(--bg-primary);
+}
 
-  .stats-icon {
-    background-color: var(--accent-color);
-  }
+[data-theme="dark"] .stats-icon {
+  background-color: var(--accent-color);
 }

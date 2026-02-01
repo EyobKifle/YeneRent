@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api, { getImageUrl } from '../../utils/api';
-import { formatDate, formatFileSize } from '../../utils/utils';
+import { formatDate, formatFileSize, printFile } from '../../utils/utils';
 import Button from '../../components/ui/Button';
 import SharePrintModal from '../../components/ui/SharePrintModal';
+import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
 import './DocumentDetails.css';
 
 const DocumentDetails = () => {
@@ -17,6 +18,8 @@ const DocumentDetails = () => {
     
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [printModalOpen, setPrintModalOpen] = useState(false);
+    const [previewModalOpen, setPreviewModalOpen] = useState(false);
+    const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
 
     useEffect(() => {
         const fetchDocumentDetails = async () => {
@@ -64,20 +67,7 @@ const DocumentDetails = () => {
             if (selection === 'all') {
                 window.print();
             } else if (item) {
-                // For PDFs, try to print the iframe content
-                if (currentDocument.type === 'application/pdf') {
-                    const iframe = document.querySelector('.document-preview-content iframe');
-                    if (iframe) {
-                        try {
-                            iframe.contentWindow.print();
-                        } catch (e) {
-                            window.print();
-                        }
-                    }
-                } else {
-                    const w = window.open(item.url);
-                    if (w) w.onload = () => w.print();
-                }
+                printFile(item.url);
             }
         } else if (mode === 'share') {
             const shareData = selection === 'all' 
@@ -116,6 +106,17 @@ const DocumentDetails = () => {
                 alert('Failed to delete document.');
             }
         }
+    };
+    
+    const handlePreview = (url, name, type) => {
+        const fileUrl = url || currentDocument?.url;
+        if (!fileUrl) return;
+        setPreviewFile({ 
+            url: fileUrl, 
+            name: name || currentDocument?.name, 
+            type: type || currentDocument?.type 
+        });
+        setPreviewModalOpen(true);
     };
 
     if (loading) {
@@ -163,7 +164,7 @@ const DocumentDetails = () => {
                 <div className="placeholder-message">
                     <i className={`${icon} ${iconClass}`}></i>
                     <p>Preview not available for this file type.</p>
-                    <p>Click "Download File" to view.</p>
+                    <p>Click "Preview Document" to view, download, or print.</p>
                 </div>
             );
         }
@@ -208,21 +209,54 @@ const DocumentDetails = () => {
                         </div>
                         <div className="detail-section document-preview-section">
                             <h4>Document Preview</h4>
-                            <div id="document-preview-content" className="document-preview-content">
-                                {renderDocumentPreviewContent()}
-                            </div>
-                            <div className="preview-actions">
-                                <a
-                                    id="download-document-btn"
-                                    href={currentDocument.url ? getImageUrl(currentDocument.url) : '#'}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    download={currentDocument.name}
-                                    className={`btn-secondary ${!currentDocument.url ? 'hidden' : ''}`}
-                                >
-                                    <i className="fa-solid fa-download"></i> Download File
-                                </a>
-                            </div>
+                            {(() => {
+                                const fullUrl = getImageUrl(currentDocument.url);
+                                const isPdf = currentDocument.type === 'application/pdf' || currentDocument.url.toLowerCase().endsWith('.pdf');
+                                const isImage = currentDocument.type?.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp)$/i.test(currentDocument.url);
+                                
+                                const renderContainer = (content) => (
+                                    <div className="detail-image-preview" style={{width: '100%', border: '1px solid #e5e7eb', borderRadius: '0.5rem', overflow: 'hidden', backgroundColor: 'white', padding: '0.75rem'}}>
+                                        {content}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                                            <span style={{fontWeight: 'bold', fontSize: '0.9rem'}}>{currentDocument.name}</span>
+                                            <Button variant="secondary" onClick={() => handlePreview(currentDocument.url, currentDocument.name, currentDocument.type)} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+                                                Preview
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+
+                                if (isPdf) {
+                                    return renderContainer(
+                                        <div style={{ height: '200px', width: '100%', overflow: 'hidden', backgroundColor: '#f9f9f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <iframe 
+                                                src={fullUrl + "#toolbar=0&navpanes=0&scrollbar=0"} 
+                                                title="Document PDF" 
+                                                style={{ width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }} 
+                                            />
+                                        </div>
+                                    );
+                                }
+
+                                if (isImage) {
+                                    return renderContainer(
+                                        <img 
+                                            src={fullUrl} 
+                                            alt={currentDocument.name} 
+                                            onClick={() => handlePreview(currentDocument.url, currentDocument.name, currentDocument.type)} 
+                                            style={{ cursor: 'pointer', height: '200px', objectFit: 'cover', width: '100%', borderRadius: '4px' }} 
+                                        />
+                                    );
+                                }
+
+                                // For other file types
+                                return renderContainer(
+                                    <div style={{ height: '200px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f3f4f6', color: '#6b7280' }}>
+                                        <i className={getFileIcon(currentDocument.type).icon} style={{ fontSize: '3rem', marginBottom: '1rem' }}></i>
+                                        <span>Preview not available</span>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>
@@ -242,6 +276,14 @@ const DocumentDetails = () => {
                 mode="print"
                 items={attachments}
                 onAction={(sel) => handleAction('print', sel)}
+            />
+
+            <DocumentPreviewModal
+                isOpen={previewModalOpen}
+                onClose={() => setPreviewModalOpen(false)}
+                fileUrl={previewFile.url}
+                fileName={previewFile.name}
+                fileType={previewFile.type}
             />
         </main>
     );

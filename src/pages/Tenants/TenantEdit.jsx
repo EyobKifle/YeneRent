@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../../utils/api';
+import api, { getImageUrl } from '../../utils/api';
 import Button from '../../components/ui/Button';
 import { useLanguage } from '../../contexts/LanguageContext';
 import './TenantEdit.css';
@@ -40,13 +40,21 @@ export default function TenantEdit() {
           api.get(`/tenants/${id}`)
         ]);
         setUnits(unitsData || []);
+        
+        // Helper function to convert ISO date to YYYY-MM-DD format
+        const formatDateForInput = (dateString) => {
+          if (!dateString) return '';
+          const date = new Date(dateString);
+          return date.toISOString().split('T')[0];
+        };
+        
         setFormData({
           name: tenantData.name || '',
           email: tenantData.email || '',
           phone: tenantData.phone || '',
           unitId: tenantData.unitId || '',
-          moveInDate: tenantData.moveInDate || '',
-          moveOutDate: tenantData.moveOutDate || '',
+          moveInDate: formatDateForInput(tenantData.moveInDate),
+          moveOutDate: formatDateForInput(tenantData.moveOutDate),
           tinNumber: tenantData.tinNumber || '',
           emergencyContact: tenantData.emergencyContact || {
             name: '',
@@ -140,11 +148,7 @@ export default function TenantEdit() {
             const formDataUpload = new FormData();
             formDataUpload.append('file', photo);
 
-            const uploadResponse = await api.post('uploads/image', formDataUpload, {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            });
+            const uploadResponse = await api.post('uploads/document', formDataUpload);
 
             idPhotoUrls.push({
               url: uploadResponse.url,
@@ -259,7 +263,7 @@ export default function TenantEdit() {
           >
             <option value="">{t('Select Unit (Optional)')}</option>
             {units.map(unit => (
-              <option key={unit.id} value={unit.id}>
+              <option key={unit._id || unit.id} value={unit._id || unit.id}>
                 {t('Unit')} {unit.unitNumber} - {unit.propertyId?.name || t('Unknown Property')}
               </option>
             ))}
@@ -363,7 +367,7 @@ export default function TenantEdit() {
             type="file"
             id="idPhotos"
             name="idPhotos"
-            accept="image/*"
+            accept="image/*,.pdf"
             multiple
             onChange={handleInputChange}
           />
@@ -373,43 +377,61 @@ export default function TenantEdit() {
                 {t('Selected photos')} ({formData.idPhotos.length}):
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {formData.idPhotos.map((photo, index) => (
-                  <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
-                    <img
-                      src={photo.url || URL.createObjectURL(photo)}
-                      alt={`ID Photo ${index + 1}`}
-                      style={{
-                        width: '80px',
-                        height: '60px',
-                        objectFit: 'cover',
-                        borderRadius: '4px',
-                        border: '1px solid #ddd'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeIdPhoto(index)}
-                      style={{
-                        position: 'absolute',
-                        top: '-8px',
-                        right: '-8px',
-                        background: '#ff4444',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                {formData.idPhotos.map((photo, index) => {
+                  // Check if photo is a File object (new upload) or an already-uploaded photo object
+                  const isFileObject = photo instanceof File;
+                  const imageUrl = isFileObject 
+                    ? URL.createObjectURL(photo) 
+                    : getImageUrl(photo.url);
+                  
+                  const isPdf = isFileObject 
+                    ? photo.type === 'application/pdf'
+                    : (photo.url?.toLowerCase().endsWith('.pdf') || photo.type === 'application/pdf');
+                  
+                  return (
+                    <div key={index} style={{ position: 'relative', display: 'inline-block' }}>
+                      {isPdf ? (
+                        <div style={{ width: '80px', height: '60px', borderRadius: '4px', border: '1px solid #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
+                          <i className="fa-solid fa-file-pdf fa-2x" style={{ color: '#ff4444' }}></i>
+                        </div>
+                      ) : (
+                        <img
+                          src={imageUrl}
+                          alt={`ID Photo ${index + 1}`}
+                          style={{
+                            width: '80px',
+                            height: '60px',
+                            objectFit: 'cover',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd'
+                          }}
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeIdPhoto(index)}
+                        style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          right: '-8px',
+                          background: '#ff4444',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

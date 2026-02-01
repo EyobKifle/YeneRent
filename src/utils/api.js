@@ -115,7 +115,12 @@ class ApiClient {
       const data = await response.json();
 
       // Cache successful GET responses
-      this.setCache(endpoint, options, data);
+      if ((options.method || 'GET') === 'GET') {
+        this.setCache(endpoint, options, data);
+      } else {
+        // Clear cache on mutation to ensure fresh data for subsequent GETs
+        this.cache.clear();
+      }
 
       return data;
     } catch (error) {
@@ -320,6 +325,8 @@ const api = {
 
   // Auth
   async login(credentials) {
+    // Clear cache before login to ensure fresh state
+    apiClient.cache.clear();
     const response = await apiClient.post('/auth/login', credentials);
     if (response.token) {
       localStorage.setItem('token', response.token);
@@ -328,6 +335,8 @@ const api = {
   },
 
   async register(userData) {
+    // Clear cache before register
+    apiClient.cache.clear();
     const response = await apiClient.post('/auth/register', userData);
     if (response.token) {
       localStorage.setItem('token', response.token);
@@ -400,6 +409,12 @@ const api = {
   // Logout helper
   logout() {
     localStorage.removeItem('token');
+    apiClient.cache.clear(); // Correctly clear the apiClient cache
+  },
+
+  // Clear cache manually if needed
+  clearCache() {
+    apiClient.cache.clear();
   }
 };
 

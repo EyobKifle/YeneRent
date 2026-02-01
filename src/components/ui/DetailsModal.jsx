@@ -1,11 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import Modal from './Modal';
 import Button from './Button';
+import DocumentPreviewModal from './DocumentPreviewModal';
 import { getImageUrl } from '../../utils/api';
 
 // fields: [{ label, value }]
 // attachments: [{ url, type, name }]
 export default function DetailsModal({ isOpen, title, onClose, fields = [], attachments = [], permalink }) {
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState({ url: '', name: '', type: '' });
   const primaryAttachment = useMemo(() => attachments && attachments.length > 0 ? attachments[0] : null, [attachments]);
 
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
@@ -29,28 +32,65 @@ export default function DetailsModal({ isOpen, title, onClose, fields = [], atta
     window.print();
   };
 
+  const handlePreview = (url, name, type) => {
+    setPreviewFile({ url, name, type });
+    setPreviewModalOpen(true);
+  };
+
   const renderPreview = (att) => {
     if (!att || !att.url) return null;
     const fullUrl = getImageUrl(att.url);
     const type = (att.type || '').toLowerCase();
     
-    if (type.startsWith('image/')) {
+    // Robust type detection
+    const isImage = type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|avif)$/i.test(att.url);
+    const isPdf = type === 'application/pdf' || type.includes('pdf') || att.url.toLowerCase().endsWith('.pdf');
+    
+    if (isImage) {
       return (
-        <div className="details-preview">
-          <img src={fullUrl} alt={att.name || 'Attachment'} style={{ maxWidth: '100%', borderRadius: 6 }} />
+        <div className="details-preview" style={{ marginTop: '1rem', textAlign: 'center' }}>
+          <img src={fullUrl} alt={att.name || 'Attachment'} style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} />
+          <div style={{ marginTop: '8px' }}>
+            <Button 
+              variant="secondary" 
+              onClick={() => handlePreview(att.url, att.name || 'Image', type)}
+              style={{ fontSize: '0.8rem', padding: '4px 12px' }}
+            >
+              <i className="fa-solid fa-eye" style={{ marginRight: '8px' }} />
+              Preview & Actions
+            </Button>
+          </div>
         </div>
       );
     }
-    if (type === 'application/pdf') {
+    
+    if (isPdf) {
       return (
-        <div className="details-preview" style={{ height: 400 }}>
-          <iframe title="PDF Preview" src={fullUrl} style={{ width: '100%', height: '100%', border: 'none' }} />
+        <div className="details-preview" style={{ height: 450, marginTop: '1rem', display: 'flex', flexDirection: 'column', border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
+          <iframe title="PDF Preview" src={fullUrl} style={{ width: '100%', flex: 1, border: 'none' }} />
+          <div style={{ padding: '10px', textAlign: 'center', background: '#f9f9f9', borderTop: '1px solid #eee' }}>
+            <Button 
+              variant="secondary" 
+              onClick={() => handlePreview(att.url, att.name || 'PDF', type)}
+              style={{ fontSize: '0.8rem', padding: '4px 12px' }}
+            >
+              <i className="fa-solid fa-eye" style={{ marginRight: '8px' }} />
+              Preview & Actions
+            </Button>
+          </div>
         </div>
       );
     }
+
     return (
-      <div className="details-preview">
-        <a href={att.url} target="_blank" rel="noreferrer">Open attachment</a>
+      <div className="details-preview" style={{ marginTop: '1rem', textAlign: 'center' }}>
+        <Button 
+          variant="secondary" 
+          onClick={() => handlePreview(att.url, att.name || 'File', type)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}
+        >
+          <i className="fa-solid fa-eye" /> Preview & Actions: {att.name || 'File'}
+        </Button>
       </div>
     );
   };
@@ -72,8 +112,24 @@ export default function DetailsModal({ isOpen, title, onClose, fields = [], atta
             ))}
           </div>
         )}
-        {renderPreview(primaryAttachment)}
+        {attachments && attachments.length > 0 && (
+          <div className="details-attachments" style={{ display: 'grid', gap: '1rem' }}>
+            {attachments.map((att, idx) => (
+              <div key={idx} className="attachment-wrapper">
+                {attachments.length > 1 && <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.25rem' }}>Attachment {idx + 1}: {att.name}</div>}
+                {renderPreview(att)}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+      <DocumentPreviewModal
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        fileUrl={previewFile.url}
+        fileName={previewFile.name}
+        fileType={previewFile.type}
+      />
     </Modal>
   );
 }

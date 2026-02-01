@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../utils/api';
-import { readFileAsDataURL } from '../../utils/utils';
 import Button from '../../components/ui/Button';
 import './DocumentEdit.css';
 
 export default function DocumentEdit() {
   const { documentId } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -91,23 +90,40 @@ export default function DocumentEdit() {
       let fileType = null;
       let fileSize = null;
 
+      // Handle file upload if new file selected
       if (formData.file) {
-        fileUrl = await readFileAsDataURL(formData.file);
-        fileName = formData.file.name;
-        fileType = formData.file.type;
-        fileSize = formData.file.size;
+        const uploadForm = new FormData();
+        uploadForm.append('file', formData.file);
+        
+        try {
+            const res = await api.post('uploads/document', uploadForm);
+            if (res && res.url) {
+                fileUrl = res.url;
+                fileName = res.originalName || formData.file.name;
+                fileType = formData.file.type || 'application/octet-stream';
+                fileSize = formData.file.size;
+            }
+        } catch (uploadError) {
+            console.error('File upload failed:', uploadError);
+            setErrors({ general: 'Failed to upload new file. Please try again.' });
+            setLoading(false);
+            return;
+        }
       }
 
       const documentData = {
         name: formData.name,
         category: formData.category,
-        url: fileUrl,
-        fileName: fileName,
-        type: fileType,
-        size: fileSize,
         propertyId: formData.propertyId || null,
         tenantId: formData.tenantId || null
       };
+
+      if (fileUrl) {
+          documentData.url = fileUrl;
+          documentData.fileName = fileName;
+          documentData.type = fileType;
+          documentData.size = fileSize;
+      }
 
       await api.put(`/documents/${documentId}`, documentData);
       navigate(`/documents/${documentId}`);
@@ -189,7 +205,7 @@ export default function DocumentEdit() {
             >
               <option value="">{t('Select Property')}</option>
               {properties.map(prop => (
-                <option key={prop.id} value={prop.id}>{prop.name}</option>
+                <option key={prop._id || prop.id} value={prop._id || prop.id}>{prop.name}</option>
               ))}
             </select>
           </div>
@@ -203,7 +219,7 @@ export default function DocumentEdit() {
             >
               <option value="">{t('Select Tenant')}</option>
               {tenants.map(tenant => (
-                <option key={tenant.id} value={tenant.id}>{tenant.name}</option>
+                <option key={tenant._id || tenant.id} value={tenant._id || tenant.id}>{tenant.name}</option>
               ))}
             </select>
           </div>

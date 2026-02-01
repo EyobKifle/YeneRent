@@ -24,13 +24,13 @@
 }
 
 .btn.variant-secondary {
-  background-color: white;
-  color: var(--gray-700);
-  border: 1px solid var(--gray-300);
+  background-color: var(--card-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
 }
 
 .btn.variant-secondary:hover {
-  background-color: var(--gray-50);
+  background-color: var(--gray-100);
 }
 
 .btn.btn-large {

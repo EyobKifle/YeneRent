@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../contexts/LanguageContext';
 import api from '../../utils/api';
 import Button from '../../components/ui/Button';
+import NumberInput from '../../components/ui/NumberInput';
 import './MaintenanceEdit.css';
 
 export default function MaintenanceEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({
     title: '',
-    property: '',
+    propertyId: '',
     status: 'pending',
     reportedDate: '',
     cost: ''
@@ -21,6 +22,15 @@ export default function MaintenanceEdit() {
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [errors, setErrors] = useState({});
+
+  // File states
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [beforeImageFile, setBeforeImageFile] = useState(null);
+  const [afterImageFile, setAfterImageFile] = useState(null);
+  
+  // Existing file data
+  const [currentReceipt, setCurrentReceipt] = useState(null);
+  const [currentImages, setCurrentImages] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -32,11 +42,15 @@ export default function MaintenanceEdit() {
         setProperties(propertiesData.properties || []);
         setFormData({
           title: maintenanceData.title || '',
-          property: maintenanceData.property || '',
+          propertyId: (maintenanceData.propertyId?._id || maintenanceData.propertyId) || '',
           status: maintenanceData.status || 'pending',
-          reportedDate: maintenanceData.reportedDate || '',
+          reportedDate: maintenanceData.reportedDate ? maintenanceData.reportedDate.split('T')[0] : '',
           cost: maintenanceData.cost || ''
         });
+        
+        setCurrentReceipt(maintenanceData.receiptUrl ? { name: maintenanceData.receiptName, url: maintenanceData.receiptUrl } : null);
+        setCurrentImages(maintenanceData.images || []);
+
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -63,7 +77,7 @@ export default function MaintenanceEdit() {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.property) newErrors.property = 'Property is required';
+    if (!formData.propertyId) newErrors.propertyId = 'Property is required';
     if (!formData.reportedDate) newErrors.reportedDate = 'Reported date is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -77,11 +91,57 @@ export default function MaintenanceEdit() {
     try {
       const maintenanceData = {
         title: formData.title,
-        property: formData.property,
+        propertyId: formData.propertyId,
         status: formData.status,
         reportedDate: formData.reportedDate,
         cost: parseFloat(formData.cost) || 0
       };
+
+      // Handle uploads
+      try {
+        if (receiptFile) {
+          const form = new FormData();
+          form.append('file', receiptFile);
+          const res = await api.post('uploads/document', form);
+          if (res && res.url) {
+            maintenanceData.receiptUrl = res.url;
+            maintenanceData.receiptName = res.originalName || receiptFile.name;
+          }
+        }
+
+        // Handle Images
+        let updatedImages = [...currentImages];
+        
+        if (beforeImageFile) {
+          const form = new FormData();
+          form.append('file', beforeImageFile);
+          const res = await api.post('uploads/image', form);
+          if (res && res.url) {
+            // Remove existing Before image if present
+            updatedImages = updatedImages.filter(img => img.caption !== 'Before');
+            updatedImages.push({ url: res.url, caption: 'Before' });
+          }
+        }
+
+        if (afterImageFile) {
+          const form = new FormData();
+          form.append('file', afterImageFile);
+          const res = await api.post('uploads/image', form);
+          if (res && res.url) {
+             // Remove existing After image if present
+             updatedImages = updatedImages.filter(img => img.caption !== 'After');
+             updatedImages.push({ url: res.url, caption: 'After' });
+          }
+        }
+
+        maintenanceData.images = updatedImages;
+
+      } catch (uploadError) {
+        console.error('File upload failed:', uploadError);
+        setErrors({ general: 'File upload failed, please try again.' });
+        setLoading(false);
+        return;
+      }
 
       await api.put(`/maintenance/${id}`, maintenanceData);
       navigate(`/maintenance/${id}`);
@@ -135,20 +195,20 @@ export default function MaintenanceEdit() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="property">{t('Property')} *</label>
+          <label htmlFor="propertyId">{t('Property')} *</label>
           <select
-            id="property"
-            name="property"
-            value={formData.property}
+            id="propertyId"
+            name="propertyId"
+            value={formData.propertyId}
             onChange={handleInputChange}
-            className={errors.property ? 'error' : ''}
+            className={errors.propertyId ? 'error' : ''}
           >
             <option value="">{t('Select Property')}</option>
             {properties.map(prop => (
-              <option key={prop} value={prop}>{prop}</option>
+              <option key={prop._id} value={prop._id}>{prop.name}</option>
             ))}
           </select>
-          {errors.property && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.property}</span>}
+          {errors.propertyId && <span className="error-text" style={{ color: 'red', fontSize: '0.875rem' }}>{errors.propertyId}</span>}
         </div>
 
         <div className="form-group">
@@ -184,8 +244,55 @@ export default function MaintenanceEdit() {
             value={formData.cost}
             onChange={(value) => setFormData(prev => ({ ...prev, cost: value }))}
             placeholder="0.00"
-            min={0}
             step={0.01}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="receipt">{t('Receipt (Image/PDF)')}</label>
+          {currentReceipt && (
+            <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+              Current: <a href={api.getImageUrl ? api.getImageUrl(currentReceipt.url) : currentReceipt.url} target="_blank" rel="noopener noreferrer">{currentReceipt.name || 'View Receipt'}</a>
+            </div>
+          )}
+          <input
+            type="file"
+            id="receipt"
+            name="receipt"
+            accept="image/*,.pdf"
+            onChange={(e) => setReceiptFile(e.target.files[0])}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="beforeImage">{t('Before Image')}</label>
+          {currentImages.some(img => img.caption === 'Before') && (
+            <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
+              Checked: Current "Before" image exists. Uploading new one will replace it.
+            </div>
+          )}
+          <input
+            type="file"
+            id="beforeImage"
+            name="beforeImage"
+            accept="image/*"
+            onChange={(e) => setBeforeImageFile(e.target.files[0])}
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="afterImage">{t('After Image')}</label>
+          {currentImages.some(img => img.caption === 'After') && (
+             <div style={{ marginBottom: '0.5rem', fontSize: '0.9rem', color: '#666' }}>
+               Checked: Current "After" image exists. Uploading new one will replace it.
+             </div>
+          )}
+          <input
+            type="file"
+            id="afterImage"
+            name="afterImage"
+            accept="image/*"
+            onChange={(e) => setAfterImageFile(e.target.files[0])}
           />
         </div>
 

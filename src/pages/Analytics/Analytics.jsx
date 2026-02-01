@@ -49,26 +49,38 @@ class AnalyticsDataService {
         const monthLabels = [];
 
         let currentDate = new Date(startDate);
+        // set to first day of start month to ensure we catch everything
+        currentDate.setDate(1); 
+        
         const end = new Date(endDate);
+        // set to last day of end month to ensure loop covers it
+        end.setDate(1); 
+        end.setMonth(end.getMonth() + 1);
+        end.setDate(0);
 
-        while (currentDate <= end) {
-            const label = currentDate.toLocaleString("en-US", { month: "short", year: "numeric" });
-            const key = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+        // Reset loop variable
+        let loopDate = new Date(currentDate);
+
+        while (loopDate <= end) {
+            const label = loopDate.toLocaleString("en-US", { month: "short", year: "numeric" });
+            const key = `${loopDate.getFullYear()}-${loopDate.getMonth()}`;
             data[key] = { revenue: 0, expenses: 0 };
             monthLabels.push(label);
-            currentDate.setMonth(currentDate.getMonth() + 1);
+            loopDate.setMonth(loopDate.getMonth() + 1);
         }
 
         payments.forEach((p) => {
-            const [year, month] = p.date.split('-').map(Number);
-            const key = `${year}-${month - 1}`;
-            if (data[key]) data[key].revenue += p.amount;
+            if (!p.date) return;
+            const d = new Date(p.date);
+            const key = `${d.getFullYear()}-${d.getMonth()}`;
+            if (data[key]) data[key].revenue += (p.amount || 0);
         });
 
         expenses.forEach((e) => {
-            const [year, month] = e.date.split('-').map(Number);
-            const key = `${year}-${month - 1}`;
-            if (data[key]) data[key].expenses += e.amount;
+            if (!e.date) return;
+            const d = new Date(e.date);
+            const key = `${d.getFullYear()}-${d.getMonth()}`;
+            if (data[key]) data[key].expenses += (e.amount || 0);
         });
 
         return {
@@ -81,29 +93,42 @@ class AnalyticsDataService {
     async _getProperties() {
         if (!this.cache.properties) {
             const response = await this.api.get("properties");
-            this.cache.properties = response.properties || [];
+            this.cache.properties = Array.isArray(response) ? response : (response.properties || []);
         }
         return this.cache.properties;
     }
 
     async _getLeases() {
         if (!this.cache.leases) {
-            this.cache.leases = await this.api.get("leases");
+            const response = await this.api.get("leases");
+            this.cache.leases = Array.isArray(response) ? response : (response.leases || []);
         }
         return this.cache.leases;
     }
 
     async _getUnits() {
         if (!this.cache.units) {
-            this.cache.units = await this.api.get("units");
+            const response = await this.api.get("units");
+            this.cache.units = Array.isArray(response) ? response : (response.units || []);
         }
         return this.cache.units;
     }
 
     async getReportData(start, end, propertyId) {
-        const [payments, expenses, allProperties, allLeases, allUnits] = await Promise.all([
-            this.api.get("payments"),
-            this.api.get("expenses"),
+        let paymentsRes, expensesRes;
+        try {
+            paymentsRes = await this.api.get("payments");
+            expensesRes = await this.api.get("expenses");
+        } catch (e) {
+            console.error("Error fetching payments/expenses", e);
+            paymentsRes = [];
+            expensesRes = [];
+        }
+        
+        const payments = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes.payments || []);
+        const expenses = Array.isArray(expensesRes) ? expensesRes : (expensesRes.expenses || []);
+
+        const [allProperties, allLeases, allUnits] = await Promise.all([
             this._getProperties(),
             this._getLeases(),
             this._getUnits(),
@@ -116,28 +141,33 @@ class AnalyticsDataService {
             ? allLeases.filter((l) => propertyUnitIds.includes(l.unitId?._id || l.unitId)).map((l) => l._id || l.id)
             : null;
 
-        const filteredPayments = payments.filter(
-            (p) =>
-                p.status === "Paid" &&
-                (!start || p.date >= start) &&
-                (!end || p.date <= end) &&
-                (propertyId === "all" || (propertyLeaseIds && propertyLeaseIds.includes(p.leaseId?._id || p.leaseId)))
-        );
+        // Normalizing Date Comparison: Compare YYYY-MM-DD strings to avoid time issues
+        const filteredPayments = payments.filter((p) => {
+            if (p.status !== "Paid") return false;
+            const pDate = p.date ? new Date(p.date).toISOString().split('T')[0] : '';
+            return (!start || pDate >= start) &&
+                   (!end || pDate <= end) &&
+                   (propertyId === "all" || (propertyLeaseIds && propertyLeaseIds.includes(p.leaseId?._id || p.leaseId)));
+        });
 
-        const filteredExpenses = expenses.filter(
-            (e) =>
-                (!start || e.date >= start) &&
-                (!end || e.date <= end) &&
-                (propertyId === "all" || (e.propertyId?._id || e.propertyId) === propertyId)
-        );
+        const filteredExpenses = expenses.filter((e) => {
+            const eDate = e.date ? new Date(e.date).toISOString().split('T')[0] : '';
+            return (!start || eDate >= start) &&
+                   (!end || eDate <= end) &&
+                   (propertyId === "all" || (e.propertyId?._id || e.propertyId) === propertyId);
+        });
 
-        const totalRevenue = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
-        const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalRevenue = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
         const netProfit = totalRevenue - totalExpenses;
 
         const incomeByProperty = this._aggregateIncomeByProperty(filteredPayments, allLeases, allUnits, allProperties);
         const expenseByCategory = this._aggregateExpenseByCategory(filteredExpenses);
-        const taxData = this.taxCalculator.calculateAllTaxes({ totalRevenue, totalExpenses, paymentsByProperty: incomeByProperty, expenses: filteredExpenses });
+        
+        let taxData = { vat: { payable: 0 }, businessIncomeTax: { payable: 0 }, withholdingTax: { total: 0 }, totalTaxLiability: 0 };
+        if (this.taxCalculator) {
+             taxData = this.taxCalculator.calculateAllTaxes({ totalRevenue, totalExpenses, paymentsByProperty: incomeByProperty, expenses: filteredExpenses });
+        }
 
         const transactions = this._collateTransactions(filteredPayments, filteredExpenses);
 
@@ -170,7 +200,7 @@ class AnalyticsDataService {
                 if (!acc[propId]) {
                     acc[propId] = { name: property.name, totalIncome: 0, taxType: property.taxType, id: propId };
                 }
-                acc[propId].totalIncome += p.amount;
+                acc[propId].totalIncome += (p.amount || 0);
             }
             return acc;
         }, {});
@@ -178,7 +208,8 @@ class AnalyticsDataService {
 
     _aggregateExpenseByCategory(expenses) {
         return expenses.reduce((acc, e) => {
-            acc[e.category] = (acc[e.category] || 0) + e.amount;
+            const category = e.category || 'Uncategorized';
+            acc[category] = (acc[category] || 0) + (e.amount || 0);
             return acc;
         }, {});
     }
@@ -187,18 +218,18 @@ class AnalyticsDataService {
         const transactions = [
             ...payments.map((p) => ({
                 date: p.date,
-                description: `Rent Payment for Lease ${p.leaseId}`,
+                description: `Rent - ${p.tenantId?.name || 'Unknown User'}`,
                 category: "Rent",
                 type: "Income",
-                amount: p.amount,
+                amount: p.amount || 0,
                 recordedBy: "System",
             })),
             ...expenses.map((e) => ({
                 date: e.date,
-                description: e.description,
-                category: e.category,
+                description: e.description || 'Expense',
+                category: e.category || 'Expense',
                 type: "Expense",
-                amount: -e.amount,
+                amount: -(e.amount || 0),
                 recordedBy: "System",
             })),
         ];
@@ -402,12 +433,8 @@ const Analytics = () => {
         }
     }, [reportData, renderChart]);
 
-    const exportToPDF = () => {
-        // This functionality requires a library like html2pdf.js
-        // For now, we'll just log a message.
-        console.log("Export to PDF functionality not yet implemented in React.");
-        // In a real app, you'd use a library like html2pdf.js or generate a PDF on the server.
-        // Example: html2pdf().from(document.getElementById('analytics-report-content')).save();
+    const handleGenerateReport = () => {
+        window.print();
     };
 
     if (loading && !reportData) {
@@ -438,7 +465,9 @@ const Analytics = () => {
                 title="Analytics & Reports"
                 description="Visualize your portfolio's financial performance."
                 actions={
-                    <button id="export-pdf" className="btn-secondary" onClick={exportToPDF}><i className="fa-solid fa-file-pdf"></i> Export as PDF</button>
+                    <button id="generate-report-btn" className="btn-primary" onClick={handleGenerateReport}>
+                        <i className="fa-solid fa-file-invoice"></i> Generate Report
+                    </button>
                 }
             />
 
@@ -461,9 +490,7 @@ const Analytics = () => {
                         ))}
                     </select>
                 </div>
-                <button id="btn-generate-report" className="btn-secondary" onClick={generateReport} disabled={loading}>
-                    {loading ? 'Generating...' : 'Generate Report'}
-                </button>
+
             </div>
 
             {/* Key Stats */}

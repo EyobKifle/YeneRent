@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import './Units.css'
 import { Card } from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import api from '../../utils/api'
+import api, { getImageUrl } from '../../utils/api'
 
 const fmtCurrency = (v) => {
   try { return new Intl.NumberFormat('en-ET', { style: 'currency', currency: 'ETB', maximumFractionDigits: 0 }).format(v || 0) } catch { return `ETB ${Number(v||0).toLocaleString()}` }
@@ -14,6 +14,7 @@ export default function UnitsPage() {
   const propertyIdFromUrl = searchParams.get('propertyId')
   const [propertyId, setPropertyId] = useState(propertyIdFromUrl || '')
   const [properties, setProperties] = useState([])
+  const [openActionId, setOpenActionId] = useState(null)
   const [units, setUnits] = useState([])
   const [tenants, setTenants] = useState([])
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -106,9 +107,7 @@ export default function UnitsPage() {
   //     if (formData.image) {
   //       const formDataUpload = new FormData()
   //       formDataUpload.append('file', formData.image)
-  //       const uploadResponse = await api.post('uploads/image', formDataUpload, {
-  //         headers: { 'Content-Type': 'multipart/form-data' }
-  //       })
+  //       const uploadResponse = await api.post('uploads/image', formDataUpload);
   //       imageUrl = uploadResponse.url
   //     }
 
@@ -137,6 +136,27 @@ export default function UnitsPage() {
   //     console.error('Error saving unit:', error)
   //   }
   // }
+
+  const handleViewDetails = (unit) => {
+    navigate(`/units/${unit._id || unit.id}`)
+  }
+
+  const handleEditUnit = (unit) => {
+    // navigate(`/units/${unit._id || unit.id}/edit`)
+    alert('Edit unit is handled in property edit modal or a separate page.')
+  }
+
+  const handleDeleteUnit = async (unit) => {
+    const unitId = unit._id || unit.id;
+    if (window.confirm('Are you sure you want to delete this unit?')) {
+        try {
+            await api.delete(`units/${unitId}`);
+            setUnits(prev => prev.filter(u => (u._id || u.id) !== unitId));
+        } catch (error) {
+            console.error('Error deleting unit:', error);
+        }
+    }
+  }
 
   // const handleInputChange = (e) => {
   //   const { name, value } = e.target
@@ -182,6 +202,15 @@ export default function UnitsPage() {
             const tenant = tenants.find(t => t.id === u.tenantId)
             return (
               <div key={u._id || u.id} className="unit-card" data-id={u._id || u.id}>
+                <div className="unit-card-image">
+                  {u.imageUrl ? (
+                    <img src={getImageUrl(u.imageUrl)} alt={`Unit ${u.unitNumber}`} />
+                  ) : (
+                    <div className="unit-placeholder">
+                      <i className="fa-solid fa-door-open"></i>
+                    </div>
+                  )}
+                </div>
                 <div className="unit-card-header">
                   <h3>Unit {u.unitNumber}</h3>
                   <span className={`status-badge ${tenant ? 'status-occupied' : 'status-vacant'}`}>{tenant ? 'Occupied' : 'Vacant'}</span>
@@ -190,6 +219,31 @@ export default function UnitsPage() {
                   <div><span>Tenant</span><span>{tenant?.name || 'N/A'}</span></div>
                   <div><span>Rent</span><span>{fmtCurrency(u.rent)}</span></div>
                   <div><span>Bedrooms / Bathrooms</span><span>{u.bedrooms || 0} / {u.bathrooms || 0}</span></div>
+                </div>
+                <div className="action-dropdown" style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                  <button 
+                    className="action-dropdown-btn" 
+                    style={{ background: 'rgba(255,255,255,0.8)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setOpenActionId(openActionId === (u._id || u.id) ? null : (u._id || u.id));
+                    }}
+                  >
+                    <i className="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                  {openActionId === (u._id || u.id) && (
+                  <div className="dropdown-menu show">
+                    <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleViewDetails(u); }}>
+                      <i className="fa-solid fa-eye"></i>View Details
+                    </a>
+                    <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditUnit(u); }}>
+                      <i className="fa-solid fa-pencil"></i>Edit
+                    </a>
+                    <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteUnit(u); }}>
+                      <i className="fa-solid fa-trash-can"></i>Delete
+                    </a>
+                  </div>
+                  )}
                 </div>
               </div>
             )

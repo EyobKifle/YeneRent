@@ -80,11 +80,7 @@ const Setup = () => {
       const formData = new FormData();
       formData.append('file', receiptImage);
 
-      const uploadResponse = await api.post('uploads/image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const uploadResponse = await api.post('uploads/image', formData);
 
       // Create subscription
       const selectedPlanData = plans.find(p => p.id === selectedPlan);
@@ -170,9 +166,21 @@ const Setup = () => {
               onChange={handleFileChange}
               required
             />
-            {receiptImage && (
-              <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                Selected: {receiptImage.name}
+            {receiptImage ? (
+              <div className="image-preview" style={{ marginTop: '10px' }}>
+                <img 
+                  src={URL.createObjectURL(receiptImage)} 
+                  alt="Receipt Preview" 
+                  style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '4px', border: '1px solid #ddd' }} 
+                />
+                <div style={{ marginTop: '5px', fontSize: '14px', color: '#666' }}>
+                  Selected: {receiptImage.name}
+                </div>
+              </div>
+            ) : (
+              <div className="image-placeholder" style={{ border: '2px dashed #ddd', borderRadius: '8px', padding: '20px', textAlign: 'center', color: '#999', marginTop: '10px' }}>
+                <i className="fa-solid fa-file-invoice-dollar fa-2x" style={{ marginBottom: '10px' }}></i>
+                <p>Please upload your payment receipt image</p>
               </div>
             )}
           </div>

@@ -14,8 +14,8 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: var(--header-gap);
-  background: #fff;
-  border-bottom: 1px solid var(--gray-200);
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border-color);
   position: fixed;
   top: 0;
   left: 0;
@@ -92,13 +92,22 @@
 /* Notification badge */
 .notification-badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 10px;
-  height: 10px;
+  top: 2px;
+  right: 2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
   background: var(--danger-color);
-  border: 2px solid #fff;
-  border-radius: 50%;
+  color: white;
+  border: 2px solid var(--card-bg);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  z-index: 1;
 }
 
 /* User avatar */
@@ -160,9 +169,9 @@
   right: auto;
   min-width: 220px;
   max-width: min(90vw, 280px);
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--card-bg);
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow:
     0 25px 50px rgba(0, 0, 0, 0.15),
@@ -231,7 +240,7 @@
   padding: 5px;
   font-size: 0.95rem;
   font-weight: 500;
-  color: white;
+  color: var(--text-primary);
   text-decoration: none;
   border: none;
   margin: 0.125rem 0.5rem;
@@ -276,7 +285,7 @@
 
 .dropdown-divider {
   height: 1px;
-  background: var(--gray-200);
+  background: var(--border-color);
   margin: 0.5rem 0;
 }
 

@@ -36,12 +36,31 @@ export function formatDate(date, options = {}) {
     const calendarType = settings.regional.calendar;
 
     // Handle Date objects or strings
-    const dateObj = date instanceof Date ? date : new Date(typeof date === 'string' ? date.replace(/-/g, '/') : date);
+    let dateObj;
+    if (date instanceof Date) {
+        dateObj = date;
+    } else {
+        let dateStr = String(date);
+        // Only replace dashes with slashes for YYYY-MM-DD format (no time)
+        // This fixes legacy browser issues without breaking ISO formats with 'T'
+        if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            dateStr = date.replace(/-/g, '/');
+        }
+        dateObj = new Date(dateStr);
+    }
+
+    // Check for invalid date
+    if (isNaN(dateObj.getTime())) return 'N/A';
 
     if (calendarType === 'ethiopian') {
-        const etDate = new EthiopianDate(dateObj);
-        // Format to 'DD/MM/YYYY'
-        return `${String(etDate.date).padStart(2, '0')}/${String(etDate.month).padStart(2, '0')}/${etDate.year}`;
+        try {
+            const etDate = new EthiopianDate(dateObj);
+            // Format to 'DD/MM/YYYY'
+            return `${String(etDate.date).padStart(2, '0')}/${String(etDate.month).padStart(2, '0')}/${etDate.year}`;
+        } catch (e) {
+            console.error('Ethiopian conversion failed', e);
+            return 'N/A';
+        }
     } else {
         // Default Gregorian formatting
         const defaultOptions = {
@@ -213,4 +232,84 @@ export function formatNumberWithCommas(num) {
 export function parseNumberWithCommas(str) {
     if (!str) return 0;
     return parseFloat(str.replace(/,/g, '')) || 0;
+}
+
+/**
+ * Prints a file (image or PDF) by opening it in a temporary iframe or new window.
+ * @param {string} url - The URL of the file to print.
+ */
+export function printFile(url) {
+    if (!url) return;
+    
+    let targetUrl = url;
+    
+    // Handle Data URLs for non-images (like PDFs) by converting to Blob URLs
+    // Browsers block top-frame navigation/opening of Data URLs for security
+    if (url.startsWith('data:') && !url.startsWith('data:image')) {
+        try {
+            const parts = url.split(',');
+            if (parts.length >= 2) {
+                const mimeMatch = parts[0].match(/:(.*?);/);
+                const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+                const bstr = atob(parts[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                const blob = new Blob([u8arr], { type: mime });
+                targetUrl = URL.createObjectURL(blob);
+            }
+        } catch (e) {
+            console.error('Failed to convert Data URL to Blob in printFile:', e);
+            // Fallback to original URL - though it will likely be blocked by the browser
+        }
+    }
+
+    const isImage = /\.(jpg|jpeg|png|gif|webp|bmp|avif)$/i.test(url) || url.startsWith('data:image');
+    
+    if (isImage) {
+        const iframe = document.createElement('iframe');
+        iframe.style.visibility = 'hidden';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        document.body.appendChild(iframe);
+        
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        doc.open();
+        doc.write(`
+            <html>
+                <head>
+                    <title>Print Image</title>
+                    <style>
+                        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+                        img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                        @page { margin: 0; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${url}" onload="window.focus(); window.print();" />
+                    <script>
+                        window.onafterprint = function() {
+                            setTimeout(() => {
+                                window.frameElement.parentNode.removeChild(window.frameElement);
+                            }, 500);
+                        }
+                    </script>
+                </body>
+            </html>
+        `);
+        doc.close();
+    } else {
+        // Fallback for PDFs or other documents
+        const win = window.open(targetUrl, '_blank');
+        if (win) {
+            win.focus();
+            // Note: triggering win.print() on a cross-origin PDF usually fails or is blocked.
+            // Most browsers provide their own print button in the PDF viewer.
+        }
+    }
 }

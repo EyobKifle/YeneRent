@@ -103,3 +103,7 @@
     padding-top: calc(56px + 0.5rem); /* Adjusted for small mobile header height */
   }
 }
+
+.page-content {
+  padding: 10px;
+}
