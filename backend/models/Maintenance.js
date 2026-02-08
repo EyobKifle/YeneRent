@@ -9,7 +9,7 @@ const maintenanceSchema = new mongoose.Schema({
   description: { type: String, trim: true },
   category: { type: String, enum: ['Plumbing', 'Electrical', 'HVAC', 'Structural', 'Appliance', 'Cleaning', 'Security', 'Other'], required: true },
   priority: { type: String, enum: ['Low', 'Medium', 'High', 'Urgent'], required: true },
-  status: { type: String, enum: ['pending', 'in-progress', 'completed', 'cancelled'], default: 'pending' },
+  status: { type: String, enum: ['pending', 'in-progress', 'completed', 'paid', 'cancelled'], default: 'pending' },
   reportedDate: { type: Date, required: true },
   completedDate: { type: Date, default: null },
   cost: { type: Number, default: 0, min: 0 },

@@ -5,6 +5,7 @@ import api from '../../utils/api';
 import TaxCalculator from '../../utils/taxCalculator';
 import PageHeader from '../../components/shared/PageHeader';
 import { Card } from '../../components/ui/Card';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './Analytics.css';
 
 // Utility function to format currency (assuming it's in utils.js)
@@ -115,18 +116,26 @@ class AnalyticsDataService {
     }
 
     async getReportData(start, end, propertyId) {
-        let paymentsRes, expensesRes;
+        let paymentsRes, expensesRes, maintenanceRes, utilitiesRes;
         try {
-            paymentsRes = await this.api.get("payments");
-            expensesRes = await this.api.get("expenses");
+            [paymentsRes, expensesRes, maintenanceRes, utilitiesRes] = await Promise.all([
+                this.api.get("payments"),
+                this.api.get("expenses"),
+                this.api.get("maintenance"),
+                this.api.get("utilities")
+            ]);
         } catch (e) {
-            console.error("Error fetching payments/expenses", e);
+            console.error("Error fetching report data", e);
             paymentsRes = [];
             expensesRes = [];
+            maintenanceRes = [];
+            utilitiesRes = [];
         }
         
         const payments = Array.isArray(paymentsRes) ? paymentsRes : (paymentsRes.payments || []);
         const expenses = Array.isArray(expensesRes) ? expensesRes : (expensesRes.expenses || []);
+        const maintenanceList = Array.isArray(maintenanceRes) ? maintenanceRes : (maintenanceRes.requests || []);
+        const utilities = Array.isArray(utilitiesRes) ? utilitiesRes : (utilitiesRes.utilities || []);
 
         const [allProperties, allLeases, allUnits] = await Promise.all([
             this._getProperties(),
@@ -157,26 +166,57 @@ class AnalyticsDataService {
                    (propertyId === "all" || (e.propertyId?._id || e.propertyId) === propertyId);
         });
 
+        const filteredMaintenance = maintenanceList.filter((m) => {
+            if (m.status !== "completed" && m.status !== "paid") return false;
+            const mDate = m.completedDate ? new Date(m.completedDate).toISOString().split('T')[0] : 
+                         (m.reportedDate ? new Date(m.reportedDate).toISOString().split('T')[0] : '');
+            return (!start || mDate >= start) &&
+                   (!end || mDate <= end) &&
+                   (propertyId === "all" || (m.propertyId?._id || m.propertyId) === propertyId);
+        });
+
+        const filteredUtilities = utilities.filter((u) => {
+            if (u.status !== "Paid") return false;
+            const uDate = u.paidDate ? new Date(u.paidDate).toISOString().split('T')[0] : 
+                         (u.dueDate ? new Date(u.dueDate).toISOString().split('T')[0] : '');
+            return (!start || uDate >= start) &&
+                   (!end || uDate <= end) &&
+                   (propertyId === "all" || (u.propertyId?._id || u.propertyId) === propertyId);
+        });
+
         const totalRevenue = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
-        const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+        
+        // Combined expense items for charts and calculations
+        const allExpenseItems = [
+            ...filteredExpenses.map(e => ({ amount: e.amount, category: e.category || 'Other', date: e.date })),
+            ...filteredMaintenance.map(m => ({ amount: m.cost, category: 'Maintenance', date: m.completedDate || m.reportedDate })),
+            ...filteredUtilities.map(u => ({ amount: u.amount, category: u.type || 'Utilities', date: u.paidDate || u.dueDate }))
+        ];
+
+        const totalExpenses = allExpenseItems.reduce((sum, e) => sum + (e.amount || 0), 0);
         const netProfit = totalRevenue - totalExpenses;
 
         const incomeByProperty = this._aggregateIncomeByProperty(filteredPayments, allLeases, allUnits, allProperties);
-        const expenseByCategory = this._aggregateExpenseByCategory(filteredExpenses);
+        const expenseByCategory = this._aggregateExpenseByCategory(filteredExpenses, filteredMaintenance, filteredUtilities);
         
         let taxData = { vat: { payable: 0 }, businessIncomeTax: { payable: 0 }, withholdingTax: { total: 0 }, totalTaxLiability: 0 };
         if (this.taxCalculator) {
-             taxData = this.taxCalculator.calculateAllTaxes({ totalRevenue, totalExpenses, paymentsByProperty: incomeByProperty, expenses: filteredExpenses });
+             taxData = this.taxCalculator.calculateAllTaxes({ 
+                totalRevenue, 
+                totalExpenses, 
+                paymentsByProperty: incomeByProperty, 
+                expenses: allExpenseItems 
+            });
         }
 
-        const transactions = this._collateTransactions(filteredPayments, filteredExpenses);
+        const transactions = this._collateTransactions(filteredPayments, filteredExpenses, filteredMaintenance, filteredUtilities);
 
         return {
             summary: { totalRevenue, totalExpenses, netProfit, taxData },
             charts: {
                 incomeByProperty,
                 expenseByCategory,
-                profitLoss: AnalyticsDataService.getMonthlyProfitLoss(filteredPayments, filteredExpenses, start, end),
+                profitLoss: AnalyticsDataService.getMonthlyProfitLoss(filteredPayments, allExpenseItems, start, end),
             },
             tables: { transactions, taxSummary: taxData },
         };
@@ -206,15 +246,29 @@ class AnalyticsDataService {
         }, {});
     }
 
-    _aggregateExpenseByCategory(expenses) {
-        return expenses.reduce((acc, e) => {
+    _aggregateExpenseByCategory(expenses, maintenance, utilities) {
+        const acc = expenses.reduce((acc, e) => {
             const category = e.category || 'Uncategorized';
             acc[category] = (acc[category] || 0) + (e.amount || 0);
             return acc;
         }, {});
+
+        if (maintenance && maintenance.length > 0) {
+            const maintTotal = maintenance.reduce((sum, m) => sum + (m.cost || 0), 0);
+            acc['Maintenance'] = (acc['Maintenance'] || 0) + maintTotal;
+        }
+
+        if (utilities && utilities.length > 0) {
+            utilities.forEach(u => {
+                const type = u.type || 'Utilities';
+                acc[type] = (acc[type] || 0) + (u.amount || 0);
+            });
+        }
+
+        return acc;
     }
 
-    _collateTransactions(payments, expenses) {
+    _collateTransactions(payments, expenses, maintenance, utilities) {
         const transactions = [
             ...payments.map((p) => ({
                 date: p.date,
@@ -232,6 +286,22 @@ class AnalyticsDataService {
                 amount: -(e.amount || 0),
                 recordedBy: "System",
             })),
+            ...maintenance.map((m) => ({
+                date: m.completedDate || m.reportedDate,
+                description: `Maint: ${m.title}`,
+                category: "Maintenance",
+                type: "Expense",
+                amount: -(m.cost || 0),
+                recordedBy: "System",
+            })),
+            ...utilities.map((u) => ({
+                date: u.paidDate || u.dueDate,
+                description: `Utility: ${u.type}`,
+                category: u.type,
+                type: "Expense",
+                amount: -(u.amount || 0),
+                recordedBy: "System",
+            })),
         ];
         return transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
     }
@@ -245,6 +315,7 @@ const Analytics = () => {
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const { t } = useLanguage();
 
     const profitLossChartRef = useRef(null);
     const incomeOverviewChartRef = useRef(null);
@@ -335,7 +406,7 @@ const Analytics = () => {
             ctx.textAlign = "center";
             const x = ctx.canvas.width / 2;
             const y = ctx.canvas.height / 2;
-            ctx.fillText("No data available for this period", x, y);
+            ctx.fillText(t("No data available for this period"), x, y);
             return;
         }
 
@@ -384,14 +455,14 @@ const Analytics = () => {
                 labels: profitLoss.labels,
                 datasets: [
                     {
-                        label: "Revenue",
+                        label: t("Revenue"),
                         data: profitLoss.revenues,
                         backgroundColor: "rgba(16, 185, 129, 0.6)", // success-color
                         borderColor: "rgba(16, 185, 129, 1)",
                         borderWidth: 1,
                     },
                     {
-                        label: "Expenses",
+                        label: t("Expenses"),
                         data: profitLoss.expenses,
                         backgroundColor: "rgba(239, 68, 68, 0.6)", // danger-color
                         borderColor: "rgba(239, 68, 68, 1)",
@@ -414,7 +485,7 @@ const Analytics = () => {
             renderChart(incomeOverviewChartInstance, incomeOverviewChartRef, 'pie', {
                 labels: Object.values(incomeByProperty).map((d) => d.name),
                 datasets: [{
-                    label: "Income by Property",
+                    label: t("Income by Property"),
                     data: Object.values(incomeByProperty).map((d) => d.totalIncome),
                     backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#f97316', '#ef4444', '#f59e0b'],
                     hoverOffset: 4,
@@ -422,9 +493,9 @@ const Analytics = () => {
             }, { plugins: { legend: { display: true } } });
 
             renderChart(expenseBreakdownChartInstance, expenseBreakdownChartRef, 'doughnut', {
-                labels: Object.keys(expenseByCategory),
+                labels: Object.keys(expenseByCategory).map(key => t(key)),
                 datasets: [{
-                    label: "Expenses by Category",
+                    label: t("Expense Breakdown"),
                     data: Object.values(expenseByCategory),
                     backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#14b8a6'],
                     hoverOffset: 4,
@@ -439,10 +510,10 @@ const Analytics = () => {
 
     if (loading && !reportData) {
         return (
-            <div className="analytics-page analytics-loading">
-                <PageHeader title="Analytics & Reports" description="Comprehensive overview of your rental property performance." />
+             <div className="analytics-page analytics-loading">
+                <PageHeader title={t("Analytics & Reports")} description={t("Comprehensive overview of your rental property performance.")} />
                 <Card>
-                    <p>Loading analytics data...</p>
+                    <p>{t("Loading analytics data...")}</p>
                 </Card>
             </div>
         );
@@ -451,9 +522,9 @@ const Analytics = () => {
     if (error) {
         return (
             <div className="analytics-page">
-                <PageHeader title="Analytics & Reports" description="Comprehensive overview of your rental property performance." />
+                <PageHeader title={t("Analytics & Reports")} description={t("Comprehensive overview of your rental property performance.")} />
                 <Card>
-                    <p className="text-red-500">{error}</p>
+                    <p className="text-red-500">{t(error)}</p>
                 </Card>
             </div>
         );
@@ -462,11 +533,11 @@ const Analytics = () => {
     return (
         <div className="analytics-page">
             <PageHeader
-                title="Analytics & Reports"
-                description="Visualize your portfolio's financial performance."
+                title={t("Analytics & Reports")}
+                description={t("Visualize your portfolio's financial performance.")}
                 actions={
                     <button id="generate-report-btn" className="btn-primary" onClick={handleGenerateReport}>
-                        <i className="fa-solid fa-file-invoice"></i> Generate Report
+                        <i className="fa-solid fa-file-invoice"></i> {t("Generate Report")}
                     </button>
                 }
             />
@@ -474,17 +545,17 @@ const Analytics = () => {
             {/* Filters */}
             <div className="data-card filter-bar">
                 <div className="form-group">
-                    <label htmlFor="filter-start" className="form-label">Start Date</label>
+                    <label htmlFor="filter-start" className="form-label">{t("Start Date")}</label>
                     <input type="date" id="filter-start" className="form-input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="filter-end" className="form-label">End Date</label>
+                    <label htmlFor="filter-end" className="form-label">{t("End Date")}</label>
                     <input type="date" id="filter-end" className="form-input" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
                 </div>
                 <div className="form-group">
-                    <label htmlFor="filter-property" className="form-label">Property</label>
+                    <label htmlFor="filter-property" className="form-label">{t("Property")}</label>
                     <select id="filter-property" className="form-input" value={selectedProperty} onChange={(e) => setSelectedProperty(e.target.value)}>
-                        <option value="all">All Properties</option>
+                        <option value="all">{t("All Properties")}</option>
                         {properties.map(prop => (
                             <option key={prop._id || prop.id} value={prop._id || prop.id}>{prop.name}</option>
                         ))}
@@ -498,28 +569,28 @@ const Analytics = () => {
                 <div className="stat-card">
                     <div className="stat-header">
                         <i className="fa-solid fa-sack-dollar stat-icon"></i>
-                        <h3 className="stat-title">Total Revenue</h3>
+                        <h3 className="stat-title">{t("Total Revenue")}</h3>
                     </div>
                     <p id="stat-total-revenue" className="stat-value">{reportData ? formatCurrency(reportData.summary.totalRevenue) : 'ETB 0'}</p>
                 </div>
                 <div className="stat-card">
                     <div className="stat-header">
                         <i className="fa-solid fa-receipt stat-icon"></i>
-                        <h3 className="stat-title">Total Expenses</h3>
+                        <h3 className="stat-title">{t("Total Expenses")}</h3>
                     </div>
                     <p id="stat-total-expenses" className="stat-value">{reportData ? formatCurrency(reportData.summary.totalExpenses) : 'ETB 0'}</p>
                 </div>
                 <div className="stat-card">
                     <div className="stat-header">
                         <i className="fa-solid fa-chart-line stat-icon"></i>
-                        <h3 className="stat-title">Net Profit</h3>
+                        <h3 className="stat-title">{t("Net Profit")}</h3>
                     </div>
                     <p id="stat-net-profit" className="stat-value">{reportData ? formatCurrency(reportData.summary.netProfit) : 'ETB 0'}</p>
                 </div>
                 <div className="stat-card">
                     <div className="stat-header">
                         <i className="fa-solid fa-landmark stat-icon"></i>
-                        <h3 className="stat-title">Estimated Tax</h3>
+                        <h3 className="stat-title">{t("Estimated Tax")}</h3>
                     </div>
                     <p id="stat-estimated-tax" className="stat-value">{reportData ? formatCurrency(reportData.summary.taxData.totalTaxLiability) : 'ETB 0'}</p>
                 </div>
@@ -528,25 +599,25 @@ const Analytics = () => {
             {/* Charts */}
             <div className="chart-grid">
                 <div className="data-card chart-container">
-                    <h3>Monthly Profit & Loss</h3>
+                    <h3>{t("Monthly Profit & Loss")}</h3>
                     <canvas id="profitLossChart" ref={profitLossChartRef}></canvas>
                 </div>
                 <div className="data-card chart-container">
-                    <h3>Income by Property</h3>
+                    <h3>{t("Income by Property")}</h3>
                     <canvas id="incomeOverviewChart" ref={incomeOverviewChartRef}></canvas>
                 </div>
                 <div className="data-card chart-container">
-                    <h3>Expense Breakdown</h3>
+                    <h3>{t("Expense Breakdown")}</h3>
                     <canvas id="expenseBreakdownChart" ref={expenseBreakdownChartRef}></canvas>
                 </div>
             </div>
 
             {/* Financial Summary */}
             <div className="data-card">
-                <h3>Financial Summary</h3>
+                <h3>{t("Financial Summary")}</h3>
                 <div className="summary-grid">
                     <div className="summary-section">
-                        <h4>Income Sources</h4>
+                        <h4>{t("Income Sources")}</h4>
                         <div id="summary-income-sources">
                             {reportData && Object.values(reportData.charts.incomeByProperty).map(prop => (
                                 <div className="summary-item" key={prop.id}>
@@ -556,12 +627,12 @@ const Analytics = () => {
                             ))}
                         </div>
                         <div className="summary-total">
-                            <span>Total Income</span>
+                            <span>{t("Total Income")}</span>
                             <span id="summary-total-income">{reportData ? formatCurrency(reportData.summary.totalRevenue) : 'ETB 0'}</span>
                         </div>
                     </div>
                     <div className="summary-section">
-                        <h4>Expense Categories</h4>
+                        <h4>{t("Expense Categories")}</h4>
                         <div id="summary-expense-categories">
                             {reportData && Object.entries(reportData.charts.expenseByCategory).map(([key, value]) => (
                                 <div className="summary-item" key={key}>
@@ -570,26 +641,26 @@ const Analytics = () => {
                                 </div>
                             ))}
                         </div>
-                        <div className="summary-total">
-                            <span>Total Expenses</span>
+                         <div className="summary-total">
+                            <span>{t("Total Expenses")}</span>
                             <span id="summary-total-expenses">{reportData ? formatCurrency(reportData.summary.totalExpenses) : 'ETB 0'}</span>
                         </div>
                     </div>
                     <div className="summary-section">
-                        <h4>Profitability</h4>
+                        <h4>{t("Profitability")}</h4>
                         <div className="summary-item">
-                            <span>Net Profit</span>
+                            <span>{t("Net Profit")}</span>
                             <span id="summary-net-profit">{reportData ? formatCurrency(reportData.summary.netProfit) : 'ETB 0'}</span>
                         </div>
                     </div>
                     <div className="summary-section">
-                        <h4>Tax Summary</h4>
+                        <h4>{t("Tax Summary")}</h4>
                         <div id="summary-tax-breakdown">
-                            {reportData && (
+                             {reportData && (
                                 <>
-                                    <div className="summary-item"><span>VAT Payable</span><span>{formatCurrency(reportData.summary.taxData.vat.payable)}</span></div>
-                                    <div className="summary-item"><span>Business Income Tax</span><span>{formatCurrency(reportData.summary.taxData.businessIncomeTax.payable)}</span></div>
-                                    <div className="summary-item"><span>Withholding Tax</span><span>{formatCurrency(reportData.summary.taxData.withholdingTax.total)}</span></div>
+                                    <div className="summary-item"><span>{t("VAT Payable")}</span><span>{formatCurrency(reportData.summary.taxData.vat.payable)}</span></div>
+                                    <div className="summary-item"><span>{t("Business Income Tax")}</span><span>{formatCurrency(reportData.summary.taxData.businessIncomeTax.payable)}</span></div>
+                                    <div className="summary-item"><span>{t("Withholding Tax")}</span><span>{formatCurrency(reportData.summary.taxData.withholdingTax.total)}</span></div>
                                 </>
                             )}
                         </div>
@@ -602,19 +673,19 @@ const Analytics = () => {
             </div>
 
             {/* Detailed Tables */}
-            <div className="data-card">
-                <h3>Transactions</h3>
+             <div className="data-card">
+                <h3>{t("Transactions")}</h3>
                 <div className="data-card">
                     <div className="table-container">
                         <table className="data-table">
                             <thead>
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Description</th>
-                                    <th>Category</th>
-                                    <th>Type</th>
-                                    <th>Amount</th>
-                                    <th>Recorded By</th>
+                                    <th>{t("Date")}</th>
+                                    <th>{t("Description")}</th>
+                                    <th>{t("Category")}</th>
+                                    <th>{t("Type")}</th>
+                                    <th>{t("Amount")}</th>
+                                    <th>{t("Recorded By")}</th>
                                 </tr>
                             </thead>
                             <tbody id="transactions-table-body">
@@ -626,11 +697,11 @@ const Analytics = () => {
                                             <td>{row.category}</td>
                                             <td>{row.type}</td>
                                             <td className={row.amount > 0 ? "text-green" : "text-red"}>{formatCurrency(row.amount)}</td>
-                                            <td>{row.recordedBy}</td>
+                                             <td>{row.recordedBy}</td>
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan="6">No transactions available</td></tr>
+                                    <tr><td colSpan="6">{t("No transactions available")}</td></tr>
                                 )}
                             </tbody>
                         </table>
@@ -638,22 +709,22 @@ const Analytics = () => {
                 </div>
             </div>
 
-            <div className="data-card">
-                <h3>Tax Summary Table</h3>
+             <div className="data-card">
+                <h3>{t("Tax Summary Table")}</h3>
                 <table className="data-table">
                     <thead>
                         <tr>
-                            <th>Tax Type</th>
-                            <th>Amount</th>
-                            <th>Period</th>
-                            <th>Status</th>
+                            <th>{t("Tax Type")}</th>
+                            <th>{t("Amount")}</th>
+                            <th>{t("Period")}</th>
+                            <th>{t("Status")}</th>
                         </tr>
                     </thead>
                     <tbody id="tax-summary-table-body">
-                        {reportData && [
-                            { type: "VAT Payable", amount: reportData.summary.taxData.vat.payable, period: "Monthly", status: "Pending" },
-                            { type: "Business Income Tax", amount: reportData.summary.taxData.businessIncomeTax.payable, period: "Annual", status: "Estimated" },
-                            { type: "Withholding Tax", amount: reportData.summary.taxData.withholdingTax.total, period: "As Incurred", status: "Tracked" },
+                         {reportData && [
+                            { type: t("VAT Payable"), amount: reportData.summary.taxData.vat.payable, period: t("Monthly"), status: t("Pending") },
+                            { type: t("Business Income Tax"), amount: reportData.summary.taxData.businessIncomeTax.payable, period: t("Annual"), status: t("Estimated") },
+                            { type: t("Withholding Tax"), amount: reportData.summary.taxData.withholdingTax.total, period: t("As Incurred"), status: t("Tracked") },
                         ].map((row, index) => (
                             <tr key={index}>
                                 <td>{row.type}</td>

@@ -10,6 +10,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import Button from '../../components/ui/Button';
 import NumberInput from '../../components/ui/NumberInput';
 import DocumentPreviewModal from '../../components/ui/DocumentPreviewModal';
+import { useLanguage } from '../../contexts/LanguageContext';
 import './Leases.css';
 
 // Placeholder for a generic Modal component (to be replaced by a proper UI component later)
@@ -33,6 +34,7 @@ const Modal = ({ title, children, onClose, isOpen, maxWidth = '500px' }) => {
 
 const Leases = () => {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const { user } = useAuth();
     const { showNotification } = useNotification();
     const [leases, setLeases] = useState([]);

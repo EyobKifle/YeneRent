@@ -74,6 +74,7 @@ const LandingPage = () => {
 
         return () => {
             if (demoVideoRef.current) {
+                // eslint-disable-next-line react-hooks/exhaustive-deps
                 observer.unobserve(demoVideoRef.current);
             }
         };
@@ -92,7 +93,7 @@ const LandingPage = () => {
             {/* --- 1. Hero Section (Home) --- */}
             <section id="home" className="hero-section">
                 <div className="hero-content" data-animate="fade-in-left">
-                    <h1 className="hero-title">{t('Simplify Rental Management — Track, Analyze, and Automate with Ease')}</h1>
+                    <h1 className="hero-title">{t('Simplify Rental Management Track, Analyze, and Automate with Ease')}</h1>
                     <p>{t('Manage your entire rental property portfolio effortlessly. Our system provides powerful tools for tenant management, financial tracking, and automated tax reporting compliant with Ethiopian rules.')}</p>
                     <div className="hero-ctas">
                         <button onClick={scrollToDemo} className="btn btn-primary btn-large">{t('View Demo')}</button>

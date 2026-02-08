@@ -7,10 +7,12 @@ import NumberInput from '../../components/ui/NumberInput';
 import { formatDate } from '../../utils/utils';
 import api from '../../utils/api';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import '../../styles/pages/Maintenance.css';
 
 const Maintenance = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { showNotification } = useNotification();
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionId, setOpenActionId] = useState(null);
@@ -242,25 +244,27 @@ const Maintenance = () => {
         return 'status-badge status-in-progress';
       case 'completed':
         return 'status-badge status-completed';
+      case 'paid':
+        return 'status-badge status-completed'; // Reuse completed style or define new one
       default:
         return 'status-badge';
     }
   };
 
   const formatStatus = (status) => {
-    return status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ');
+    return t(status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' '));
   };
 
   return (
     <div id="maintenance-view">
       <div className="page-header">
         <div>
-          <h1>Maintenance Requests</h1>
-          <p>Track and manage all maintenance tasks.</p>
+          <h1>{t("Maintenance Requests")}</h1>
+          <p>{t("Track and manage all maintenance tasks.")}</p>
         </div>
         <Button variant="secondary" onClick={handleAddRequest}>
           <i className="fa-solid fa-plus"></i>
-          <span>Add Request</span>
+          <span>{t("Add Request")}</span>
         </Button>
       </div>
 
@@ -270,7 +274,7 @@ const Maintenance = () => {
             type="text"
             id="search-input"
             className="form-input"
-            placeholder="Search by title, property, or status..."
+            placeholder={t("Search by title, property, or status...")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -278,19 +282,19 @@ const Maintenance = () => {
         {loading ? (
           <div className="loading-indicator">
             <i className="fa-solid fa-spinner fa-spin"></i>
-            <p>Loading maintenance requests...</p>
+            <p>{t("Loading maintenance requests...")}</p>
           </div>
         ) : (
           <div className="table-container">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Title</th>
-                  <th>Property</th>
-                  <th>Status</th>
-                  <th>Reported Date</th>
-                  <th>Cost</th>
-                  <th>Actions</th>
+                  <th>{t("Title")}</th>
+                  <th>{t("Property")}</th>
+                  <th>{t("Status")}</th>
+                  <th>{t("Reported Date")}</th>
+                  <th>{t("Cost")}</th>
+                  <th>{t("Actions")}</th>
                 </tr>
               </thead>
               <tbody id="maintenance-list">
@@ -306,7 +310,7 @@ const Maintenance = () => {
                       </span>
                     </td>
                     <td>{formatDate(request.reportedDate)}</td>
-                    <td>${request.cost ? request.cost.toFixed(2) : '0.00'}</td>
+                    <td>{request.cost ? `ETB ${request.cost.toFixed(2)}` : 'ETB 0.00'}</td>
                     <td>
                       <div className="action-dropdown">
                         <button
@@ -321,13 +325,13 @@ const Maintenance = () => {
                         {openActionId === requestId && (
                         <div className="dropdown-menu show">
                           <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDetails(request); }}>
-                            <i className="fa-solid fa-eye"></i>View Details
+                            <i className="fa-solid fa-eye"></i>{t("View Details")}
                           </a>
                           <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleEditRequest(request); }}>
-                            <i className="fa-solid fa-pencil"></i>Edit
+                            <i className="fa-solid fa-pencil"></i>{t("Edit")}
                           </a>
                           <a href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteRequest(request); }}>
-                            <i className="fa-solid fa-trash-can"></i>Delete
+                            <i className="fa-solid fa-trash-can"></i>{t("Delete")}
                           </a>
                         </div>
                         )}
@@ -344,32 +348,32 @@ const Maintenance = () => {
       {filteredRequests.length === 0 && (
         <div id="empty-state" className="empty-state">
           <i className="fa-solid fa-screwdriver-wrench"></i>
-          <h3>No Maintenance Requests</h3>
-          <p>Get started by adding a new maintenance request.</p>
+          <h3>{t("No Maintenance Requests")}</h3>
+          <p>{t("Get started by adding a new maintenance request.")}</p>
         </div>
       )}
 
       <Modal
-        title="Add Maintenance Request"
+        title={t("Add Maintenance Request")}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       >
         <form onSubmit={handleFormSubmit} className="modal-form">
           <div className="form-group">
-            <label htmlFor="title">Request Title</label>
+            <label htmlFor="title">{t("Request Title")}</label>
             <input
               type="text"
               id="title"
               name="title"
               value={formData.title}
               onChange={handleInputChange}
-              placeholder="e.g., Leaky Faucet, Broken Light Fixture"
+              placeholder={t("e.g., Leaky Faucet, Broken Light Fixture")}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="property">Property</label>
+            <label htmlFor="property">{t("Property")}</label>
             <select
               id="propertyId"
               name="propertyId"
@@ -377,7 +381,7 @@ const Maintenance = () => {
               onChange={handleInputChange}
               required
             >
-              <option value="">Select Property</option>
+              <option value="">{t("Select Property")}</option>
               {properties.map(prop => (
                 <option key={prop._id} value={prop._id}>{prop.name}</option>
               ))}
@@ -385,55 +389,56 @@ const Maintenance = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="category">Category</label>
+            <label htmlFor="category">{t("Category")}</label>
             <select
               id="category"
               name="category"
               value={formData.category}
               onChange={handleInputChange}
             >
-              <option value="Other">Other</option>
-              <option value="Plumbing">Plumbing</option>
-              <option value="Electrical">Electrical</option>
-              <option value="HVAC">HVAC</option>
-              <option value="Structural">Structural</option>
-              <option value="Appliance">Appliance</option>
-              <option value="Cleaning">Cleaning</option>
-              <option value="Security">Security</option>
+              <option value="Other">{t("Other")}</option>
+              <option value="Plumbing">{t("Plumbing")}</option>
+              <option value="Electrical">{t("Electrical")}</option>
+              <option value="HVAC">{t("HVAC")}</option>
+              <option value="Structural">{t("Structural")}</option>
+              <option value="Appliance">{t("Appliance")}</option>
+              <option value="Cleaning">{t("Cleaning")}</option>
+              <option value="Security">{t("Security")}</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label htmlFor="priority">Priority</label>
+            <label htmlFor="priority">{t("Priority")}</label>
             <select
               id="priority"
               name="priority"
               value={formData.priority}
               onChange={handleInputChange}
             >
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Urgent">Urgent</option>
+              <option value="Low">{t("Low")}</option>
+              <option value="Medium">{t("Medium")}</option>
+              <option value="High">{t("High")}</option>
+              <option value="Urgent">{t("Urgent")}</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label htmlFor="status">Status</label>
+            <label htmlFor="status">{t("Status")}</label>
             <select
               id="status"
               name="status"
               value={formData.status}
               onChange={handleInputChange}
             >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
+              <option value="pending">{t("Pending")}</option>
+              <option value="in-progress">{t("In Progress")}</option>
+              <option value="completed">{t("Completed")}</option>
+              <option value="paid">{t("Paid")}</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label htmlFor="reportedDate">Reported Date</label>
+            <label htmlFor="reportedDate">{t("Reported Date")}</label>
             <input
               type="date"
               id="reportedDate"
@@ -445,7 +450,7 @@ const Maintenance = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="cost">Estimated Cost ($)</label>
+            <label htmlFor="cost">{t("Estimated Cost (ETB)")}</label>
             <NumberInput
               value={formData.cost}
               onChange={(value) => setFormData(prev => ({ ...prev, cost: value }))}
@@ -455,8 +460,8 @@ const Maintenance = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="receipt">Receipt (Image/PDF)</label>
+           <div className="form-group">
+            <label htmlFor="receipt">{t("Receipt (Image/PDF)")}</label>
             <input
               type="file"
               id="receipt"
@@ -467,7 +472,7 @@ const Maintenance = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="beforeImage">Before Image</label>
+            <label htmlFor="beforeImage">{t("Before Image")}</label>
             <input
               type="file"
               id="beforeImage"
@@ -478,7 +483,7 @@ const Maintenance = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="afterImage">After Image</label>
+            <label htmlFor="afterImage">{t("After Image")}</label>
             <input
               type="file"
               id="afterImage"
@@ -490,10 +495,10 @@ const Maintenance = () => {
 
           <div className="form-actions">
             <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>
-              Cancel
+              {t("Cancel")}
             </button>
             <button type="submit" className="btn-primary">
-              Add Maintenance Request
+              {t("Add Maintenance Request")}
             </button>
           </div>
         </form>

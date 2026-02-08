@@ -167,10 +167,10 @@ const Payments = () => {
             try {
                 await api.delete(`payments/${paymentId}`);
                 setPayments(prev => prev.filter(p => (p._id || p.id) !== paymentId));
-                showNotification('Payment deleted successfully', 'success');
+                showNotification(t('Payment deleted successfully'), 'success');
             } catch (error) {
                 console.error('Failed to delete payment:', error);
-                showNotification('Failed to delete payment', 'error');
+                showNotification(t('Failed to delete payment'), 'error');
             }
         }
     };
@@ -179,7 +179,7 @@ const Payments = () => {
         return (
             <div className="loading-indicator">
                 <i className="fa-solid fa-spinner fa-spin"></i>
-                <p>Loading payments...</p>
+                <p>{t('Loading payments...')}</p>
             </div>
         );
     }
@@ -221,11 +221,11 @@ const Payments = () => {
                             const paymentId = payment._id || payment.id;
                             return (
                                 <tr key={paymentId}>
-                                    <td>{payment.tenant?.name || 'N/A'}</td>
-                                    <td>{`${payment.property?.name || 'N/A'} ${payment.unit ? `(Unit ${payment.unit.unitNumber})` : ''}`}</td>
+                                    <td>{payment.tenant?.name || t('N/A')}</td>
+                                    <td>{`${payment.property?.name || t('N/A')} ${payment.unit ? `(${t('Unit')} ${payment.unit.unitNumber})` : ''}`}</td>
                                     <td>{formatDate(payment.dueDate)}</td>
                                     <td>{formatCurrency(payment.amount)}</td>
-                                    <td><span className={`status-badge ${payment.status.class}`}>{payment.status.text}</span></td>
+                                    <td><span className={`status-badge ${payment.status.class}`}>{t(payment.status.text)}</span></td>
                                     <td>
                                         <div className="action-dropdown">
                                             <button

@@ -42,7 +42,7 @@ router.get('/financial', async (req, res) => {
     };
 
     let maintenanceQuery = {
-      status: 'completed',
+      status: { $in: ['completed', 'paid'] },
       $or: [
         { completedDate: { $gte: start, $lte: end } },
         { updatedAt: { $gte: start, $lte: end } }

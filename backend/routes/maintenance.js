@@ -80,7 +80,7 @@ router.post('/', authorizeRoles('admin','property_manager','tenant','owner','cus
   body('title').trim().isLength({ min: 1 }).withMessage('Title is required'),
   body('category').isIn(['Plumbing', 'Electrical', 'HVAC', 'Structural', 'Appliance', 'Cleaning', 'Security', 'Other']).withMessage('Invalid category'),
   body('priority').isIn(['Low', 'Medium', 'High', 'Urgent']).withMessage('Invalid priority'),
-  body('status').isIn(['pending', 'in-progress', 'completed', 'cancelled']).withMessage('Invalid status'),
+  body('status').isIn(['pending', 'in-progress', 'completed', 'paid', 'cancelled']).withMessage('Invalid status'),
   body('reportedDate').isISO8601().withMessage('Valid reported date is required')
 ], async (req, res) => {
   try {
@@ -118,7 +118,7 @@ router.put('/:id', [
   body('title').optional().trim().isLength({ min: 1 }).withMessage('Title cannot be empty'),
   body('category').optional().isIn(['Plumbing', 'Electrical', 'HVAC', 'Structural', 'Appliance', 'Cleaning', 'Security', 'Other']).withMessage('Invalid category'),
   body('priority').optional().isIn(['Low', 'Medium', 'High', 'Urgent']).withMessage('Invalid priority'),
-  body('status').optional().isIn(['pending', 'in-progress', 'completed', 'cancelled']).withMessage('Invalid status'),
+  body('status').optional().isIn(['pending', 'in-progress', 'completed', 'paid', 'cancelled']).withMessage('Invalid status'),
   body('reportedDate').optional().isISO8601().withMessage('Valid reported date is required'),
   body('cost').optional().isNumeric().withMessage('Cost must be a number'),
   body('assignedTo').optional().isMongoId().withMessage('Valid assigned user ID is required')
@@ -210,7 +210,7 @@ router.get('/priorities/list', async (req, res) => {
 
 router.get('/statuses/list', async (req, res) => {
   try {
-    const statuses = ['pending', 'in-progress', 'completed', 'cancelled'];
+    const statuses = ['pending', 'in-progress', 'completed', 'paid', 'cancelled'];
     res.json(statuses);
   } catch (error) {
     console.error('Error fetching statuses:', error);

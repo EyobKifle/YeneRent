@@ -222,6 +222,7 @@ export default function MaintenanceEdit() {
             <option value="pending">{t('Pending')}</option>
             <option value="in-progress">{t('In Progress')}</option>
             <option value="completed">{t('Completed')}</option>
+            <option value="paid">{t('Paid')}</option>
           </select>
         </div>
 
@@ -239,7 +240,7 @@ export default function MaintenanceEdit() {
         </div>
 
         <div className="form-group">
-          <label htmlFor="cost">{t('Estimated Cost ($)')}</label>
+          <label htmlFor="cost">{t('Estimated Cost (ETB)')}</label>
           <NumberInput
             value={formData.cost}
             onChange={(value) => setFormData(prev => ({ ...prev, cost: value }))}

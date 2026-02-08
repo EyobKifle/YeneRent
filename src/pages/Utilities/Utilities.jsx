@@ -268,7 +268,7 @@ const Utilities = () => {
                 <tr key={utilId}>
                   <td>{util.type}</td>
                   <td>{propertyName}</td>
-                  <td>${util.amount ? util.amount.toFixed(2) : '0.00'}</td>
+                  <td>{util.amount ? `ETB ${util.amount.toFixed(2)}` : 'ETB 0.00'}</td>
                   <td>{util.dueDate ? new Date(util.dueDate).toLocaleDateString() : 'N/A'}</td>
                   <td>
                     <span className={getStatusBadgeClass(util.status)}>
@@ -360,7 +360,7 @@ const Utilities = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="amount">Amount ($)</label>
+            <label htmlFor="amount">Amount (ETB)</label>
             <NumberInput
               value={formData.amount}
               onChange={(value) => setFormData(prev => ({ ...prev, amount: value }))}

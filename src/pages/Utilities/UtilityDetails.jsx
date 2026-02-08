@@ -40,7 +40,9 @@ export default function UtilityDetails() {
                 // Let's stick to simple if we can.
                 const p = propRes.properties.find(x => x._id === propId || x.id === propId);
                 setProperty(p);
-            } catch (ignore) {}
+                            } catch (err) {
+                console.error('Failed to fetch property for utility:', err);
+            }
         }
       } catch (err) {
         console.error(err);

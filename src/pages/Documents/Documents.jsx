@@ -7,6 +7,7 @@ import UploadDocumentModal from '../../components/ui/UploadDocumentModal'
 import DetailsModal from '../../components/ui/DetailsModal'
 import api from '../../utils/api'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import { useLanguage } from '../../contexts/LanguageContext'
 
 const formatBytes = (bytes) => {
   if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B'
@@ -24,6 +25,7 @@ const getFileIcon = (mime) => {
 }
 
 export default function DocumentsPage() {
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const isOnline = useOnlineStatus()
   const [search, setSearch] = useState('')
@@ -50,7 +52,7 @@ export default function DocumentsPage() {
       setProperties(props.properties || [])
       setTenants(tens || [])
     } catch (err) {
-      setError('Failed to load documents. Please try again.')
+      setError(t('Failed to load documents. Please try again.'))
       console.error('Documents data fetch error:', err)
     } finally {
       setLoading(false)
@@ -82,18 +84,18 @@ export default function DocumentsPage() {
   }, [documents, search, category])
 
   const linkedTo = (doc) => {
-    if (!doc) return 'General'
+    if (!doc) return t('General')
     const docPropId = doc.propertyId?._id || doc.propertyId;
     if (docPropId) {
       const p = properties.find(x => (x._id || x.id) === docPropId)
-      return p?.name || 'Property'
+      return p?.name || t('Property')
     }
     const docTenantId = doc.tenantId?._id || doc.tenantId;
     if (docTenantId) {
-      const t = tenants.find(x => (x._id || x.id) === docTenantId)
-      return t?.name || 'Tenant'
+      const tenantObj = tenants.find(x => (x._id || x.id) === docTenantId)
+      return tenantObj?.name || t('Tenant')
     }
-    return 'General'
+    return t('General')
   }
 
   const handleDocumentUploaded = async (newDocument) => {
@@ -109,14 +111,14 @@ export default function DocumentsPage() {
 
   const handleDeleteDocument = async (doc) => {
     const docId = doc._id || doc.id;
-    if (window.confirm('Are you sure you want to delete this document?')) {
+    if (window.confirm(t('Are you sure you want to delete this document?'))) {
       try {
         await api.delete(`documents/${docId}`)
         setDocuments(prev => prev.filter(d => (d._id || d.id) !== docId))
-        alert('Document deleted successfully')
+        alert(t('Document deleted successfully'))
       } catch (error) {
         console.error('Failed to delete document:', error)
-        alert('Failed to delete document')
+        alert(t('Failed to delete document'))
       }
     }
   }
@@ -125,12 +127,12 @@ export default function DocumentsPage() {
     return (
       <div className="documents-page">
         <div className="page-header">
-          <h1>Documents</h1>
-          <p>Loading your documents...</p>
+          <h1>{t('Documents')}</h1>
+          <p>{t('Loading your documents...')}</p>
         </div>
         <div className="loading-state">
           <i className="fa-solid fa-spinner fa-spin"></i>
-          <p>Loading...</p>
+          <p>{t('Loading...')}</p>
         </div>
       </div>
     )
@@ -140,16 +142,16 @@ export default function DocumentsPage() {
     return (
       <div className="documents-page">
         <div className="page-header">
-          <h1>Documents</h1>
-          <p>Manage all your important documents in one place.</p>
+          <h1>{t('Documents')}</h1>
+          <p>{t('Manage all your important documents in one place.')}</p>
         </div>
         <div className="error-state">
           <i className="fa-solid fa-exclamation-triangle"></i>
-          <h3>Error Loading Documents</h3>
+          <h3>{t('Error Loading Documents')}</h3>
           <p>{error}</p>
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <Button onClick={() => { setRetryCount(0); loadDocumentsData(); }}>Retry</Button>
-            {retryCount >= 2 && <Button onClick={() => window.location.reload()}>Reload Page</Button>}
+            <Button onClick={() => { setRetryCount(0); loadDocumentsData(); }}>{t('Retry')}</Button>
+            {retryCount >= 2 && <Button onClick={() => window.location.reload()}>{t('Reload Page')}</Button>}
           </div>
         </div>
       </div>
@@ -161,31 +163,31 @@ export default function DocumentsPage() {
       {!isOnline && (
         <div className="offline-banner">
           <i className="fa-solid fa-wifi-slash"></i>
-          <span>You are currently offline. Some features may not be available.</span>
+          <span>{t('You are currently offline. Some features may not be available.')}</span>
         </div>
       )}
       <div className="page-header">
         <div>
-          <h1>Documents</h1>
-          <p>Manage all your important documents in one place.</p>
+          <h1>{t('Documents')}</h1>
+          <p>{t('Manage all your important documents in one place.')}</p>
         </div>
         <Button variant="primary" onClick={() => setIsUploadModalOpen(true)}>
           <i className="fa-solid fa-upload"></i>
-          <span>Upload Document</span>
+          <span>{t('Upload Document')}</span>
         </Button>
       </div>
 
       <Card>
         <div className="table-header">
-          <input type="text" className="form-input" placeholder="Search by document name..." value={search} onChange={e=>setSearch(e.target.value)} />
+          <input type="text" className="form-input" placeholder={t('Search by document name...')} value={search} onChange={e=>setSearch(e.target.value)} />
         </div>
         <div className="filter-nav">
           {[
-            { key: 'all', label: 'All Agreements' },
-            { key: 'Lease Agreement', label: 'Lease Agreements' },
-            { key: 'Payment Receipt', label: 'Receipts' },
-            { key: 'Tax Document', label: 'Tax Documents' },
-            { key: 'Other', label: 'Others' },
+            { key: 'all', label: t('All Agreements') },
+            { key: 'Lease Agreement', label: t('Lease Agreements') },
+            { key: 'Payment Receipt', label: t('Receipts') },
+            { key: 'Tax Document', label: t('Tax Documents') },
+            { key: 'Other', label: t('Others') },
           ].map(f => (
             <button key={f.key} className={`filter-btn ${category === f.key ? 'active' : ''}`} onClick={() => setCategory(f.key)}>
               {f.label}
@@ -196,17 +198,17 @@ export default function DocumentsPage() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Linked To</th>
-                <th>Size</th>
-                <th>Upload Date</th>
-                <th>Actions</th>
+                <th>{t('Name')}</th>
+                <th>{t('Category')}</th>
+                <th>{t('Linked To')}</th>
+                <th>{t('Size')}</th>
+                <th>{t('Upload Date')}</th>
+                <th>{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
-                <tr key="no-documents"><td colSpan={6} className="text-center p-4">No Documents Found</td></tr>
+                <tr key="no-documents"><td colSpan={6} className="text-center p-4">{t('No Documents Found')}</td></tr>
               ) : filtered.map(doc => {
                 const { icon, className } = getFileIcon(doc.type)
                 const docId = doc._id || doc.id;
@@ -218,7 +220,7 @@ export default function DocumentsPage() {
                         <span>{doc.name}</span>
                       </div>
                     </td>
-                    <td>{doc.category}</td>
+                    <td>{t(doc.category)}</td>
                     <td>{linkedTo(doc)}</td>
                     <td>{formatBytes(doc.size)}</td>
                     <td>{doc.uploadDate ? new Date(doc.uploadDate).toLocaleDateString() : '-'}</td>
@@ -236,13 +238,13 @@ export default function DocumentsPage() {
                         {openActionId === docId && (
                           <div className="dropdown-menu show">
                             <a key={`view-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleViewDocument(doc); }}>
-                              <i className="fa-solid fa-eye"></i>View Details
+                              <i className="fa-solid fa-eye"></i>{t('View Details')}
                             </a>
                             <a key={`edit-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); navigate(`/documents/${docId}/edit`); }}>
-                              <i className="fa-solid fa-pencil"></i>Edit
+                              <i className="fa-solid fa-pencil"></i>{t('Edit')}
                             </a>
                             <a key={`delete-${docId}`} href="#" className="dropdown-item" onClick={(e) => { e.preventDefault(); handleDeleteDocument(doc); }}>
-                              <i className="fa-solid fa-trash-can"></i>Delete
+                              <i className="fa-solid fa-trash-can"></i>{t('Delete')}
                             </a>
                           </div>
                         )}
@@ -259,8 +261,8 @@ export default function DocumentsPage() {
       {filtered.length === 0 && (
         <div className="empty-state">
           <i className="fa-solid fa-folder-open"></i>
-          <h3>No Documents Found</h3>
-          <p>Get started by uploading a new document.</p>
+          <h3>{t('No Documents Found')}</h3>
+          <p>{t('Get started by uploading a new document.')}</p>
         </div>
       )}
 
